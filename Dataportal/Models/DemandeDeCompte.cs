@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Dataportal.Models
 {
-    public class Utilisateur
+    public class DemandeDeCompte
     {
         public int Id { get; set; }
 
@@ -29,20 +29,18 @@ namespace Dataportal.Models
         public Entreprise Entreprise { get; set; }
 
         [Required]
-        [ForeignKey("Role")]
-        public int IdRole { get; set; }
+        [ForeignKey("StatutDeLaDemande")]
+        public int IdStatutDeLaDemande { get; set; }
 
-        public Role Role { get; set; }
+        public StatutDeLaDemande StatutDeLaDemande { get; set; }
 
-        public bool CompteActif { get; set; }
+        public bool EmailVerifie { get; set; }
 
-        public DateTime DateApprobation { get; set; }
+        [Required]
+        [StringLength(1000)]
+        public string Commentaire { get; set; }
 
-        public DateTime? DateModification { get; set; }
-
-        public DateTime? DernierLogin { get; set; }
-
-        public ICollection<Metadonnee> Metadonnees { get; set; }
+        public DateTime DateCreation { get; set; }
 
     }
 }
