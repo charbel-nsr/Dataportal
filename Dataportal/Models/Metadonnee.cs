@@ -57,7 +57,9 @@ namespace Dataportal.Models
 
         public Utilisateur Utilisateur { get; set; }
 
-        public Timestamp Timestamp { get; set; }
+        public DateTime StartTimestamp { get; set; }
+
+        public DateTime EndTimestamp { get; set; }
 
         public bool AutoriserApi { get; set; }
 

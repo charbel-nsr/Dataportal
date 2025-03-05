@@ -23,6 +23,6 @@ namespace Dataportal.Models
 
         public String Description { get; set; }
 
-        public Array Arguments { get; set; }
+        //public Array Arguments { get; set; }
     }
 }

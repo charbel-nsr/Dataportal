@@ -21,9 +21,10 @@ namespace Dataportal.Models
 
         public DateTime DateAjouter { get; set; }
 
-        public Timestamp Timestamp { get; set; }
+        public DateTime StartTimestamp { get; set; }
 
-        [ForeignKey("Metadonnee")]
+        public DateTime EndTimestamp { get; set; }
+
         public int IdMetadonnee { get; set; }
 
         public Metadonnee Metadonnee { get; set; }

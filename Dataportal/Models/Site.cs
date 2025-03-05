@@ -8,7 +8,7 @@ namespace Dataportal.Models
 
         [Required]
         [MaxLength(100)]
-        public string Non { get; set; }
+        public string Nom { get; set; }
 
         [MaxLength(1000)]
         public string Description { get; set; }

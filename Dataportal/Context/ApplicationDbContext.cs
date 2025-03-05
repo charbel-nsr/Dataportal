@@ -82,7 +82,8 @@ namespace Dataportal.Context
                       .IsRequired();
                 entity.HasOne(d => d.Metadonnee)
                       .WithMany(m => m.Documentations)
-                      .HasForeignKey(d => d.IdMetadonnee);
+                      .HasForeignKey(d => d.IdMetadonnee)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
             modelBuilder.Entity<DomaineEmail>(entity =>
             {
@@ -94,7 +95,8 @@ namespace Dataportal.Context
                       .IsRequired();
                 entity.HasOne(d => d.Entreprise)
                       .WithMany(e => e.DomaineEmails)
-                      .HasForeignKey(d => d.IdEntreprise);
+                      .HasForeignKey(d => d.IdEntreprise)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
             modelBuilder.Entity<Donnees>(entity =>
             {
@@ -110,16 +112,14 @@ namespace Dataportal.Context
                       .HasMaxLength(50);
                 entity.Property(d => d.DateAjouter)
                       .HasDefaultValueSql("GETUTCDATE()");
-                entity.Property(d => d.Timestamp);
+                entity.Property(d => d.StartTimestamp);
+                entity.Property(d => d.EndTimestamp);
                 entity.HasIndex(e => e.Libelle)
                       .IsUnique();
                 entity.HasIndex(e => e.Code)
                       .IsUnique();
                 entity.HasIndex(e => e.NomDeLaTable)
                       .IsUnique();
-                entity.HasOne(d => d.Metadonnee)
-                      .WithOne(m => m.Donnees)
-                      .HasForeignKey<Donnees>(d => d.IdMetadonnee);
             });
             modelBuilder.Entity<DonneesContexteEnvironnemental>(entity =>
             {
@@ -133,16 +133,14 @@ namespace Dataportal.Context
                 entity.Property(d => d.Description);
                 entity.Property(d => d.DateAjouter)
                       .HasDefaultValueSql("GETUTCDATE()");
-                entity.Property(d => d.Timestamp);
+                entity.Property(d => d.StartTimestamp);
+                entity.Property(d => d.EndTimestamp);
                 entity.HasIndex(e => e.Libelle)
                       .IsUnique();
                 entity.HasIndex(e => e.Code)
                       .IsUnique();
                 entity.HasIndex(e => e.NomDeLaTable)
                       .IsUnique();
-                entity.HasOne(d => d.Metadonnee)
-                      .WithOne(m => m.DonneesContexteEnvironnemental)
-                      .HasForeignKey<DonneesContexteEnvironnemental>(d => d.IdMetadonnee);
             });
             modelBuilder.Entity<DonneesEventLogs>(entity =>
             {
@@ -157,16 +155,14 @@ namespace Dataportal.Context
                       .HasMaxLength(1000);
                 entity.Property(e => e.DateAjouter)
                       .HasDefaultValueSql("GETUTCDATE()");
-                entity.Property(e => e.Timestamp);
+                entity.Property(e => e.StartTimestamp);
+                entity.Property(e => e.EndTimestamp);
                 entity.HasIndex(e => e.Libelle)
                       .IsUnique();
                 entity.HasIndex(e => e.Code)
                       .IsUnique();
                 entity.HasIndex(e => e.NomDeLaTable)
                       .IsUnique();
-                entity.HasOne(e => e.Metadonnee)
-                      .WithOne(m => m.DonneesEventLogs)
-                      .HasForeignKey<DonneesEventLogs>(e => e.IdMetadonnee);
             });
             modelBuilder.Entity<Entreprise>(entity =>
             {
@@ -174,18 +170,18 @@ namespace Dataportal.Context
                 entity.Property(e => e.Nom)
                       .IsRequired()
                       .HasMaxLength(100);
-                entity.HasIndex(e => e.Nom)
-                      .IsUnique();
                 entity.HasMany(e => e.DomaineEmails)
                       .WithOne(d => d.Entreprise)
-                      .HasForeignKey(d => d.IdEntreprise);
+                      .HasForeignKey(d => d.IdEntreprise)
+                      .OnDelete(DeleteBehavior.Restrict);
                 entity.HasMany(e => e.Utilisateurs)
                       .WithOne(u => u.Entreprise)
                       .HasForeignKey(u => u.IdEntreprise)
                       .OnDelete(DeleteBehavior.Restrict);
                 entity.HasMany(e => e.DemandeDeComptes)
                       .WithOne(d => d.Entreprise)
-                      .HasForeignKey(d => d.IdEntreprise);
+                      .HasForeignKey(d => d.IdEntreprise)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
             modelBuilder.Entity<Historique>(entity =>
             {
@@ -198,7 +194,8 @@ namespace Dataportal.Context
                       .HasMaxLength(1000);
                 entity.HasOne(h => h.Metadonnee)
                       .WithMany(m => m.Historiques)
-                      .HasForeignKey(h => h.IdMetadonnee);
+                      .HasForeignKey(h => h.IdMetadonnee)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
             modelBuilder.Entity<Licence>(entity =>
             {
@@ -240,7 +237,8 @@ namespace Dataportal.Context
                 entity.HasOne(m => m.Utilisateur)
                       .WithMany(u => u.Metadonnees)
                       .HasForeignKey(m => m.IdUtilisateur);
-                entity.Property(m => m.Timestamp);
+                entity.Property(m => m.EndTimestamp);
+                entity.Property(m => m.StartTimestamp);
                 entity.HasMany(m => m.Historiques)
                       .WithOne(h => h.Metadonnee)
                       .HasForeignKey(h => h.IdMetadonnee);
@@ -259,10 +257,12 @@ namespace Dataportal.Context
                 entity.HasKey(ma => ma.Id);
                 entity.HasOne(ma => ma.Metadonnee)
                       .WithMany(m => m.Metadonnee_Appareils)
-                      .HasForeignKey(ma => ma.IdMetadonnee);
+                      .HasForeignKey(ma => ma.IdMetadonnee)
+                      .OnDelete(DeleteBehavior.Restrict);
                 entity.HasOne(ma => ma.Appareil)
                       .WithMany(a => a.Metadonnee_Appareils)
                       .HasForeignKey(ma => ma.IdAppareil)
+                      .OnDelete(DeleteBehavior.Restrict)
                       .OnDelete(DeleteBehavior.Restrict);
             });
             modelBuilder.Entity<Role>(entity =>
@@ -277,7 +277,8 @@ namespace Dataportal.Context
                       .IsUnique();
                 entity.HasMany(r => r.Utilisateurs)
                       .WithOne(u => u.Role)
-                      .HasForeignKey(u => u.IdRole);
+                      .HasForeignKey(u => u.IdRole)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
             modelBuilder.Entity<Schema>(entity =>
             {
@@ -300,19 +301,21 @@ namespace Dataportal.Context
                       .OnDelete(DeleteBehavior.Restrict);
                 entity.HasOne(sm => sm.Metadonnee)
                       .WithMany(m => m.schema_Metadonnees)
-                      .HasForeignKey(sm => sm.IdMetadonnee);
+                      .HasForeignKey(sm => sm.IdMetadonnee)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
             modelBuilder.Entity<Site>(entity =>
             {
                 entity.HasKey(s => s.Id);
-                entity.Property(s => s.Non)
+                entity.Property(s => s.Nom)
                       .IsRequired()
                       .HasMaxLength(100);
                 entity.Property(s => s.Description)
                       .HasMaxLength(1000);
                 entity.HasMany(s => s.Metadonnees)
                       .WithOne(m => m.Site)
-                      .HasForeignKey(m => m.IdSite);
+                      .HasForeignKey(m => m.IdSite)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
             modelBuilder.Entity<StatutDeLaDemande>(entity =>
             {
@@ -326,7 +329,8 @@ namespace Dataportal.Context
                       .IsUnique();
                 entity.HasMany(s => s.DemandeDeComptes)
                       .WithOne(d => d.StatutDeLaDemande)
-                      .HasForeignKey(d => d.IdStatutDeLaDemande);
+                      .HasForeignKey(d => d.IdStatutDeLaDemande)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
             modelBuilder.Entity<Utilisateur>(entity =>
             {
@@ -364,7 +368,8 @@ namespace Dataportal.Context
                       .IsUnique();
                 entity.HasMany(v => v.Metadonnees)
                       .WithOne(m => m.Visibilite)
-                      .HasForeignKey(m => m.IdVisibilite);
+                      .HasForeignKey(m => m.IdVisibilite)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
         }
     }
