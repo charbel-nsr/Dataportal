@@ -11,19 +11,33 @@
 <body>
     <header>
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">Dataportal</a>
+            <div class="container ml-3">
+                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">
+                    <img src="~/logo/ets-header-logo.png" alt="Dataportal" style="height: 50px;" />
+                </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
                         aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
+                <div class="navbar-collapse collapse d-sm-inline-flex">
+                    <ul class="navbar-nav ms-auto">
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Accueil</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Données</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">API</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Actualités</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">A propos</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Se connecter</a>
                         </li>
                     </ul>
                 </div>
@@ -36,9 +50,59 @@
         </main>
     </div>
 
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2025 - Dataportal - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+    <footer class="footer border-top" role="contentinfo">
+        <div class="container py-4">
+            <div class="row text-center text-md-start">
+                <div class="col-md-3 mb-3">
+                    <div class="mb-3">
+                        <a href="https://www.etsmtl.ca/" target="_blank">
+                            <img src="~/logo/ets-logo.png" alt="ETS Logo" class="img-fluid footer-logo">
+                        </a>
+                    </div>
+                    <div class="mb-3">
+                        <a href="https://www.hydroquebec.com/" target="_blank">
+                            <img src="~/logo/hq-footer-logo.png" alt="HQ Footer Logo" class="img-fluid footer-logo ms-1">
+                        </a>
+                    </div>
+                    <div>
+                        <a href="https://www.powerfactors.com/" target="_blank">
+                            <img src="~/logo/pf-footer-logo.png" alt="PF Footer Logo" class="img-fluid footer-logo ms-1">
+                        </a>
+                    </div>
+                </div>
+                <div class="col-md-2 mb-3">
+                </div>
+                <div class="col-md-3 mb-3">
+                    <nav aria-label="Navigation principale">
+                        <ul class="list-unstyled">
+                            <li><a class="footer-links" asp-area="" asp-controller="Home" asp-action="Index">Accueil</a></li>
+                            <li><a class="footer-links" asp-area="" asp-controller="Home" asp-action="Index">Données</a></li>
+                            <li><a class="footer-links" asp-area="" asp-controller="Home" asp-action="Index">API</a></li>
+                            <li><a class="footer-links" asp-area="" asp-controller="Home" asp-action="Index">Se connecter</a></li>
+                            <li><a class="footer-links" asp-area="" asp-controller="Home" asp-action="Index">Cookies</a></li>
+                        </ul>
+                    </nav>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <nav aria-label="Navigation secondaire">
+                        <ul class="list-unstyled">
+                            <li><a class="footer-links" asp-area="" asp-controller="Home" asp-action="Index">Actualités</a></li>
+                            <li><a class="footer-links" asp-area="" asp-controller="Home" asp-action="Index">Politiques</a></li>
+                            <li><a class="footer-links" asp-area="" asp-controller="Home" asp-action="Index">À propos</a></li>
+                        </ul>
+                    </nav>
+                </div>
+                <div class="col-md-1 mb-3 text-end">
+                    <a class="footer-links" asp-area="" asp-controller="Home" asp-action="Index">🌐EN</a>
+                </div>
+            </div>
+        </div>
+        <div class="container-fluid bg-light">
+            <div class="row">
+                <div class="col text-end py-2 text-muted">
+                    &copy; 2025 - Tous droits réservés.
+                </div>
+            </div>
         </div>
     </footer>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
