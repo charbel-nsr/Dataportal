@@ -1,8 +1,30 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Accueil";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="hero">
+    <div class="container" style="height: 100%;">
+        <div class="row align-items-center h-100">
+            <div class="col-md-6">
+                <h1 class="display-4">Plateforme des données SCADA</h1>
+                <p>Accédez, explorez et partagez les données de vos équipes actives dans le secteur de l’énergie renouvelable</p>
+                <div class="row align-items-center mt-3">
+                    <div class="col-md-8">
+                        <a href="https://www.powerfactors.com/" target="_blank">
+                            <img src="~/logo/pf-footer-logo.png" alt="Power Factors Logo" class="collaboration-logo">
+                        </a>
+                    </div>
+                    <div class="col-md-4">
+                        <a href="https://www.hydroquebec.com/" target="_blank">
+                            <img src="~/logo/hq-footer-logo.png" alt="Hydro Quebec Logo" class="collaboration-logo">
+                        </a>
+                    </div>
+                </div>
+                <a href="/signup" class="btn btn-primary mt-3">Se connecter</a>
+            </div>
+            <div class="col-md-6 text-center">
+                <img src="/illustration/hero-animation.svg" alt="Illustration" class="img-fluid" />
+            </div>
+        </div>
+    </div>
 </div>
