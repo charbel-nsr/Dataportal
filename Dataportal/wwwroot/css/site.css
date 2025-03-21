@@ -16,9 +16,14 @@ html {
 body {
     margin-bottom: 60px;
     font-family: Evolventa, Trebuchet MS, sans-serif;
+    overflow-x: hidden;
 }
 h1, h2, h3 {
     color: #e72b37;
+}
+img {
+    max-width: 100%;
+    height: auto;
 }
 
 /*bootstrap overide*/
