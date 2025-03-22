@@ -1,0 +1,56 @@
+﻿@model Dataportal.ViewModels.SeConnecterViewModel
+
+@{
+    ViewData["Title"] = "Se connecter";
+    ViewData["HideFooter"] = true;
+    ViewData["DisableScroll"] = true;
+}
+
+<div class="hero" style="background-image: url(' /background/login-background.jpg'); height: 100.6vh; ">
+    <div class="container h-100">
+        <div class="row h-100 align-items-center justify-content-center">
+            <div class="col-md-6 d-flex align-items-center justify-content-center">
+                <div class="p-4 bg-white bg-opacity-75 rounded shadow" style="max-width: 400px; width: 100%;">
+                    <h2 class="mb-4 text-center">@ViewData["Title"]</h2>
+                    <form asp-action="SeConnecter" method="post" novalidate>
+                        <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                        <div class="mb-3">
+                            <label asp-for="Email" class="form-label"></label>
+                            <input asp-for="Email" class="form-control" />
+                            <span asp-validation-for="Email" class="text-danger"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="MotDePasse" class="form-label"></label>
+                            <input asp-for="MotDePasse" class="form-control" type="password" />
+                            <span asp-validation-for="MotDePasse" class="text-danger"></span>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input asp-for="SeSouvenirDeMoi" class="form-check-input" />
+                            <label asp-for="SeSouvenirDeMoi" class="form-check-label"></label>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">
+                            Se connecter
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <div class="col-md-6 d-flex flex-column justify-content-center align-items-center p-4">
+                <div class="mb-3">
+                    <a href="https://www.etsmtl.ca/" target="_blank">
+                        <img src="~/logo/ets-logo.png" alt="ETS Logo" class="img-fluid footer-logo">
+                    </a>
+                </div>
+                <div class="mb-3">
+                    <a href="https://www.hydroquebec.com/" target="_blank">
+                        <img src="~/logo/hq-footer-logo.png" alt="HQ Footer Logo" class="img-fluid footer-logo ms-1">
+                    </a>
+                </div>
+                <div class="mb-3">
+                    <a href="https://www.powerfactors.com/" target="_blank">
+                        <img src="~/logo/pf-footer-logo.png" alt="PF Footer Logo" class="img-fluid footer-logo ms-1">
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

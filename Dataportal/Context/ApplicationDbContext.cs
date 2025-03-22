@@ -1,6 +1,12 @@
 ﻿using Dataportal.Models;
 using Microsoft.EntityFrameworkCore;
 
+/*after changing this file, you should run the following commands:
+ *Add-Migration YourMigrationName
+ *Update-Database
+ *
+ *!!!Don't forget to change YourMigrationName by your migration name!!!
+ */
 namespace Dataportal.Context
 {
     public class ApplicationDbContext : DbContext
@@ -27,7 +33,7 @@ namespace Dataportal.Context
         public DbSet<Schema_Metadonnee> Schema_Metadonnee { get; set; }
         public DbSet<Site> Site { get; set; }
         public DbSet<StatutDeLaDemande> StatutDeLaDemande { get; set; }
-        public DbSet<Utilisateur> utilisateur { get; set; }
+        public DbSet<Utilisateur> Utilisateur { get; set; }
         public DbSet<Visibilite> Visibilite { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -347,6 +353,9 @@ namespace Dataportal.Context
                       .IsRequired();
                 entity.HasIndex(u => u.Email)
                       .IsUnique();
+                entity.Property(u => u.NbrEchecsAcces)
+                      .HasDefaultValue(0);
+                entity.Property(u => u.FinLockout);
                 entity.HasOne(u => u.Entreprise)
                       .WithMany(e => e.Utilisateurs)
                       .HasForeignKey(u => u.IdEntreprise)
