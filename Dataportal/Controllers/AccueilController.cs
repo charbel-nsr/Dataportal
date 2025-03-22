@@ -4,11 +4,11 @@ using Dataportal.Models;
 
 namespace Dataportal.Controllers;
 
-public class HomeController : Controller
+public class AccueilController : Controller
 {
-    private readonly ILogger<HomeController> _logger;
+    private readonly ILogger<AccueilController> _logger;
 
-    public HomeController(ILogger<HomeController> logger)
+    public AccueilController(ILogger<AccueilController> logger)
     {
         _logger = logger;
     }
@@ -18,7 +18,7 @@ public class HomeController : Controller
         return View();
     }
 
-    public IActionResult Privacy()
+    public IActionResult Politiques()
     {
         return View();
     }
