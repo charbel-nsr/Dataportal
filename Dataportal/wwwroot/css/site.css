@@ -104,7 +104,6 @@ header nav.scrolled {
 
 /*homepage hero*/
 .hero {
-    background-image: url("/background/hero-background.jpg");
     background-repeat: no-repeat;
     background-size: 100%;
     margin-top: -80px;
