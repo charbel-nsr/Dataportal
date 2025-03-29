@@ -6,22 +6,27 @@
     ViewData["DisableScroll"] = true;
 }
 
-<div class="hero" style="background-image: url(' /background/login-background.jpg'); height: 100.6vh; ">
+<div class="hero" style="background-image: url(' /background/login-background.png'); height: 100.6vh; ">
     <div class="container h-100">
         <div class="row h-100 align-items-center justify-content-center">
             <div class="col-md-6 d-flex align-items-center justify-content-center">
-                <div class="p-4 bg-white bg-opacity-75 rounded shadow" style="max-width: 400px; width: 100%;">
+                <div class="p-4 bg-white rounded shadow" style="max-width: 400px; width: 100%;">
                     <h2 class="mb-4 text-center">@ViewData["Title"]</h2>
                     <form asp-action="SeConnecter" method="post" novalidate>
                         <div asp-validation-summary="All" class="text-danger mb-3"></div>
-                        <div class="mb-3">
-                            <label asp-for="Email" class="form-label"></label>
-                            <input asp-for="Email" class="form-control" />
+                        <div class="form-floating mb-3">
+                            <input asp-for="Email" class="form-control" placeholder=" " />
+                            <label asp-for="Email" class="floatingInput"></label>
                             <span asp-validation-for="Email" class="text-danger"></span>
                         </div>
-                        <div class="mb-3">
-                            <label asp-for="MotDePasse" class="form-label"></label>
-                            <input asp-for="MotDePasse" class="form-control" type="password" />
+                        <div class="form-floating mb-3">
+                            <input asp-for="MotDePasse" class="form-control" type="password" placeholder=" " />
+                            <label asp-for="MotDePasse" class="floatingInput"></label>
+                            <button type="button" class="bg-white border-0 position-absolute"
+                                    style="top: 50%; right: 10px; transform: translateY(-50%);"
+                                    onclick="togglePasswordVisibility()">
+                                <i class="bi bi-eye" id="toggleIcon"></i>
+                            </button>
                             <span asp-validation-for="MotDePasse" class="text-danger"></span>
                         </div>
                         <div class="mb-3 form-check">
@@ -54,3 +59,21 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        function togglePasswordVisibility() {
+            var passwordInput = document.getElementById("MotDePasse");
+            var toggleIcon = document.getElementById("toggleIcon");
+            if (passwordInput.type === "password") {
+                passwordInput.type = "text";
+                toggleIcon.classList.remove("bi-eye");
+                toggleIcon.classList.add("bi-eye-slash");
+            } else {
+                passwordInput.type = "password";
+                toggleIcon.classList.remove("bi-eye-slash");
+                toggleIcon.classList.add("bi-eye");
+            }
+        }
+    </script>
+}
