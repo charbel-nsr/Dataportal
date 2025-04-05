@@ -6,11 +6,11 @@
     ViewData["DisableScroll"] = true;
 }
 
-<div class="hero" style="background-image: url(' /background/login-background.png'); height: 100.6vh; ">
+<div class="hero" style="background-image: url(' /background/login-background.png'); height: 100.6vh; background-attachment: fixed; background-size: cover;">
     <div class="container h-100">
         <div class="row h-100 align-items-center justify-content-center">
             <div class="col-md-6 d-flex align-items-center justify-content-center">
-                <div class="p-4 bg-white rounded shadow" style="max-width: 400px; width: 100%;">
+                <div class="p-4 bg-white rounded shadow" style="max-width: 450px; width: 100%;">
                     <h2 class="mb-4 text-center">@ViewData["Title"]</h2>
                     <form asp-action="SeConnecter" method="post" novalidate>
                         <div asp-validation-summary="All" class="text-danger mb-3"></div>
@@ -29,17 +29,21 @@
                             </button>
                             <span asp-validation-for="MotDePasse" class="text-danger"></span>
                         </div>
-                        <div class="mb-3 form-check">
-                            <input asp-for="SeSouvenirDeMoi" class="form-check-input" />
-                            <label asp-for="SeSouvenirDeMoi" class="form-check-label"></label>
+                        <div class="mb-3 d-flex justify-content-between align-items-center">
+                            <div class="form-check mb-0">
+                                <input asp-for="SeSouvenirDeMoi" class="form-check-input"/>
+                                <label asp-for="SeSouvenirDeMoi" class="form-check-label"></label>
+                            </div>
+                            <a asp-area="" asp-controller="Compte" asp-action="TODO" class="text-decoration-none">Mot de passe oublié?</a>
                         </div>
-                        <button type="submit" class="btn btn-primary w-100">
+                        <button type="submit" class="btn btn-primary w-100 mt-3">
                             Se connecter
                         </button>
                     </form>
+                    <a href="/Compte/DemanderUnCompte" class="btn btn-outline-primary mt-2 w-100">Demander un compte</a>
                 </div>
             </div>
-            <div class="col-md-6 d-flex flex-column justify-content-center align-items-center p-4">
+            <div class="col-md-6 d-flex flex-column justify-content-center align-items-center p-4 logo-fade">
                 <div class="mb-3">
                     <a href="https://www.etsmtl.ca/" target="_blank">
                         <img src="~/logo/ets-logo.png" alt="ETS Logo" class="img-fluid footer-logo">
