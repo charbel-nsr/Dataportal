@@ -364,6 +364,12 @@ namespace Dataportal.Context
                       .WithMany(r => r.Utilisateurs)
                       .HasForeignKey(u => u.IdRole)
                       .OnDelete(DeleteBehavior.Restrict);
+                entity.Property(u => u.LienLinkedIn)
+                      .HasMaxLength(300)
+                      .HasDefaultValue(null);
+                entity.Property(u => u.DescriptionProfil)
+                      .HasMaxLength(1000)
+                      .HasDefaultValue(null);
             });
             modelBuilder.Entity<Visibilite>(entity =>
             {

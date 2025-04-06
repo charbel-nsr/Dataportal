@@ -1,0 +1,95 @@
+﻿@model Dataportal.ViewModels.ProfilViewModel
+
+@{
+    ViewData["Title"] = "Profil";
+}
+
+<div class="container mt-4">
+
+    <!-- Centered SVG Profile Image -->
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <img src="/illustration/profil-hero.svg" alt="Profile" style="max-width: 100%;" class="img-fluid" />
+        </div>
+    </div>
+
+    <!-- Display Success Message if any -->
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success">
+            @TempData["SuccessMessage"]
+        </div>
+    }
+
+    <!-- Form for Profile Data -->
+    <div class="row mt-4">
+        <div class="col">
+            <form asp-action="Profil" method="post">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-floating mb-3">
+                            <input asp-for="Nom" class="form-control" placeholder="Nom" />
+                            <label asp-for="Nom"></label>
+                            <span asp-validation-for="Nom" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-floating mb-3">
+                            <input asp-for="Prenom" class="form-control" placeholder="Prénom" />
+                            <label asp-for="Prenom"></label>
+                            <span asp-validation-for="Prenom" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-floating mb-3">
+                            <input asp-for="Entreprise" class="form-control" placeholder="Entreprise" readonly />
+                            <label asp-for="Entreprise"></label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-floating mb-3">
+                            <input asp-for="Role" class="form-control" placeholder="Rôle" readonly />
+                            <label asp-for="Role"></label>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-floating mb-3">
+                            <input asp-for="Email" class="form-control" placeholder="Email" readonly />
+                            <label asp-for="Email"></label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-floating mb-3">
+                            <input asp-for="LienLinkedIn" class="form-control" placeholder="Lien LinkedIn" />
+                            <label asp-for="LienLinkedIn"></label>
+                            <span asp-validation-for="LienLinkedIn" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col">
+                        <div class="form-floating mb-3">
+                            <textarea asp-for="DescriptionProfil" class="form-control" placeholder="Votre biographie" style="height: 150px;"></textarea>
+                            <label asp-for="DescriptionProfil">Biographie</label>
+                            <span asp-validation-for="DescriptionProfil" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12 col-sm-6 order-2 order-sm-1 mb-2">
+                        <a class="btn btn-outline-primary w-100" asp-controller="Compte" asp-action="ChangerMotDePasse">
+                            Changer le mot de passe
+                        </a>
+                    </div>
+                    <div class="col-12 col-sm-6 order-1 order-sm-2 mb-2 text-end text-sm-end">
+                        <button type="submit" class="btn btn-primary w-100">Enregistrer</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

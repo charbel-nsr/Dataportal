@@ -40,9 +40,32 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Accueil" asp-action="Index">A propos</a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Compte" asp-action="SeConnecter">Se connecter</a>
-                        </li>
+                        @if (User.Identity.IsAuthenticated)
+                        {
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle text-dark" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-person me-1"></i>Profil
+                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="profileDropdown">
+                                    <li>
+                                        <a class="dropdown-item" asp-area="" asp-controller="Compte" asp-action="Profil">
+                                            Paramètres
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <form asp-area="" asp-controller="Compte" asp-action="SeDeconnecter" method="post" id="logoutForm">
+                                            <button type="submit" class="dropdown-item">Se déconnecter</button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-controller="Compte" asp-action="SeConnecter">Se connecter</a>
+                            </li>
+                        }
                     </ul>
                 </div>
             </div>

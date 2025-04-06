@@ -49,5 +49,10 @@ namespace Dataportal.Models
 
         public DateTime? FinLockout { get; set; }
 
+        [StringLength(300)]
+        public string LienLinkedIn { get; set; }
+
+        [StringLength(1000)]
+        public string DescriptionProfil { get; set; }
     }
 }

@@ -15,6 +15,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 //TODO: Add recaptcha for login and account request forms
+//TODO: Add SeSouvenirDeMoi functionality
 
 namespace Dataportal.Controllers
 {
@@ -49,6 +50,7 @@ namespace Dataportal.Controllers
         {
             if (ModelState.IsValid)
             {
+                _logger.LogInformation("Processing login for {Email}", model.Email);
                 // Chercher l'utilisateur par email
                 var utilisateur = await _context.Utilisateur.FirstOrDefaultAsync(u => u.Email == model.Email);
                 if (utilisateur != null)
@@ -95,6 +97,7 @@ namespace Dataportal.Controllers
                             await HttpContext.SignInAsync(
                                 CookieAuthenticationDefaults.AuthenticationScheme,
                                 new ClaimsPrincipal(identity));
+                            _logger.LogInformation("Utilisateur {Email} logged in successfully.", model.Email);
 
                             return RedirectToAction("Index", "Accueil");
                         }
@@ -135,6 +138,7 @@ namespace Dataportal.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> SeDeconnecter()
         {
+            _logger.LogInformation("User {User} is logging out.", User.Identity.Name);
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             return RedirectToAction("Index", "Accueil");
         }
@@ -143,6 +147,7 @@ namespace Dataportal.Controllers
         [HttpGet]
         public async Task<IActionResult> DemanderUnCompte()
         {
+            _logger.LogInformation("DemanderUnCompte page requested.");
             var viewModel = new DemanderUnCompteViewModel
             {
                 Entreprises = await _context.Entreprise
@@ -162,12 +167,14 @@ namespace Dataportal.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DemanderUnCompte(DemanderUnCompteViewModel model)
         {
+            _logger.LogInformation("Processing account request for {Email}", model.Email);
             if (ModelState.IsValid)
             {
                 // Validate password strength
                 if (!IsPasswordSecure(model.MotDePasse))
                 {
                     ModelState.AddModelError("MotDePasse", "Le mot de passe doit contenir au moins 8 caractères, dont une majuscule, une minuscule, un chiffre et un caractère spécial.");
+                    _logger.LogWarning("Weak password provided for account request: {Email}", model.Email);
                 }
 
                 // Retrieve the selected enterprise with its email domains.
@@ -233,6 +240,11 @@ namespace Dataportal.Controllers
                     };
                     _context.DemandeDeCompte.Add(demande);
                     await _context.SaveChangesAsync();
+                    _logger.LogInformation("Account request created for {Email}", model.Email);
+                }
+                else
+                {
+                    _logger.LogWarning("Account request already exists for {Email}", model.Email);
                 }
 
                 //TODO: Send email befor adding to tabel to user mail verification then page of mail verification then succes message
@@ -270,5 +282,82 @@ namespace Dataportal.Controllers
                 return false;
             return true;
         }
+
+        // GET: /Compte/Profil
+        [HttpGet]
+        public async Task<IActionResult> Profil()
+        {
+            var userEmail = User.Identity.Name;
+            if (string.IsNullOrEmpty(userEmail))
+            {
+                _logger.LogWarning("Profile page requested without a logged in user.");
+                return RedirectToAction("SeConnecter", "Compte");
+            }
+
+            var utilisateur = await _context.Utilisateur
+                .Include(u => u.Entreprise)
+                .Include(u => u.Role)
+                .FirstOrDefaultAsync(u => u.Email == userEmail);
+
+            if (utilisateur == null)
+            {
+                _logger.LogWarning("User {Email} not found when accessing profile.", userEmail);
+                return NotFound();
+            }
+
+            var model = new ProfilViewModel
+            {
+                Nom = utilisateur.Nom,
+                Prenom = utilisateur.Prenom,
+                Email = utilisateur.Email,
+                Entreprise = utilisateur.Entreprise != null ? utilisateur.Entreprise.Nom : string.Empty,
+                Role = utilisateur.Role != null ? utilisateur.Role.Libelle : "Utilisateur",
+                LienLinkedIn = utilisateur.LienLinkedIn != null ? utilisateur.LienLinkedIn : "",
+                DescriptionProfil = utilisateur.DescriptionProfil != null ? utilisateur.DescriptionProfil : ""
+            }; 
+            _logger.LogInformation("Profile page loaded for {Email}.", userEmail);
+
+            return View(model);
+        }
+
+        // POST: /Compte/Profil
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Profil(ProfilViewModel model)
+        {
+            if (ModelState.IsValid)
+            {
+                var userEmail = User.Identity.Name;
+                if (string.IsNullOrEmpty(userEmail))
+                {
+                    _logger.LogWarning("Profile update attempted without a logged in user.");
+                    return RedirectToAction("SeConnecter", "Compte");
+                }
+
+                var utilisateur = await _context.Utilisateur.FirstOrDefaultAsync(u => u.Email == userEmail);
+                if (utilisateur == null)
+                {
+                    _logger.LogWarning("User {Email} not found during profile update.", userEmail);
+                    return NotFound();
+                }
+
+                utilisateur.Nom = model.Nom;
+                utilisateur.Prenom = model.Prenom;
+                utilisateur.DateModification = DateTime.Now;
+                utilisateur.LienLinkedIn = model.LienLinkedIn != null ? model.LienLinkedIn : "";
+                utilisateur.DescriptionProfil = model.DescriptionProfil != null ? model.DescriptionProfil : "";
+                _logger.LogInformation("Profile updated successfully for {Email}.", userEmail);
+
+                _context.Update(utilisateur);
+                await _context.SaveChangesAsync();
+
+                TempData["SuccessMessage"] = "Votre profil a été mis à jour avec succès!";
+                return RedirectToAction("Profil");
+            }
+
+            _logger.LogWarning("Profile update failed due to invalid model state for user {Email}.", User.Identity.Name);
+            return View("Profil", model);
+        }
+
     }
 }
