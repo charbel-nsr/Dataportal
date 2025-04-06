@@ -1,0 +1,75 @@
+﻿@model Dataportal.ViewModels.ChangerMotDePasseViewModel
+
+@{
+    ViewData["Title"] = "Changer le mot de passe";
+}
+
+<div class="container mt-4 pb-5">
+    <div class="row d-md-none mt-3">
+        <div class="col text-center">
+            <img src="/illustration/nouveauMotDePasse-hero.svg" alt="Changer le mot de passe" class="img-fluid" />
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-6 d-none d-md-block">
+            <img src="/illustration/nouveauMotDePasse-hero.svg" alt="Changer le mot de passe" class="img-fluid" />
+        </div>
+        <div class="col-md-6 mt-5">
+            <form asp-action="ChangerMotDePasse" method="post">
+                <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                <div class="form-floating mb-3">
+                    <input asp-for="Email" class="form-control" placeholder="Email" readonly />
+                    <label asp-for="Email">Email</label>
+                    <span asp-validation-for="Email" class="text-danger"></span>
+                </div>
+                <div class="form-floating mb-3">
+                    <input asp-for="MotDePasseActuel" class="form-control" type="password" value="" placeholder="Mot de passe actuel" id="motDePasseActuel" />
+                    <label asp-for="MotDePasseActuel"></label>
+                    <span asp-validation-for="MotDePasseActuel" class="text-danger"></span>
+                    <button type="button" class="bg-white border-0 position-absolute"
+                            style="top: 50%; right: 10px; transform: translateY(-50%);"
+                            onclick="togglePasswordVisibility('motDePasseActuel','toggleIcon1')">
+                        <i class="bi bi-eye" id="toggleIcon1"></i>
+                    </button>
+                </div>
+                <div class="form-floating mb-3">
+                    <input asp-for="NouveauMotDePasse" class="form-control" type="password" placeholder="Nouveau mot de passe" id="nouveauMotDePasse"/>
+                    <label asp-for="NouveauMotDePasse"></label>
+                    <button type="button" class="bg-white border-0 position-absolute"
+                            style="top: 50%; right: 10px; transform: translateY(-50%);"
+                            onclick="togglePasswordVisibility('nouveauMotDePasse','toggleIcon2')">
+                        <i class="bi bi-eye" id="toggleIcon2"></i>
+                    </button>
+                </div>
+                <div class="form-floating mb-3">
+                    <input asp-for="ConfirmNouveauMotDePasse" class="form-control" type="password" placeholder="Confirmer le mot de passe" id="confirmerNouveauMotDePasse"/>
+                    <label asp-for="ConfirmNouveauMotDePasse"></label>
+                    <button type="button" class="bg-white border-0 position-absolute"
+                            style="top: 50%; right: 10px; transform: translateY(-50%);"
+                            onclick="togglePasswordVisibility('confirmerNouveauMotDePasse','toggleIcon3')">
+                        <i class="bi bi-eye" id="toggleIcon3"></i>
+                    </button>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Enregistrer</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function togglePasswordVisibility(inputId, iconId) {
+            var passwordInput = document.getElementById(inputId);
+            var toggleIcon = document.getElementById(iconId);
+            if (passwordInput.type === "password") {
+                passwordInput.type = "text";
+                toggleIcon.classList.remove("bi-eye");
+                toggleIcon.classList.add("bi-eye-slash");
+            } else {
+                passwordInput.type = "password";
+                toggleIcon.classList.remove("bi-eye-slash");
+                toggleIcon.classList.add("bi-eye");
+            }
+        }
+    </script>
+}

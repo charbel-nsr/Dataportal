@@ -9,7 +9,6 @@ namespace Dataportal.ViewModels
         [Display(Name = "Email")]
         public string Email { get; set; }
 
-
         [Required(ErrorMessage = "Le mot de passe est requis.")]
         [DataType(DataType.Password)]
         [Display(Name = "Mot de Passe")]

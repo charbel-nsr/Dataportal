@@ -140,7 +140,7 @@ namespace Dataportal.Controllers
         {
             _logger.LogInformation("User {User} is logging out.", User.Identity.Name);
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            return RedirectToAction("Index", "Accueil");
+            return RedirectToAction("SeConnecter", "Compte");
         }
 
         // GET: /Compte/DemanderUnCompte
@@ -357,6 +357,80 @@ namespace Dataportal.Controllers
 
             _logger.LogWarning("Profile update failed due to invalid model state for user {Email}.", User.Identity.Name);
             return View("Profil", model);
+        }
+
+        // GET: /Compte/ChangerMotDePasse
+        [HttpGet]
+        public async Task<IActionResult> ChangerMotDePasse()
+        {
+            var userEmail = User.Identity.Name;
+            if (string.IsNullOrEmpty(userEmail))
+            {
+                _logger.LogWarning("Change password page requested without a logged in user.");
+                return RedirectToAction("SeConnecter", "Compte");
+            }
+            var utilisateur = await _context.Utilisateur.FirstOrDefaultAsync(u => u.Email == userEmail);
+            if (utilisateur == null)
+            {
+                _logger.LogWarning("User {Email} not found when accessing change password page.", userEmail);
+                return NotFound();
+            }
+            var model = new ChangerMotDePasseViewModel
+            {
+                Email = utilisateur.Email,
+                MotDePasseActuel = ""
+            };
+            return View(model);
+        }
+
+        // POST: /Compte/ChangerMotDePasse
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ChangerMotDePasse(ChangerMotDePasseViewModel model)
+        {
+            if (ModelState.IsValid)
+            {
+                var userEmail = User.Identity.Name;
+                if (string.IsNullOrEmpty(userEmail))
+                {
+                    _logger.LogWarning("Change password attempted without a logged in user.");
+                    return RedirectToAction("SeConnecter", "Compte");
+                }
+
+                var utilisateur = await _context.Utilisateur.FirstOrDefaultAsync(u => u.Email == userEmail);
+                if (utilisateur == null)
+                {
+                    _logger.LogWarning("User {Email} not found during change password process.", userEmail);
+                    return NotFound();
+                }
+
+                var result = _passwordHasher.VerifyHashedPassword(utilisateur, utilisateur.MotDePasseHash, model.MotDePasseActuel);
+                if (result != PasswordVerificationResult.Success)
+                {
+                    ModelState.AddModelError("MotDePasseActuel", "Le mot de passe actuel est incorrect.");
+                    _logger.LogWarning("Incorrect current password provided by user {Email} during change password.", userEmail);
+                    return View(model);
+                }
+
+                if (!IsPasswordSecure(model.NouveauMotDePasse))
+                {
+                    ModelState.AddModelError("NouveauMotDePasse", "Le nouveau mot de passe n'est pas suffisamment sécurisé. Il doit contenir au moins 8 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial.");
+                    _logger.LogWarning("Insecure new password provided by user {Email}.", userEmail);
+                    return View(model);
+                }
+                utilisateur.MotDePasseHash = _passwordHasher.HashPassword(utilisateur, model.NouveauMotDePasse);
+                utilisateur.DateModification = DateTime.Now;
+                _context.Update(utilisateur);
+                await _context.SaveChangesAsync();
+
+                //TODO: Send email to user for password change Notification
+                _logger.LogInformation("Password updated successfully for {Email}.", userEmail);
+                TempData["SuccessMessage"] = "Votre mot de passe a été mis à jour avec succès!";
+                return RedirectToAction("Profil");
+            }
+
+            _logger.LogWarning("Change password failed due to invalid model state for user {Email}.", User.Identity.Name);
+            return View(model);
         }
 
     }
