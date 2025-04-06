@@ -17,7 +17,7 @@ namespace Dataportal.ViewModels
         public string Prenom { get; set; }
 
         [Required(ErrorMessage = "L'Email est requis.")]
-        [EmailAddress]
+        [EmailAddress(ErrorMessage = "L'email doit être une adresse valide.")]
         [Display(Name = "Email")]
         public string Email { get; set; }
 

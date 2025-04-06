@@ -268,7 +268,7 @@ namespace Dataportal.Controllers
         }
 
         // Helper method to check password strength.
-        private bool IsPasswordSecure(string password)
+        static bool IsPasswordSecure(string password)
         {
             if (string.IsNullOrWhiteSpace(password) || password.Length < 8)
                 return false;
@@ -433,5 +433,21 @@ namespace Dataportal.Controllers
             return View(model);
         }
 
+        // GET: /Compte/MotDePasseOublie
+        [HttpGet]
+        public IActionResult MotDePasseOublie()
+        {
+            return View();
+        }
+
+        // POST: /Compte/MotDePasseOublie
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> MotDePasseOublie(MotDePasseOublieViewModel model)
+        {
+            //TOD: Send email to user for password reset
+            ModelState.AddModelError(string.Empty, "Vous devriez recevoir sous peu un courriel vous permettant de réinitialiser votre mot de passe.");
+            return View(model);
+        }
     }
 }

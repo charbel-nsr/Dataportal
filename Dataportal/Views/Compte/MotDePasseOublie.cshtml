@@ -1,0 +1,47 @@
+﻿@model Dataportal.ViewModels.MotDePasseOublieViewModel
+
+@{
+    ViewData["Title"] = "Mot de passe oublie";
+    ViewData["HideFooter"] = true;
+    ViewData["DisableScroll"] = true;
+}
+
+<div class="hero" style="background-image: url(' /background/login-background.png'); height: 100.6vh; background-attachment: fixed; background-size: cover;">
+    <div class="container h-100">
+        <div class="row h-100 align-items-center justify-content-center">
+            <div class="col-md-6 d-flex align-items-center justify-content-center">
+                <div class="p-4 bg-white rounded shadow" style="max-width: 450px; width: 100%;">
+                    <h2 class="mb-4 text-center">@ViewData["Title"]</h2>
+                    <form asp-action="MotDePasseOublie" method="post" novalidate>
+                        <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                        <div class="form-floating mb-3">
+                            <input asp-for="Email" class="form-control" placeholder=" " />
+                            <label asp-for="Email" class="floatingInput"></label>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 mt-3">
+                            Réinitialiser le mot de passe
+                        </button>
+                    </form>
+                    <a href="/Compte/SeConnecter" class="btn btn-outline-primary mt-2 w-100">Se Connecter</a>
+                </div>
+            </div>
+            <div class="col-md-6 d-flex flex-column justify-content-center align-items-center p-4 logo-fade">
+                <div class="mb-3">
+                    <a href="https://www.etsmtl.ca/" target="_blank">
+                        <img src="~/logo/ets-logo.png" alt="ETS Logo" class="img-fluid footer-logo">
+                    </a>
+                </div>
+                <div class="mb-3">
+                    <a href="https://www.hydroquebec.com/" target="_blank">
+                        <img src="~/logo/hq-footer-logo.png" alt="HQ Footer Logo" class="img-fluid footer-logo ms-1">
+                    </a>
+                </div>
+                <div class="mb-3">
+                    <a href="https://www.powerfactors.com/" target="_blank">
+                        <img src="~/logo/pf-footer-logo.png" alt="PF Footer Logo" class="img-fluid footer-logo ms-1">
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
