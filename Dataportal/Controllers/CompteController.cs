@@ -52,7 +52,7 @@ namespace Dataportal.Controllers
             {
                 _logger.LogInformation("Processing login for {Email}", model.Email);
                 // Chercher l'utilisateur par email
-                var utilisateur = await _context.Utilisateur.FirstOrDefaultAsync(u => u.Email == model.Email);
+                var utilisateur = await _context.Utilisateur.Include(u => u.Role).FirstOrDefaultAsync(u => u.Email == model.Email);
                 if (utilisateur != null)
                 {
                     // Vérifier si le compte est déjà verrouillé
@@ -90,7 +90,7 @@ namespace Dataportal.Controllers
                             {
                                 new Claim(ClaimTypes.Name, utilisateur.Email),
                                 new Claim("NomComplet", $"{utilisateur.Prenom} {utilisateur.Nom}"),
-                                new Claim(ClaimTypes.Role, utilisateur.Role != null ? utilisateur.Role.ToString() : "Utilisateur")
+                                new Claim(ClaimTypes.Role, utilisateur.Role != null ? utilisateur.Role.Libelle.ToString() : "Utilisateur")
                             };
 
                             var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);

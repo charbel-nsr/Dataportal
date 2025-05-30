@@ -42,6 +42,24 @@
                         </li>
                         @if (User.Identity.IsAuthenticated)
                         {
+                            @if (User.IsInRole("administrateur"))
+                            {
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle text-dark" href="#" id="gestionDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Gestion</a>
+                                    <ul class="dropdown-menu" aria-labelledby="gestionDropdown">
+                                        <li>
+                                            <a class="dropdown-item" asp-area="" asp-controller="Compte" asp-action="Profil">
+                                                Demande de compte
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" asp-area="" asp-controller="Compte" asp-action="Profil">
+                                                Demande de compte
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </li>
+                            }
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle text-dark" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="bi bi-person me-1"></i>Profil
@@ -50,6 +68,11 @@
                                     <li>
                                         <a class="dropdown-item" asp-area="" asp-controller="Compte" asp-action="Profil">
                                             Paramètres
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="" asp-controller="Compte" asp-action="ChangerMotDePasse">
+                                            Changer le mot de passe
                                         </a>
                                     </li>
                                     <li>
