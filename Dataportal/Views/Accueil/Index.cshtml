@@ -22,7 +22,10 @@
                         <img src="~/logo/Mitacs_logo.png" alt="Mitacs Logo" class="collaboration-logo" />
                     </a>
                     <div class="d-none d-md-block flex-grow-1"></div>
-                    <a href="/Compte/SeConnecter" class="btn btn-primary mt-4">Se connecter</a>
+                    @if (!User.Identity.IsAuthenticated)
+                    {
+                        <a href="/Compte/SeConnecter" class="btn btn-primary mt-4">Se connecter</a>
+                    }
                 </div>
             </div>
             <div class="col-md-6 order-1 order-md-2 text-center mb-4 mb-md-0">

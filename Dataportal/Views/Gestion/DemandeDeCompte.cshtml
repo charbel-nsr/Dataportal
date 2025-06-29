@@ -1,0 +1,287 @@
+﻿@model Dataportal.ViewModels.DemandeDeCompteViewModel
+@using Dataportal.Models
+@{
+    ViewData["Title"] = "Les demandes de compte";
+}
+
+<div class="container">
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    <div class="row bg-light rounded shadow p-4">
+        <form asp-action="DemandeDeCompte" method="get" class="row gx-3 gy-2 align-items-center w-100">
+            <div class="col-md-4">
+                <div class="form-floating">
+                    @{
+                        var search = Context.Request.Query["search"];
+                    }
+                    <input type="text" class="form-control" id="search" name="search" placeholder="Recherche" value="@(string.IsNullOrEmpty(search)? "" : search)">
+                    <label for="searchInput">Nom, Prénom, Email, Commentaire</label>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-floating">
+                    <select class="form-select" name="selectedEntrepriseId" id="entrepriseSelect">
+                        <option selected value="">Toutes les entreprises</option>
+                        @foreach (var entreprise in Model.Entreprises)
+                        {
+                            var isSelected = entreprise.Id.ToString() == Context.Request.Query["selectedEntrepriseId"];
+                            <option value="@entreprise.Id" selected="@(isSelected? "selected" :null)">@entreprise.Nom</option>
+                        }
+                    </select>
+                    <label for="entrepriseSelect">Entreprise</label>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-floating">
+                    <select class="form-select" name="selectedStatutId" id="statutSelect">
+                        <option selected value="">Tous les statuts</option>
+                        @foreach (var statut in Model.Statuts)
+                        {
+                            var isSelected = statut.Id.ToString() == Context.Request.Query["selectedStatutId"];
+                            <option value="@statut.Id" selected="@(isSelected ? "selected" : null)">@statut.Libelle</option>
+                        }
+                    </select>
+                    <label for="statutSelect">Statut</label>
+                </div>
+            </div>
+            <div class="col-md-4 mt-2">
+                <div class="form-floating">
+                    @{
+                        var rawDateMin = Context.Request.Query["dateMin"];
+                        string dateMinValue;
+                        if (!string.IsNullOrEmpty(rawDateMin) && DateTime.TryParse(rawDateMin, out var parsedDateMin))
+                        {
+                            dateMinValue = parsedDateMin.ToString("yyyy-MM-dd");
+                            <input type="date" class="form-control" name="dateMin" id="dateMin" value="@dateMinValue">
+                        }
+                        else
+                        {
+                            <input type="date" class="form-control" name="dateMin" id="dateMin">
+                        }
+                    }
+                    <label for="dateMin">Date début</label>
+                </div>
+            </div>
+            <div class="col-md-4 mt-2">
+                <div class="form-floating">
+                    @{
+                        var rawDateMax = Context.Request.Query["dateMax"];
+                        string dateMaxValue;
+                        if (!string.IsNullOrEmpty(rawDateMax) && DateTime.TryParse(rawDateMax, out var parsedDateMax))
+                        {
+                            dateMaxValue = parsedDateMax.ToString("yyyy-MM-dd");
+                            <input type="date" class="form-control" name="dateMax" id="dateMax" value="@dateMaxValue">
+                        }
+                        else
+                        {
+                            <input type="date" class="form-control" name="dateMax" id="dateMax">
+                        }
+                    }
+                    <label for="dateMax">Date fin</label>
+                </div>
+            </div>
+            <div class="col-md-4 mt-2">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <button type="submit" class="btn btn-primary w-100">Filtrer</button>
+                    </div>
+                    <div class="col-6">
+                        <a href="@Url.Action("DemandeDeCompte", "Gestion")" class="btn btn-outline-primary w-100">Réinitialiser</a>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="row mt-4">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle shadow-sm">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nom</th>
+                        <th>Prénom</th>
+                        <th>Email</th>
+                        <th>Entreprise</th>
+                        <th>Statut</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var demande in Model.Demandes)
+                    {
+                        <tr>
+                            <td>@demande.Nom</td>
+                            <td>@demande.Prenom</td>
+                            <td>@demande.Email</td>
+                            <td>@demande.Entreprise?.Nom</td>
+                            <td>
+                                @switch (demande.StatutDeLaDemande?.Libelle?.ToLower())
+                                {
+                                    case "attente":
+                                        <i class="bi bi-hourglass-split text-warning" title="En attente">En attente</i>
+                                        break;
+                                    case "valider":
+                                        <i class="bi bi-check-circle-fill text-success" title="Validé">Validé</i>
+                                        break;
+                                    case "refuser":
+                                        <i class="bi bi-x-circle-fill text-danger" title="Refusé">Refusé</i>
+                                        break;
+                                    default:
+                                        <i class="bi bi-question-circle text-secondary" title="Inconnu">Inconnu</i>
+                                        break;
+                                }
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editModal" data-id="@demande.Id">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editModalLabel">Détails de la demande</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="modal-demandeId" />
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="form-floating">
+                            <input type="text" class="form-control" id="modal-Nom" placeholder="Nom" readonly>
+                            <label for="modal-Nom">Nom</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-floating">
+                            <input type="text" class="form-control" id="modal-Prenom" placeholder="Prénom" readonly>
+                            <label for="modal-Prenom">Prénom</label>
+                        </div>
+                    </div>
+                    <div class="col-md-12">
+                        <div class="form-floating">
+                            <input type="email" class="form-control" id="modal-Email" placeholder="Email" readonly>
+                            <label for="modal-Email">Email</label>
+                        </div>
+                    </div>
+                    <div class="col-md-12">
+                        <div class="form-floating">
+                            <textarea class="form-control" id="modal-Commentaire" style="height: 100px" placeholder="Commentaire" readonly></textarea>
+                            <label for="modal-Commentaire">Commentaire</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-floating">
+                            <select class="form-select" id="modal-Entreprise" disabled>
+                                @foreach (var entreprise in Model.Entreprises)
+                                {
+                                    <option value="@entreprise.Id">@entreprise.Nom</option>
+                                }
+                            </select>
+                            <label for="modal-Entreprise">Entreprise</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-floating">
+                            <input type="text" class="form-control" id="modal-DateCreation" placeholder="Date de création" readonly>
+                            <label for="modal-DateCreation">Date de création</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check mt-4">
+                            <input class="form-check-input" type="checkbox" id="modal-EmailVerifie" disabled>
+                            <label class="form-check-label" for="modal-EmailVerifie">
+                                Email vérifié
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-floating">
+                            <select class="form-select" id="modal-action-roleId" name="idRole" required>
+                                <option value="">Choisir un rôle</option>
+                                @foreach (var role in Model.Roles.OrderBy(r => r.Id))
+                                {
+                                    <option value="@role.Id">@role.Libelle</option>
+                                }
+                            </select>
+                            <label for="modal-action-roleId">Rôle à attribuer (requis seulement si Valider)</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="px-3 pb-3">
+                <form method="post" asp-action="ApprouverDemande" id="modal-action-form" class="w-100">
+                    <input type="hidden" name="id" id="modal-action-id" />
+                    <input type="hidden" name="idEntreprise" id="modal-action-idEntreprise" />
+                    <input type="hidden" name="emailVerifie" id="modal-action-emailVerifie" />
+                    <input type="hidden" name="commentaire" id="modal-action-commentaire" />
+
+                    <div class="row g-2">
+                        <div class="col-12 col-md">
+                            <button type="submit" name="idStatut" value="2" class="btn btn-success w-100" id="btn-valider">
+                                Valider la demande
+                            </button>
+                        </div>
+                        <div class="col-12 col-md">
+                            <button type="submit" name="idStatut" value="3" class="btn btn-danger w-100" id="btn-refuser">
+                                Refuser la demande
+                            </button>
+                        </div>
+                        <div class="col-12 col-md">
+                            <button type="button" class="btn btn-secondary w-100" data-bs-dismiss="modal">
+                                Fermer
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const modal = document.getElementById('editModal');
+        modal.addEventListener('show.bs.modal', event => {
+            const button = event.relatedTarget;
+            const demandeId = button.getAttribute('data-id');
+
+            fetch(`/Gestion/DemandeDeCompteDetails/${demandeId}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('modal-demandeId').value = data.id;
+                    document.getElementById('modal-Nom').value = data.nom;
+                    document.getElementById('modal-Prenom').value = data.prenom;
+                    document.getElementById('modal-Email').value = data.email;
+                    document.getElementById('modal-Commentaire').value = data.commentaire;
+                    document.getElementById('modal-Entreprise').value = data.idEntreprise;
+                    document.getElementById('modal-DateCreation').value = data.dateCreation;
+                    document.getElementById('modal-EmailVerifie').checked = data.emailVerifie;
+
+                    document.getElementById('modal-action-id').value = data.id;
+                    document.getElementById('modal-action-idEntreprise').value = data.idEntreprise;
+                    document.getElementById('modal-action-emailVerifie').value = data.emailVerifie;
+                    document.getElementById('modal-action-commentaire').value = data.commentaire;
+
+                    const btnValider = document.getElementById('btn-valider');
+                    const btnRefuser = document.getElementById('btn-refuser');
+                    btnValider.style.display = (data.idStatutDeLaDemande === 1 || data.idStatutDeLaDemande === 3) ? 'inline-block' : 'none';
+                    btnRefuser.style.display = (data.idStatutDeLaDemande === 1) ? 'inline-block' : 'none';
+                });
+        });
+    </script>
+}

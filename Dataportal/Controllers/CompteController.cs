@@ -16,6 +16,7 @@ using Microsoft.Extensions.Logging;
 
 //TODO: Add recaptcha for login and account request forms
 //TODO: Add SeSouvenirDeMoi functionality
+//TODO: Add a AntiForgeryToken() in all forms to prevent CSRF attacks
 
 namespace Dataportal.Controllers
 {
@@ -40,6 +41,10 @@ namespace Dataportal.Controllers
         [HttpGet]
         public IActionResult SeConnecter()
         {
+            if (User.Identity.IsAuthenticated)
+            {
+                return RedirectToAction("Profil", "Compte");
+            }
             return View();
         }
 
@@ -90,7 +95,7 @@ namespace Dataportal.Controllers
                             {
                                 new Claim(ClaimTypes.Name, utilisateur.Email),
                                 new Claim("NomComplet", $"{utilisateur.Prenom} {utilisateur.Nom}"),
-                                new Claim(ClaimTypes.Role, utilisateur.Role != null ? utilisateur.Role.Libelle.ToString() : "Utilisateur")
+                                new Claim(ClaimTypes.Role, utilisateur.Role != null ? utilisateur.Role.Libelle.ToString() : "Observateur")
                             };
 
                             var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
@@ -147,6 +152,10 @@ namespace Dataportal.Controllers
         [HttpGet]
         public async Task<IActionResult> DemanderUnCompte()
         {
+            if (User.Identity.IsAuthenticated)
+            {
+                return RedirectToAction("Profil", "Compte");
+            }
             _logger.LogInformation("DemanderUnCompte page requested.");
             var viewModel = new DemanderUnCompteViewModel
             {
@@ -226,6 +235,7 @@ namespace Dataportal.Controllers
                 var existingRequest = await _context.DemandeDeCompte.FirstOrDefaultAsync(d => d.Email.ToLower() == model.Email.ToLower() && d.IdEntreprise == model.IdEntreprise);
                 if (existingRequest == null)
                 {
+                    //TODO: send verification email for user before creating his request
                     var demande = new DemandeDeCompte
                     {
                         Nom = model.Nom,
@@ -263,7 +273,7 @@ namespace Dataportal.Controllers
                     Value = e.Id.ToString(),
                     Text = e.Nom
                 }).ToListAsync();
-
+            //TODO: after requesting a profil the user should be redirected to the request page with a success message and the input should empty
             return View(model);
         }
 

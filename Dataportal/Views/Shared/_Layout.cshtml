@@ -34,12 +34,6 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Accueil" asp-action="Index">API</a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Accueil" asp-action="Index">Actualités</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Accueil" asp-action="Index">A propos</a>
-                        </li>
                         @if (User.Identity.IsAuthenticated)
                         {
                             @if (User.IsInRole("administrateur"))
@@ -48,8 +42,8 @@
                                     <a class="nav-link dropdown-toggle text-dark" href="#" id="gestionDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Gestion</a>
                                     <ul class="dropdown-menu" aria-labelledby="gestionDropdown">
                                         <li>
-                                            <a class="dropdown-item" asp-area="" asp-controller="Compte" asp-action="Profil">
-                                                Demande de compte
+                                            <a class="dropdown-item" asp-area="" asp-controller="Gestion" asp-action="DemandeDeCompte">
+                                                Les demandes de compte
                                             </a>
                                         </li>
                                         <li>
@@ -132,19 +126,16 @@
                         <nav aria-label="Navigation principale">
                             <ul class="list-unstyled">
                                 <li><a class="footer-links" asp-area="" asp-controller="Accueil" asp-action="Index">Accueil</a></li>
-                                <li><a class="footer-links" asp-area="" asp-controller="Accueil" asp-action="Index">Données</a></li>
                                 <li><a class="footer-links" asp-area="" asp-controller="Accueil" asp-action="Index">API</a></li>
-                                <li><a class="footer-links" asp-area="" asp-controller="Compte" asp-action="SeConnecter">Se connecter</a></li>
-                                <li><a class="footer-links" asp-area="" asp-controller="Accueil" asp-action="Index">Cookies</a></li>
+                                <li><a class="footer-links" asp-area="" asp-controller="Accueil" asp-action="Index">Données</a></li>
                             </ul>
                         </nav>
                     </div>
                     <div class="col-md-3 mb-3">
                         <nav aria-label="Navigation secondaire">
                             <ul class="list-unstyled">
-                                <li><a class="footer-links" asp-area="" asp-controller="Accueil" asp-action="Index">Actualités</a></li>
+                                <li><a class="footer-links" asp-area="" asp-controller="Accueil" asp-action="Index">Cookies</a></li>
                                 <li><a class="footer-links" asp-area="" asp-controller="Accueil" asp-action="Politiques">Politiques</a></li>
-                                <li><a class="footer-links" asp-area="" asp-controller="Accueil" asp-action="Index">À propos</a></li>
                             </ul>
                         </nav>
                     </div>
