@@ -11849,13 +11849,9 @@ textarea.form-control-lg {
   }
 }
 .btn-primary {
-  transition: background-color 0.3s ease;
   color: #ffffff !important;
   border-color: #e72b37 !important;
   background-color: #e72b37 !important;
-}
-.btn-primary:hover {
-  background-color: rgb(200.3220338983, 22.6779661017, 34.0169491525) !important;
 }
 
 .btn-primary:focus,

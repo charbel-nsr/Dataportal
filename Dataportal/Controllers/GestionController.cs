@@ -162,5 +162,129 @@ namespace Dataportal.Controllers
 
             return RedirectToAction("DemandeDeCompte");
         }
+
+        // GET: /Gestion/Entreprises
+        [HttpGet]
+        public IActionResult Entreprises(string search, bool? actif)
+        {
+            var query = _context.Entreprise.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+                query = query.Where(e => e.Nom.Contains(search));
+
+            if (actif.HasValue)
+                query = query.Where(e => e.Actif == actif.Value);
+
+            var vm = new EntrepriseViewModel
+            {
+                Entreprises = query.ToList(),
+                Search = search,
+                Actif = actif
+            };
+
+            return View(vm);
+        }
+
+        //Post: /Gestion/CreateEntreprise
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult CreateEntreprise(string Nom, bool Actif)
+        {
+            if (string.IsNullOrWhiteSpace(Nom))
+            {
+                TempData["Error"] = "Le nom de l'entreprise est requis.";
+                return RedirectToAction("Entreprises");
+            }
+
+            var normalizedNom = Nom.Trim().ToLower();
+
+            var exists = _context.Entreprise
+                .Any(e => e.Nom.Trim().ToLower() == normalizedNom);
+
+            if (exists)
+            {
+                TempData["Error"] = "Une entreprise avec ce nom existe déjà.";
+                return RedirectToAction("Entreprises");
+            }
+
+            var entreprise = new Entreprise
+            {
+                Nom = Nom,
+                Actif = Actif
+            };
+
+            _context.Entreprise.Add(entreprise);
+            _context.SaveChanges();
+
+            TempData["Success"] = "Entreprise créée avec succès.";
+            return RedirectToAction("Entreprises");
+        }
+
+        // POST: /Gestion/ActivateEntreprise
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult ActivateEntreprise(int id)
+        {
+            var entreprise = _context.Entreprise.FirstOrDefault(e => e.Id == id);
+            if (entreprise == null)
+            {
+                TempData["Error"] = "Entreprise introuvable.";
+                return RedirectToAction("Entreprises");
+            }
+
+            entreprise.Actif = true;
+            _context.SaveChanges();
+
+            TempData["Success"] = "Entreprise activée avec succès.";
+            return RedirectToAction("Entreprises");
+        }
+
+        // POST: /Gestion/DeactivateEntreprise
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult DeactivateEntreprise(int id)
+        {
+            var entreprise = _context.Entreprise.FirstOrDefault(e => e.Id == id);
+            if (entreprise == null)
+            {
+                TempData["Error"] = "Entreprise introuvable.";
+                return RedirectToAction("Entreprises");
+            }
+
+            entreprise.Actif = false;
+            _context.SaveChanges();
+
+            TempData["Success"] = "Entreprise désactivée avec succès.";
+            return RedirectToAction("Entreprises");
+        }
+
+        // POST: /Gestion/DeleteEntreprise
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult DeleteEntreprise(int id)
+        {
+            var entreprise = _context.Entreprise
+                .Include(e => e.Utilisateurs)
+                .Include(e => e.DemandeDeComptes)
+                .FirstOrDefault(e => e.Id == id);
+
+            if (entreprise == null)
+            {
+                TempData["Error"] = "Entreprise introuvable.";
+                return RedirectToAction("Entreprises");
+            }
+
+            if (entreprise.Utilisateurs.Any() || entreprise.DemandeDeComptes.Any())
+            {
+                TempData["Error"] = "Impossible de supprimer cette entreprise car elle possède des utilisateurs ou des demandes de compte.";
+                return RedirectToAction("Entreprises");
+            }
+
+            _context.Entreprise.Remove(entreprise);
+            _context.SaveChanges();
+
+            TempData["Success"] = "Entreprise supprimée avec succès.";
+            return RedirectToAction("Entreprises");
+        }
     }
 }

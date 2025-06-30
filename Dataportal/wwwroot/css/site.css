@@ -147,3 +147,16 @@ header nav.scrolled {
 .btn-primary:hover {
     background-color: #d02732 !important;
 }
+.btn-outline-warning:hover,
+.btn-outline-warning:active,
+.show > .btn-outline-warning.dropdown-toggle,
+.btn-warning:hover,
+.btn-warning:focus,
+.btn-warning:active,
+.btn-warning,
+.btn-secondary:hover,
+.btn-secondary:focus,
+.btn-secondary:active,
+.btn-secondary {
+    color: #fff;
+}
