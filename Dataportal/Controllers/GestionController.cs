@@ -11,6 +11,8 @@ using System.Linq;
 //TODO: only allow rquestes from users who have verified there emails to be accepted
 //TODO: send emails to user accepting or rejecting there request
 //TODO: send email asking users to rechange ther password if there requeast is accepted
+//TODO: check for error or succes meessage if they all exist and work correctly
+//TODO: add svg if no data found https://lottiefiles.com/free-animation/folio-missing-test-38v5fr6HMP
 
 namespace Dataportal.Controllers
 {

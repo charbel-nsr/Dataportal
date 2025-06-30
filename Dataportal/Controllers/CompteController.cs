@@ -17,6 +17,8 @@ using Microsoft.Extensions.Logging;
 //TODO: Add recaptcha for login and account request forms
 //TODO: Add SeSouvenirDeMoi functionality
 //TODO: Add a AntiForgeryToken() in all forms to prevent CSRF attacks
+//TODO: check for error or succes meessage if they all exist and work correctly
+//TODO: add svg if no data found https://lottiefiles.com/free-animation/folio-missing-test-38v5fr6HMP
 
 namespace Dataportal.Controllers
 {

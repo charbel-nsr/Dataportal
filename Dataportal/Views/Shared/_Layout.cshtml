@@ -31,9 +31,6 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Accueil" asp-action="Index">Données</a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Accueil" asp-action="Index">API</a>
-                        </li>
                         @if (User.Identity.IsAuthenticated)
                         {
                             @if (User.IsInRole("administrateur"))
@@ -104,6 +101,8 @@
                                 <img src="~/logo/ets-logo.png" alt="ETS Logo" class="img-fluid footer-logo">
                             </a>
                         </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
                         <div class="mb-3">
                             <a href="https://www.hydroquebec.com/" target="_blank">
                                 <img src="~/logo/hq-footer-logo.png" alt="HQ Footer Logo" class="img-fluid footer-logo ms-1">
@@ -120,20 +119,13 @@
                             </a>
                         </div>
                     </div>
-                    <div class="col-md-2 mb-3">
+                    <div class="col-md-1 mb-3">
                     </div>
-                    <div class="col-md-3 mb-3">
+                    <div class="col-md-2 mb-3">
                         <nav aria-label="Navigation principale">
                             <ul class="list-unstyled">
                                 <li><a class="footer-links" asp-area="" asp-controller="Accueil" asp-action="Index">Accueil</a></li>
-                                <li><a class="footer-links" asp-area="" asp-controller="Accueil" asp-action="Index">API</a></li>
                                 <li><a class="footer-links" asp-area="" asp-controller="Accueil" asp-action="Index">Données</a></li>
-                            </ul>
-                        </nav>
-                    </div>
-                    <div class="col-md-3 mb-3">
-                        <nav aria-label="Navigation secondaire">
-                            <ul class="list-unstyled">
                                 <li><a class="footer-links" asp-area="" asp-controller="Accueil" asp-action="Index">Cookies</a></li>
                                 <li><a class="footer-links" asp-area="" asp-controller="Accueil" asp-action="Politiques">Politiques</a></li>
                             </ul>
