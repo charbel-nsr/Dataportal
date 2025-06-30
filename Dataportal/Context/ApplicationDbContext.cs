@@ -18,7 +18,6 @@ namespace Dataportal.Context
 
         public DbSet<Appareil> Appareil { get; set; }
         public DbSet<DemandeDeCompte> DemandeDeCompte { get; set; }
-        public DbSet<Documentation> Documentation { get; set; }
         public DbSet<DomaineEmail> DomaineEmail { get; set; }
         public DbSet<Donnees> Donnees { get; set; }
         public DbSet<DonneesContexteEnvironnemental> DonneesContexteEnvironnemental { get; set; }
@@ -29,8 +28,6 @@ namespace Dataportal.Context
         public DbSet<Metadonnee> Metadonnee { get; set; }
         public DbSet<Metadonnee_Appareil> Metadonnee_Appareil { get; set; }
         public DbSet<Role> Role { get; set; }
-        public DbSet<Schema> Schema { get; set; }
-        public DbSet<Schema_Metadonnee> Schema_Metadonnee { get; set; }
         public DbSet<Site> Site { get; set; }
         public DbSet<StatutDeLaDemande> StatutDeLaDemande { get; set; }
         public DbSet<Utilisateur> Utilisateur { get; set; }
@@ -74,21 +71,6 @@ namespace Dataportal.Context
                 entity.HasOne(d => d.StatutDeLaDemande)
                       .WithMany(s => s.DemandeDeComptes)
                       .HasForeignKey(d => d.IdStatutDeLaDemande)
-                      .OnDelete(DeleteBehavior.Restrict);
-            });
-            modelBuilder.Entity<Documentation>(entity =>
-            {
-                entity.HasKey(d => d.Id);
-                entity.Property(d => d.Libelle)
-                      .IsRequired()
-                      .HasMaxLength(100);
-                entity.Property(d => d.Description)
-                      .HasMaxLength(1000);
-                entity.Property(d => d.Lien)
-                      .IsRequired();
-                entity.HasOne(d => d.Metadonnee)
-                      .WithMany(m => m.Documentations)
-                      .HasForeignKey(d => d.IdMetadonnee)
                       .OnDelete(DeleteBehavior.Restrict);
             });
             modelBuilder.Entity<DomaineEmail>(entity =>
@@ -231,9 +213,6 @@ namespace Dataportal.Context
                 entity.HasOne(m => m.Licence)
                       .WithMany(l => l.Metadonnees)
                       .HasForeignKey(m => m.IdLicence);
-                entity.HasMany(m => m.Documentations)
-                      .WithOne(d => d.Metadonnee)
-                      .HasForeignKey(d => d.IdMetadonnee);
                 entity.HasOne(m => m.Site)
                       .WithMany(s => s.Metadonnees)
                       .HasForeignKey(m => m.IdSite);
@@ -284,30 +263,6 @@ namespace Dataportal.Context
                 entity.HasMany(r => r.Utilisateurs)
                       .WithOne(u => u.Role)
                       .HasForeignKey(u => u.IdRole)
-                      .OnDelete(DeleteBehavior.Restrict);
-            });
-            modelBuilder.Entity<Schema>(entity =>
-            {
-                entity.HasKey(s => s.Id);
-                entity.Property(s => s.Libelle)
-                      .HasMaxLength(100);
-                entity.HasIndex(s => s.Libelle)
-                      .IsUnique();
-                entity.Property(s => s.Description)
-                      .HasMaxLength(1000);
-            });
-            modelBuilder.Entity<Schema_Metadonnee>(entity =>
-            {
-                entity.HasKey(sm => sm.Id);
-                entity.Property(sm => sm.Description)
-                      .HasMaxLength(1000);
-                entity.HasOne(sm => sm.Schema)
-                      .WithMany(s => s.schema_Metadonnees)
-                      .HasForeignKey(sm => sm.IdSchema)
-                      .OnDelete(DeleteBehavior.Restrict);
-                entity.HasOne(sm => sm.Metadonnee)
-                      .WithMany(m => m.schema_Metadonnees)
-                      .HasForeignKey(sm => sm.IdMetadonnee)
                       .OnDelete(DeleteBehavior.Restrict);
             });
             modelBuilder.Entity<Site>(entity =>

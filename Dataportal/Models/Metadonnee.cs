@@ -34,8 +34,6 @@ namespace Dataportal.Models
         [ForeignKey("Documentation")]
         public int IdDocumentation { get; set; }
 
-        public Documentation Documentation { get; set; }
-
         public bool SeriesTemporelles { get; set; }
 
         public int QualiteDesDonnees { get; set; }
@@ -71,11 +69,7 @@ namespace Dataportal.Models
 
         public bool AutoriserLesSQL { get; set; }
 
-        public ICollection<Documentation> Documentations { get; set; }
-
         public ICollection<Metadonnee_Appareil> Metadonnee_Appareils { get; set; }
-
-        public ICollection<Schema_Metadonnee> schema_Metadonnees { get; set; }
 
         public ICollection<Historique> Historiques { get; set; }
 
