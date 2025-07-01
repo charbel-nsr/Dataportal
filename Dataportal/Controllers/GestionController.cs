@@ -14,6 +14,7 @@ using System.Linq;
 //TODO: check for error or succes meessage if they all exist and work correctly
 //TODO: add svg if no data found https://lottiefiles.com/free-animation/folio-missing-test-38v5fr6HMP
 //TODO: add a button to allow admins to creat users
+//TODO: Fill and hide selection of rolle in request depending on the situation
 
 namespace Dataportal.Controllers
 {

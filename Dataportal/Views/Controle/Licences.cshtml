@@ -1,0 +1,247 @@
+﻿@model Dataportal.ViewModels.LicenceViewModel
+@{
+    ViewData["Title"] = "Gestion des licences";
+}
+
+<div class="container">
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="row bg-light rounded shadow p-4 mb-4">
+        <form method="get" class="row gx-3 gy-2 align-items-center">
+            <div class="col-md-6">
+                <div class="form-floating">
+                    <input type="text" class="form-control" id="search" name="search" placeholder="Recherche" value="@Model.Search">
+                    <label for="search">Libellé ou description</label>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-floating">
+                    <select class="form-select" name="actif" id="actif">
+                        <option value="">Tous</option>
+                        <option value="true" selected="@(Model.Actif == true ? "selected" : null)">Actifs</option>
+                        <option value="false" selected="@(Model.Actif == false ? "selected" : null)">Inactifs</option>
+                    </select>
+                    <label for="actif">Statut actif</label>
+                </div>
+            </div>
+            <div class="col-md-6 offset-md-6 mt-2 d-flex flex-column flex-md-row">
+                <button type="submit" class="btn btn-primary flex-grow-1 w-100 mb-2 mb-md-0 me-md-2">
+                    Filtrer
+                </button>
+                <a href="@Url.Action("Licences", "Controle")" class="btn btn-outline-primary flex-grow-1 w-100">
+                    Réinitialiser
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <div class="col-12 col-md-auto mb-3">
+        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createModal">
+            <i class="bi bi-plus-circle"></i> Créer une licence
+        </button>
+    </div>
+
+    <div class="row">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle shadow-sm">
+                <thead class="table-light">
+                    <tr>
+                        <th>Libellé</th>
+                        <th>Actif</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var licence in Model.Licences)
+                    {
+                        <tr>
+                            <td>@licence.Libelle</td>
+                            <td>
+                                @if (licence.Actif)
+                                {
+                                    <span class="badge bg-success">Actif</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Inactif</span>
+                                }
+                            </td>
+                            <td>
+                                @if (!licence.Actif)
+                                {
+                                    <form method="post" asp-action="ActivateLicence" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@licence.Id" />
+                                        <button class="btn btn-sm btn-outline-success" title="Activer">
+                                            <i class="bi bi-check-circle"></i>
+                                        </button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <form method="post" asp-action="DeactivateLicence" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@licence.Id" />
+                                        <button class="btn btn-sm btn-outline-warning" title="Désactiver">
+                                            <i class="bi bi-x-circle"></i>
+                                        </button>
+                                    </form>
+                                }
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-secondary"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#detailsModal"
+                                        data-libelle="@licence.Libelle"
+                                        data-description="@licence.Description"
+                                        data-actif="@licence.Actif">
+                                    <i class="bi bi-exclamation-circle"></i>
+                                </button>
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-primary"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#editLicenceModal"
+                                        data-id="@licence.Id"
+                                        data-libelle="@licence.Libelle"
+                                        data-description="@licence.Description"
+                                        data-actif="@licence.Actif">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Create Modal -->
+<div class="modal fade" id="createModal" tabindex="-1" aria-labelledby="createModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" asp-action="CreateLicence">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title" id="createModalLabel">Créer une licence</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control" id="Libelle" name="Libelle" placeholder="Libellé" required>
+                        <label for="Libelle">Libellé de la licence</label>
+                    </div>
+                    <div class="form-floating mb-3">
+                        <textarea class="form-control" id="Description" name="Description" placeholder="Description" style="height: 100px;"></textarea>
+                        <label for="Description">Description</label>
+                    </div>
+                    <div class="form-floating mb-3">
+                        <select class="form-select" id="Actif" name="Actif" required>
+                            <option value="true">Actif</option>
+                            <option value="false">Inactif</option>
+                        </select>
+                        <label for="Actif">Statut de la licence</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-success">Créer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Details Modal -->
+<div class="modal fade" id="detailsModal" tabindex="-1" aria-labelledby="detailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detailsModalLabel">Détails de la licence</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Libellé:</strong> <span id="detailLibelle"></span></p>
+                <p><strong>Description:</strong> <span id="detailDescription"></span></p>
+                <p><strong>Statut:</strong> <span id="detailActif"></span></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Licence Modal -->
+<div class="modal fade" id="editLicenceModal" tabindex="-1" aria-labelledby="editLicenceModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" asp-action="EditLicence">
+                @Html.AntiForgeryToken()
+                <input type="hidden" id="editLicenceId" name="Id" />
+
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editLicenceModalLabel">Modifier la licence</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control" id="editLicenceLibelle" name="Libelle" placeholder="Libellé" required>
+                        <label for="editLicenceLibelle">Libellé de la licence</label>
+                    </div>
+
+                    <div class="form-floating mb-3">
+                        <textarea class="form-control" id="editLicenceDescription" name="Description" placeholder="Description" style="height: 100px;"></textarea>
+                        <label for="editLicenceDescription">Description</label>
+                    </div>
+
+                    <div class="form-floating mb-3">
+                        <select class="form-select" id="editLicenceActif" name="Actif" required>
+                            <option value="true">Active</option>
+                            <option value="false">Inactive</option>
+                        </select>
+                        <label for="editLicenceActif">Statut de la licence</label>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const detailsModal = document.getElementById('detailsModal');
+        detailsModal.addEventListener('show.bs.modal', event => {
+            const button = event.relatedTarget;
+            document.getElementById('detailLibelle').textContent = button.getAttribute('data-libelle') || '—';
+            document.getElementById('detailDescription').textContent = button.getAttribute('data-description') || '—';
+            document.getElementById('detailActif').textContent = button.getAttribute('data-actif') === 'True' ? 'Actif' : 'Inactif';
+        });
+        const editLicenceModal = document.getElementById('editLicenceModal');
+        editLicenceModal.addEventListener('show.bs.modal', event => {
+            const button = event.relatedTarget;
+            document.getElementById('editLicenceId').value = button.getAttribute('data-id');
+            document.getElementById('editLicenceLibelle').value = button.getAttribute('data-libelle') || '';
+            document.getElementById('editLicenceDescription').value = button.getAttribute('data-description') || '';
+            document.getElementById('editLicenceActif').value = button.getAttribute('data-actif') === 'True' ? 'true' : 'false';
+        });
+    </script>
+}

@@ -1,0 +1,293 @@
+﻿using Microsoft.AspNetCore.Mvc;
+using Dataportal.Context;
+using Dataportal.ViewModels;
+using Dataportal.Models;
+using System.Linq;
+using Microsoft.AspNetCore.Authorization;
+
+namespace Dataportal.Controllers
+{
+    [Authorize(Roles = "administrateur")]
+    public class ControleController : Controller
+    {
+        private readonly ApplicationDbContext _context;
+
+        public ControleController(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
+        // GET: /Controle/Sites
+        [HttpGet]
+        public IActionResult Sites(string search, bool? actif)
+        {
+            var query = _context.Site.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                query = query.Where(s =>
+                    s.Nom.Contains(search) ||
+                    s.Description.Contains(search) ||
+                    s.Emplacement.Contains(search));
+            }
+
+            if (actif.HasValue)
+            {
+                query = query.Where(s => s.Actif == actif.Value);
+            }
+
+            var vm = new SiteViewModel
+            {
+                Sites = query.ToList(),
+                Search = search,
+                Actif = actif
+            };
+
+            return View(vm);
+        }
+
+        // POST: /Controle/CreateSite
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult CreateSite(string Nom, string Description, string Emplacement, bool Actif)
+        {
+            if (string.IsNullOrWhiteSpace(Nom))
+            {
+                TempData["Error"] = "Le nom du site est requis.";
+                return RedirectToAction("Sites");
+            }
+
+            var normalized = Nom.Trim().ToLower();
+            var exists = _context.Site.Any(s => s.Nom.Trim().ToLower() == normalized);
+            if (exists)
+            {
+                TempData["Error"] = "Un site avec ce nom existe déjà.";
+                return RedirectToAction("Sites");
+            }
+
+            var site = new Site
+            {
+                Nom = Nom.Trim(),
+                Description = Description?.Trim(),
+                Emplacement = Emplacement?.Trim(),
+                Actif = Actif
+            };
+
+            _context.Site.Add(site);
+            _context.SaveChanges();
+
+            TempData["Success"] = "Site créé avec succès.";
+            return RedirectToAction("Sites");
+        }
+
+        // POST: /Controle/ActivateSite
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult ActivateSite(int id)
+        {
+            var site = _context.Site.FirstOrDefault(s => s.Id == id);
+            if (site == null)
+            {
+                TempData["Error"] = "Site introuvable.";
+                return RedirectToAction("Sites");
+            }
+
+            site.Actif = true;
+            _context.SaveChanges();
+
+            TempData["Success"] = "Site activé avec succès.";
+            return RedirectToAction("Sites");
+        }
+
+        // POST: /Controle/DeactivateSite
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult DeactivateSite(int id)
+        {
+            var site = _context.Site.FirstOrDefault(s => s.Id == id);
+            if (site == null)
+            {
+                TempData["Error"] = "Site introuvable.";
+                return RedirectToAction("Sites");
+            }
+
+            site.Actif = false;
+            _context.SaveChanges();
+
+            TempData["Success"] = "Site désactivé avec succès.";
+            return RedirectToAction("Sites");
+        }
+
+        // POST: /Controle/EditSite
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult EditSite(int Id, string Nom, string Description, string Emplacement, bool Actif)
+        {
+            if (string.IsNullOrWhiteSpace(Nom))
+            {
+                TempData["Error"] = "Le nom est requis.";
+                return RedirectToAction("Sites");
+            }
+
+            var site = _context.Site.FirstOrDefault(s => s.Id == Id);
+            if (site == null)
+            {
+                TempData["Error"] = "Site introuvable.";
+                return RedirectToAction("Sites");
+            }
+
+            var normalizedNom = Nom.Trim().ToLower();
+            var duplicate = _context.Site.Any(s => s.Id != Id && s.Nom.Trim().ToLower() == normalizedNom);
+            if (duplicate)
+            {
+                TempData["Error"] = "Un autre site avec ce nom existe déjà.";
+                return RedirectToAction("Sites");
+            }
+
+            site.Nom = Nom.Trim();
+            site.Description = Description?.Trim();
+            site.Emplacement = Emplacement?.Trim();
+            site.Actif = Actif;
+
+            _context.SaveChanges();
+
+            TempData["Success"] = "Site modifié avec succès.";
+            return RedirectToAction("Sites");
+        }
+
+        // GET: /Controle/Licences
+        [HttpGet]
+        public IActionResult Licences(string search, bool? actif)
+        {
+            var query = _context.Licence.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                query = query.Where(l =>
+                    l.Libelle.Contains(search) ||
+                    l.Description.Contains(search));
+            }
+
+            if (actif.HasValue)
+            {
+                query = query.Where(l => l.Actif == actif.Value);
+            }
+
+            var vm = new LicenceViewModel
+            {
+                Licences = query.ToList(),
+                Search = search,
+                Actif = actif
+            };
+
+            return View(vm);
+        }
+
+        // POST: /Controle/CreateLicence
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult CreateLicence(string Libelle, string Description, bool Actif)
+        {
+            if (string.IsNullOrWhiteSpace(Libelle))
+            {
+                TempData["Error"] = "Le libellé est requis.";
+                return RedirectToAction("Licences");
+            }
+
+            var normalized = Libelle.Trim().ToLower();
+            var exists = _context.Licence.Any(l => l.Libelle.Trim().ToLower() == normalized);
+            if (exists)
+            {
+                TempData["Error"] = "Une licence avec ce libellé existe déjà.";
+                return RedirectToAction("Licences");
+            }
+
+            var licence = new Licence
+            {
+                Libelle = Libelle.Trim(),
+                Description = Description?.Trim(),
+                Actif = Actif
+            };
+
+            _context.Licence.Add(licence);
+            _context.SaveChanges();
+
+            TempData["Success"] = "Licence créée avec succès.";
+            return RedirectToAction("Licences");
+        }
+
+        // POST: /Controle/ActivateLicence
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult ActivateLicence(int id)
+        {
+            var licence = _context.Licence.FirstOrDefault(l => l.Id == id);
+            if (licence == null)
+            {
+                TempData["Error"] = "Licence introuvable.";
+                return RedirectToAction("Licences");
+            }
+
+            licence.Actif = true;
+            _context.SaveChanges();
+
+            TempData["Success"] = "Licence activée avec succès.";
+            return RedirectToAction("Licences");
+        }
+
+        // POST: /Controle/DeactivateLicence
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult DeactivateLicence(int id)
+        {
+            var licence = _context.Licence.FirstOrDefault(l => l.Id == id);
+            if (licence == null)
+            {
+                TempData["Error"] = "Licence introuvable.";
+                return RedirectToAction("Licences");
+            }
+
+            licence.Actif = false;
+            _context.SaveChanges();
+
+            TempData["Success"] = "Licence désactivée avec succès.";
+            return RedirectToAction("Licences");
+        }
+
+        // POST: /Controle/EditLicence
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult EditLicence(int Id, string Libelle, string Description, bool Actif)
+        {
+            if (string.IsNullOrWhiteSpace(Libelle))
+            {
+                TempData["Error"] = "Le libellé est requis.";
+                return RedirectToAction("Licences");
+            }
+
+            var licence = _context.Licence.FirstOrDefault(l => l.Id == Id);
+            if (licence == null)
+            {
+                TempData["Error"] = "Licence introuvable.";
+                return RedirectToAction("Licences");
+            }
+
+            var normalizedLibelle = Libelle.Trim().ToLower();
+            var duplicate = _context.Licence.Any(l => l.Id != Id && l.Libelle.Trim().ToLower() == normalizedLibelle);
+            if (duplicate)
+            {
+                TempData["Error"] = "Une autre licence avec ce libellé existe déjà.";
+                return RedirectToAction("Licences");
+            }
+
+            licence.Libelle = Libelle.Trim();
+            licence.Description = Description?.Trim();
+            licence.Actif = Actif;
+
+            _context.SaveChanges();
+
+            TempData["Success"] = "Licence modifiée avec succès.";
+            return RedirectToAction("Licences");
+        }
+    }
+}
