@@ -40,12 +40,12 @@
                                     <ul class="dropdown-menu" aria-labelledby="gestionDropdown">
                                         <li>
                                             <a class="dropdown-item" asp-area="" asp-controller="Gestion" asp-action="DemandeDeCompte">
-                                                Les demandes de compte
+                                                Demandes de compte
                                             </a>
                                         </li>
                                         <li>
                                             <a class="dropdown-item" asp-area="" asp-controller="Gestion" asp-action="Entreprises">
-                                                Gérer les entreprises
+                                                Entreprises
                                             </a>
                                         </li>
                                     </ul>
@@ -68,6 +68,7 @@
                                     </li>
                                     <li>
                                         <form asp-area="" asp-controller="Compte" asp-action="SeDeconnecter" method="post" id="logoutForm">
+                                            @Html.AntiForgeryToken()
                                             <button type="submit" class="dropdown-item">Se déconnecter</button>
                                         </form>
                                     </li>

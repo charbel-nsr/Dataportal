@@ -14,6 +14,7 @@
     }
     <div class="row bg-light rounded shadow p-4">
         <form asp-action="DemandeDeCompte" method="get" class="row gx-3 gy-2 align-items-center w-100">
+            @Html.AntiForgeryToken()
             <div class="col-md-4">
                 <div class="form-floating">
                     @{
@@ -225,6 +226,7 @@
             </div>
             <div class="px-3 pb-3">
                 <form method="post" asp-action="ApprouverDemande" id="modal-action-form" class="w-100">
+                    @Html.AntiForgeryToken()
                     <input type="hidden" name="id" id="modal-action-id" />
                     <input type="hidden" name="idEntreprise" id="modal-action-idEntreprise" />
                     <input type="hidden" name="emailVerifie" id="modal-action-emailVerifie" />

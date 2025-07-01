@@ -99,6 +99,15 @@
                                         title="Supprimer">
                                     <i class="bi bi-trash"></i>
                                 </button>
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-secondary"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#domainesModal"
+                                        data-id="@entreprise.Id"
+                                        data-nom="@entreprise.Nom"
+                                        title="Gérer les domaines">
+                                    <i class="bi bi-envelope"></i>
+                                </button>
                             </td>
                         </tr>
                     }
@@ -108,11 +117,21 @@
     </div>
 </div>
 
+<!-- Domaines Modal Placeholder -->
+<div class="modal fade" id="domainesModal" tabindex="-1" aria-labelledby="domainesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" id="domainesModalContent">
+            <!-- Loaded via AJAX -->
+        </div>
+    </div>
+</div>
+
 <!-- Create Modal -->
 <div class="modal fade" id="createModal" tabindex="-1" aria-labelledby="createModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="post" asp-action="CreateEntreprise">
+                @Html.AntiForgeryToken()
                 <div class="modal-header">
                     <h5 class="modal-title" id="createModalLabel">Créer une entreprise</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
@@ -144,6 +163,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="post" asp-action="ActivateEntreprise">
+                @Html.AntiForgeryToken()
                 <div class="modal-header">
                     <h5 class="modal-title" id="activateModalLabel">Confirmer l'activation</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
@@ -166,6 +186,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="post" asp-action="DeactivateEntreprise">
+                @Html.AntiForgeryToken()
                 <div class="modal-header">
                     <h5 class="modal-title" id="deactivateModalLabel">Confirmer la désactivation</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
@@ -237,5 +258,17 @@
             document.getElementById('delete-nom').textContent = nom;
         });
 
+        document.addEventListener('DOMContentLoaded', () => {
+            const domainesModal = document.getElementById('domainesModal');
+            domainesModal.addEventListener('show.bs.modal', event => {
+                const button = event.relatedTarget;
+                const entrepriseId = button.getAttribute('data-id');
+                fetch(`/Gestion/GetDomaines?id=${entrepriseId}`)
+                    .then(response => response.text())
+                    .then(html => {
+                        document.getElementById('domainesModalContent').innerHTML = html;
+                    });
+            });
+        });
     </script>
 }

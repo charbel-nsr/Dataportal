@@ -1,0 +1,93 @@
+﻿@model Dataportal.ViewModels.EntrepriseDomainesViewModel
+
+<div class="modal-header">
+    <h5 class="modal-title">Domaines de @Model.EntrepriseNom</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+</div>
+<div class="modal-body">
+    <input type="hidden" id="entrepriseId" value="@Model.EntrepriseId" />
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Domaine</th>
+                    <th>Actif</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var d in Model.Domaines)
+                {
+                    <tr>
+                        <td>@d.Domaine</td>
+                        <td>
+                            @if (d.DomaineActif)
+                            {
+                                <span class="badge bg-success">Actif</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Inactif</span>
+                            }
+                        </td>
+                        <td>
+                            <form method="post" asp-action="ToggleDomaineActif" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@d.Id" />
+                                <button type="submit" class="btn btn-sm @(d.DomaineActif ? "btn-outline-warning" : "btn-outline-success")" title="@(d.DomaineActif ? "Désactiver" : "Activer")">
+                                    <i class="bi @(d.DomaineActif ? "bi-x-circle" : "bi-check-circle")"></i>
+                                </button>
+                            </form>
+                            <form method="post" asp-action="DeleteDomaine" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@d.Id" />
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addDomainModal">
+        Ajouter un domaine
+    </button>
+</div>
+
+<!-- Add Domain Modal -->
+<div class="modal fade" id="addDomainModal" tabindex="-1" aria-labelledby="addDomainModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" asp-action="AddDomaine">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="entrepriseId" value="@Model.EntrepriseId" />
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addDomainModalLabel">Ajouter un nouveau domaine</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control" id="newDomaine" name="newDomaine" placeholder="exemple.com" required>
+                        <label for="newDomaine">Nom du domaine (exemple.com)</label>
+                    </div>
+                    <div class="form-floating">
+                        <select class="form-select" id="Actif" name="Actif" required>
+                            <option value="true">Actif</option>
+                            <option value="false">Inactif</option>
+                        </select>
+                        <label for="Actif">Statut du domaine</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-success">Ajouter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

@@ -14,6 +14,7 @@
                     <h2 class="mb-4 text-center">@ViewData["Title"]</h2>
                     <span class="text-primary">Attention:</span> cela ne vous créera pas automatiquement un compte, c'est plutôt une demande qui doit être approuvée par l'un des gestionnaires de la plateforme.
                     <form asp-action="DemanderUnCompte" method="post" novalidate>
+                        @Html.AntiForgeryToken()
                         <div asp-validation-summary="All" class="text-danger mb-3"></div>
                         <div class="mb-3">
                             <label asp-for="IdEntreprise"></label>

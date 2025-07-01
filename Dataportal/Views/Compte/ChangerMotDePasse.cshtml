@@ -16,6 +16,7 @@
         </div>
         <div class="col-md-6 mt-5">
             <form asp-action="ChangerMotDePasse" method="post">
+                @Html.AntiForgeryToken()
                 <div asp-validation-summary="All" class="text-danger mb-3"></div>
                 <div class="form-floating mb-3">
                     <input asp-for="Email" class="form-control" placeholder="Email" readonly />

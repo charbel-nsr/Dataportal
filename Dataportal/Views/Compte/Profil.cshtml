@@ -25,6 +25,7 @@
     <div class="row mt-4">
         <div class="col">
             <form asp-action="Profil" method="post">
+                @Html.AntiForgeryToken()
                 <div class="row">
                     <div class="col-md-6">
                         <div class="form-floating mb-3">

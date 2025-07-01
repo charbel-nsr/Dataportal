@@ -288,5 +288,123 @@ namespace Dataportal.Controllers
             TempData["Success"] = "Entreprise supprimée avec succès.";
             return RedirectToAction("Entreprises");
         }
+
+        [HttpGet]
+        public IActionResult GetDomaines(int id)
+        {
+            var entreprise = _context.Entreprise
+                .Include(e => e.DomaineEmails)
+                .FirstOrDefault(e => e.Id == id);
+
+            if (entreprise == null)
+                return NotFound();
+
+            var vm = new EntrepriseDomainesViewModel
+            {
+                EntrepriseId = entreprise.Id,
+                EntrepriseNom = entreprise.Nom,
+                Domaines = entreprise.DomaineEmails
+                    .Select(d => new DomaineEmailViewModel
+                    {
+                        Id = d.Id,
+                        Domaine = d.Domaine,
+                        DomaineActif = d.DomaineActif
+                    }).ToList()
+            };
+
+            return PartialView("_ManageDomainesModal", vm);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult AddDomaine(int entrepriseId, string newDomaine, bool Actif)
+        {
+            if (string.IsNullOrWhiteSpace(newDomaine))
+            {
+                TempData["Error"] = "Le domaine est requis.";
+                return RedirectToAction("Entreprises");
+            }
+
+            var cleaned = newDomaine.Trim().ToLower();
+
+            // Validate structure (very simple check)
+            if (!cleaned.Contains(".") || cleaned.StartsWith(".") || cleaned.EndsWith("."))
+            {
+                TempData["Error"] = "Format du domaine invalide.";
+                return RedirectToAction("Entreprises");
+            }
+
+            var exists = _context.DomaineEmail
+                .Any(d => d.Domaine.ToLower() == cleaned && d.IdEntreprise == entrepriseId);
+
+            if (exists)
+            {
+                TempData["Error"] = "Ce domaine existe déjà pour cette entreprise.";
+                return RedirectToAction("Entreprises");
+            }
+
+            var domaine = new DomaineEmail
+            {
+                IdEntreprise = entrepriseId,
+                Domaine = cleaned,
+                DomaineActif = Actif
+            };
+
+            _context.DomaineEmail.Add(domaine);
+            _context.SaveChanges();
+
+            TempData["Success"] = "Domaine ajouté avec succès.";
+            return RedirectToAction("Entreprises");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult ToggleDomaineActif(int id)
+        {
+            var domaine = _context.DomaineEmail.FirstOrDefault(d => d.Id == id);
+            if (domaine == null)
+            {
+                TempData["Error"] = "Domaine introuvable.";
+                return RedirectToAction("Entreprises");
+            }
+
+            domaine.DomaineActif = !domaine.DomaineActif;
+            _context.SaveChanges();
+
+            TempData["Success"] = "Statut du domaine mis à jour.";
+            return RedirectToAction("Entreprises");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult DeleteDomaine(int id)
+        {
+            var domaine = _context.DomaineEmail
+                .Include(d => d.Entreprise)
+                .FirstOrDefault(d => d.Id == id);
+
+            if (domaine == null)
+            {
+                TempData["Error"] = "Domaine introuvable.";
+                return RedirectToAction("Entreprises");
+            }
+
+            // Check for linked users
+            var hasUsers = _context.Utilisateur.Any(u => u.IdEntreprise == domaine.IdEntreprise && u.Email.EndsWith("@" + domaine.Domaine));
+            var hasRequests = _context.DemandeDeCompte.Any(r => r.IdEntreprise == domaine.IdEntreprise && r.Email.EndsWith("@" + domaine.Domaine));
+
+            if (hasUsers || hasRequests)
+            {
+                TempData["Error"] = "Impossible de supprimer ce domaine car il est utilisé par des utilisateurs ou des demandes.";
+                return RedirectToAction("Entreprises");
+            }
+
+            _context.DomaineEmail.Remove(domaine);
+            _context.SaveChanges();
+
+            TempData["Success"] = "Domaine supprimé avec succès.";
+            return RedirectToAction("Entreprises");
+        }
+
     }
 }
