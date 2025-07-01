@@ -141,6 +141,16 @@
                                 <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editModal" data-id="@demande.Id">
                                     <i class="bi bi-pencil"></i>
                                 </button>
+                                @if (demande.StatutDeLaDemande?.Libelle?.ToLower() == "refuser")
+                                {
+                                    <form method="post" asp-action="DeleteDemande" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@demande.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                }
                             </td>
                         </tr>
                     }

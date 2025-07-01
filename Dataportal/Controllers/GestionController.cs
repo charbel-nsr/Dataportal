@@ -14,7 +14,8 @@ using System.Linq;
 //TODO: check for error or succes meessage if they all exist and work correctly
 //TODO: add svg if no data found https://lottiefiles.com/free-animation/folio-missing-test-38v5fr6HMP
 //TODO: add a button to allow admins to creat users
-//TODO: Fill and hide selection of rolle in request depending on the situation
+//TODO: fill and hide selection of rolle in request depending on the situation
+//TODO: check the delete function for requests
 
 namespace Dataportal.Controllers
 {
@@ -167,6 +168,30 @@ namespace Dataportal.Controllers
             return RedirectToAction("DemandeDeCompte");
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult DeleteDemande(int id)
+        {
+            var demande = _context.DemandeDeCompte.FirstOrDefault(d => d.Id == id);
+            if (demande == null)
+            {
+                TempData["Error"] = "Demande introuvable.";
+                return RedirectToAction("DemandeDeCompte");
+            }
+
+            if (demande.StatutDeLaDemande?.Libelle?.ToLower() != "refuser")
+            {
+                TempData["Error"] = "Seules les demandes refusées peuvent être supprimées.";
+                return RedirectToAction("DemandeDeCompte");
+            }
+
+            _context.DemandeDeCompte.Remove(demande);
+            _context.SaveChanges();
+
+            TempData["Success"] = "Demande supprimée avec succès.";
+            return RedirectToAction("DemandeDeCompte");
+        }
+
         // GET: /Gestion/Entreprises
         [HttpGet]
         public IActionResult Entreprises(string search, bool? actif)
@@ -288,6 +313,40 @@ namespace Dataportal.Controllers
             _context.SaveChanges();
 
             TempData["Success"] = "Entreprise supprimée avec succès.";
+            return RedirectToAction("Entreprises");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult EditEntreprise(int id, string Nom, bool Actif)
+        {
+            if (string.IsNullOrWhiteSpace(Nom))
+            {
+                TempData["Error"] = "Le nom de l'entreprise est requis.";
+                return RedirectToAction("Entreprises");
+            }
+
+            var entreprise = _context.Entreprise.FirstOrDefault(e => e.Id == id);
+            if (entreprise == null)
+            {
+                TempData["Error"] = "Entreprise introuvable.";
+                return RedirectToAction("Entreprises");
+            }
+
+            var normalizedNom = Nom.Trim().ToLower();
+            var exists = _context.Entreprise.Any(e => e.Id != id && e.Nom.Trim().ToLower() == normalizedNom);
+
+            if (exists)
+            {
+                TempData["Error"] = "Une entreprise avec ce nom existe déjà.";
+                return RedirectToAction("Entreprises");
+            }
+
+            entreprise.Nom = Nom.Trim();
+            entreprise.Actif = Actif;
+            _context.SaveChanges();
+
+            TempData["Success"] = "Entreprise mise à jour avec succès.";
             return RedirectToAction("Entreprises");
         }
 
@@ -490,5 +549,29 @@ namespace Dataportal.Controllers
             return RedirectToAction("Utilisateurs");
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult EditUserRole(int id, int newRoleId)
+        {
+            var utilisateur = _context.Utilisateur.FirstOrDefault(u => u.Id == id);
+            if (utilisateur == null)
+            {
+                TempData["Error"] = "Utilisateur introuvable.";
+                return RedirectToAction("Utilisateurs");
+            }
+
+            var role = _context.Role.FirstOrDefault(r => r.Id == newRoleId);
+            if (role == null)
+            {
+                TempData["Error"] = "Rôle invalide.";
+                return RedirectToAction("Utilisateurs");
+            }
+
+            utilisateur.IdRole = newRoleId;
+            _context.SaveChanges();
+
+            TempData["Success"] = "Rôle de l'utilisateur mis à jour.";
+            return RedirectToAction("Utilisateurs");
+        }
     }
 }

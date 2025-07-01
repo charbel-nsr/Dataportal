@@ -108,6 +108,15 @@
                                         title="Gérer les domaines">
                                     <i class="bi bi-envelope"></i>
                                 </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#editEntrepriseModal"
+                                        data-id="@entreprise.Id"
+                                        data-nom="@entreprise.Nom"
+                                        data-actif="@entreprise.Actif"
+                                        title="Éditer">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
                             </td>
                         </tr>
                     }
@@ -229,6 +238,38 @@
     </div>
 </div>
 
+<div class="modal fade" id="editEntrepriseModal" tabindex="-1" aria-labelledby="editEntrepriseModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" asp-action="EditEntreprise">
+                @Html.AntiForgeryToken()
+                <input type="hidden" id="editEntrepriseId" name="id" />
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editEntrepriseModalLabel">Modifier l'entreprise</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control" id="editEntrepriseNom" name="Nom" placeholder="Nom" required>
+                        <label for="editEntrepriseNom">Nom de l'entreprise</label>
+                    </div>
+                    <div class="form-floating mb-3">
+                        <select class="form-select" id="editEntrepriseActif" name="Actif" required>
+                            <option value="true">Active</option>
+                            <option value="false">Inactive</option>
+                        </select>
+                        <label for="editEntrepriseActif">Statut de l'entreprise</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-success">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
         const activateModal = document.getElementById('activateModal');
@@ -270,5 +311,18 @@
                     });
             });
         });
+
+        const editEntrepriseModal = document.getElementById('editEntrepriseModal');
+        editEntrepriseModal.addEventListener('show.bs.modal', event => {
+            const button = event.relatedTarget;
+            const id = button.getAttribute('data-id');
+            const nom = button.getAttribute('data-nom');
+            const actif = button.getAttribute('data-actif') === 'True';
+
+            document.getElementById('editEntrepriseId').value = id;
+            document.getElementById('editEntrepriseNom').value = nom;
+            document.getElementById('editEntrepriseActif').value = actif ? 'true' : 'false';
+        });
+
     </script>
 }

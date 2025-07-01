@@ -122,6 +122,16 @@
                                         data-linkedin="@u.LienLinkedIn">
                                     <i class="bi bi-exclamation-circle"></i>
                                 </button>
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-primary"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#editRoleModal"
+                                        data-id="@u.Id"
+                                        data-roleid="@u.IdRole"
+                                        data-nom="@u.Nom"
+                                        data-prenom="@u.Prenom">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
                             </td>
                         </tr>
                     }
@@ -160,6 +170,38 @@
                 </form>
                 <button type="button" class="btn btn-outline-primary" data-bs-dismiss="modal">Fermer</button>
             </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editRoleModal" tabindex="-1" aria-labelledby="editRoleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" asp-action="EditUserRole">
+                @Html.AntiForgeryToken()
+                <input type="hidden" id="editRoleUserId" name="id" value="" />
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editRoleModalLabel">Modifier le rôle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>Utilisateur:</strong> <span id="editRoleUserName"></span></p>
+                    <div class="form-floating">
+                        <select class="form-select" id="editRoleSelect" name="newRoleId" required>
+                            <option value="">Sélectionner un rôle</option>
+                            @foreach (var role in Model.Roles)
+                            {
+                                <option value="@role.Id">@role.Libelle</option>
+                            }
+                        </select>
+                        <label for="editRoleSelect">Nouveau rôle</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-success">Enregistrer</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -247,5 +289,19 @@
             }
         });
     });
+
+    const editRoleModal = document.getElementById('editRoleModal');
+    editRoleModal.addEventListener('show.bs.modal', event => {
+        const button = event.relatedTarget;
+        const userId = button.getAttribute('data-id');
+        const userNom = button.getAttribute('data-nom');
+        const userPrenom = button.getAttribute('data-prenom');
+        const currentRoleId = button.getAttribute('data-roleid');
+
+        document.getElementById('editRoleUserId').value = userId;
+        document.getElementById('editRoleUserName').textContent = userPrenom + ' ' + userNom;
+        document.getElementById('editRoleSelect').value = currentRoleId;
+    });
+
 </script>
 
