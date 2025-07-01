@@ -15,6 +15,8 @@ namespace Dataportal.Models
 
         public string Emplacement { get; set; }
 
+        public bool Actif { get; set; }
+
         public ICollection<Metadonnee> Metadonnees { get; set; }
     }
 }

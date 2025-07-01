@@ -13,6 +13,8 @@ namespace Dataportal.Models
         [MaxLength(500)]
         public string Description { get; set; }
 
+        public bool Actif { get; set; }
+
         public ICollection<Metadonnee> Metadonnees { get; set; }
 
     }

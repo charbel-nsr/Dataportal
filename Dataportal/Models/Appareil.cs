@@ -20,6 +20,8 @@ namespace Dataportal.Models
 
         public string Manufacturer { get; set; }
 
+        public bool Actif { get; set; }
+
         public ICollection<Metadonnee_Appareil> Metadonnee_Appareils { get; set; }
 
     }

@@ -33,6 +33,29 @@
                         </li>
                         @if (User.Identity.IsAuthenticated)
                         {
+                            @if (User.IsInRole("administrateur") || User.IsInRole("editeur"))
+                            {
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle text-dark" href="#" id="controleDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Contrôle</a>
+                                    <ul class="dropdown-menu" aria-labelledby="controleDropdown">
+                                        <li>
+                                            <a class="dropdown-item" asp-area="" asp-controller="Controle" asp-action="Sites">
+                                                Sites
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" asp-area="" asp-controller="Controle" asp-action="Appareils">
+                                                Appareils
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" asp-area="" asp-controller="Controle" asp-action="Licences">
+                                                Licences
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </li>
+                            }
                             @if (User.IsInRole("administrateur"))
                             {
                                 <li class="nav-item dropdown">
