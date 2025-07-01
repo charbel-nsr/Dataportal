@@ -13,6 +13,7 @@ using System.Linq;
 //TODO: send email asking users to rechange ther password if there requeast is accepted
 //TODO: check for error or succes meessage if they all exist and work correctly
 //TODO: add svg if no data found https://lottiefiles.com/free-animation/folio-missing-test-38v5fr6HMP
+//TODO: add a button to allow admins to creat users
 
 namespace Dataportal.Controllers
 {
@@ -404,6 +405,88 @@ namespace Dataportal.Controllers
 
             TempData["Success"] = "Domaine supprimé avec succès.";
             return RedirectToAction("Entreprises");
+        }
+
+        [HttpGet]
+        public IActionResult Utilisateurs(string search, int? selectedEntrepriseId, int? selectedRoleId, bool? compteActif)
+        {
+            var query = _context.Utilisateur
+                .Include(u => u.Entreprise)
+                .Include(u => u.Role)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                query = query.Where(u =>
+                    u.Nom.Contains(search) ||
+                    u.Prenom.Contains(search) ||
+                    u.Email.Contains(search));
+            }
+
+            if (selectedEntrepriseId.HasValue)
+            {
+                query = query.Where(u => u.IdEntreprise == selectedEntrepriseId.Value);
+            }
+
+            if (selectedRoleId.HasValue)
+            {
+                query = query.Where(u => u.IdRole == selectedRoleId.Value);
+            }
+
+            if (compteActif.HasValue)
+            {
+                query = query.Where(u => u.CompteActif == compteActif.Value);
+            }
+
+            var vm = new UtilisateursAdminViewModel
+            {
+                Utilisateurs = query.ToList(),
+                Entreprises = _context.Entreprise.Where(e => e.Actif).ToList(),
+                Roles = _context.Role.ToList(),
+                Search = search,
+                SelectedEntrepriseId = selectedEntrepriseId,
+                SelectedRoleId = selectedRoleId,
+                CompteActif = compteActif
+            };
+
+            return View(vm);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult ToggleUtilisateurActif(int id)
+        {
+            //TODO: verify and test this function
+            //TODO: send email on activation or deactivation of the user
+            //TODO: LogOut the user if deactivated
+            //TODO: Check the button that activate and desactivate if its working
+            var utilisateur = _context.Utilisateur.FirstOrDefault(u => u.Id == id);
+            if (utilisateur == null)
+            {
+                TempData["Error"] = "Utilisateur introuvable.";
+                return RedirectToAction("Utilisateurs");
+            }
+
+            if (utilisateur.CompteActif)
+            {
+                // Deactivate
+                utilisateur.CompteActif = false;
+                // Disconnect:...
+                //...
+            }
+            else
+            {
+                // Reactivate
+                utilisateur.CompteActif = true;
+                utilisateur.FinLockout = null;
+            }
+
+            utilisateur.DateModification = DateTime.Now;
+
+            _context.SaveChanges();
+
+            TempData["Success"] = "Statut du compte mis à jour.";
+            return RedirectToAction("Utilisateurs");
         }
 
     }

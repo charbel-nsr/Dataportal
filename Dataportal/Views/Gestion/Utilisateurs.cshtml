@@ -1,0 +1,251 @@
+﻿@model Dataportal.ViewModels.UtilisateursAdminViewModel
+@{
+    ViewData["Title"] = "Gestion des utilisateurs";
+}
+
+<div class="container">
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    <div class="row bg-light rounded shadow p-4 mb-4">
+        <form method="get" class="row g-3">
+            <div class="col-md-8 mt-2">
+                <div class="form-floating">
+                    <input type="text" class="form-control" name="search" id="search" placeholder="Recherche" value="@Model.Search">
+                    <label for="search">Nom, prénom ou email</label>
+                </div>
+            </div>
+            <div class="col-md-4 mt-2">
+                <div class="form-floating">
+                    <select class="form-select" name="selectedEntrepriseId" id="selectedEntrepriseId">
+                        <option value="">Toutes les entreprises</option>
+                        @foreach (var e in Model.Entreprises)
+                        {
+                            <option value="@e.Id" selected="@(e.Id == Model.SelectedEntrepriseId ? "selected" : null)">@e.Nom</option>
+                        }
+                    </select>
+                    <label for="selectedEntrepriseId">Entreprise</label>
+                </div>
+            </div>
+            <div class="col-md-4 mt-2">
+                <div class="form-floating">
+                    <select class="form-select" name="selectedRoleId" id="selectedRoleId">
+                        <option value="">Tous les rôles</option>
+                        @foreach (var r in Model.Roles)
+                        {
+                            <option value="@r.Id" selected="@(r.Id == Model.SelectedRoleId ? "selected" : null)">@r.Libelle</option>
+                        }
+                    </select>
+                    <label for="selectedRoleId">Rôle</label>
+                </div>
+            </div>
+            <div class="col-md-4 mt-2">
+                <div class="form-floating">
+                    <select class="form-select" name="compteActif" id="compteActif">
+                        <option value="">Tous</option>
+                        <option value="true" selected="@(Model.CompteActif == true ? "selected" : null)">Actifs</option>
+                        <option value="false" selected="@(Model.CompteActif == false ? "selected" : null)">Inactifs</option>
+                    </select>
+                    <label for="compteActif">Statut du compte</label>
+                </div>
+            </div>
+            <div class="col-md-4 mt-2">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <button type="submit" class="btn btn-primary w-100">Filtrer</button>
+                    </div>
+                    <div class="col-6">
+                        <a href="@Url.Action("Utilisateurs", "Gestion")" class="btn btn-outline-primary w-100">Réinitialiser</a>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+    <div class="container">
+        <div class="table-responsive">
+            <table class="table table-hover shadow-sm">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nom</th>
+                        <th>Prénom</th>
+                        <th>Email</th>
+                        <th>Statut</th>
+                        <th>Entreprise</th>
+                        <th>Rôle</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var u in Model.Utilisateurs)
+                    {
+                        <tr>
+                            <td>@u.Nom</td>
+                            <td>@u.Prenom</td>
+                            <td>@u.Email</td>
+                            <td>
+                                @if (u.CompteActif)
+                                {
+                                    <span class="badge bg-success">Actif</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Inactif</span>
+                                }
+                            </td>
+                            <td>@u.Entreprise?.Nom</td>
+                            <td>@u.Role?.Libelle</td>
+                            <td>
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-secondary"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#userDetailsModal"
+                                        data-id="@u.Id"
+                                        data-nom="@u.Nom"
+                                        data-prenom="@u.Prenom"
+                                        data-email="@u.Email"
+                                        data-actif="@u.CompteActif"
+                                        data-entreprise="@u.Entreprise?.Nom"
+                                        data-role="@u.Role?.Libelle"
+                                        data-login="@u.DernierLogin?.ToString("g")"
+                                        data-description="@u.DescriptionProfil"
+                                        data-linkedin="@u.LienLinkedIn">
+                                    <i class="bi bi-exclamation-circle"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="userDetailsModal" tabindex="-1" aria-labelledby="userDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="userDetailsModalLabel">Détails de l'utilisateur</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Nom:</strong> <span id="detailNom"></span></p>
+                <p><strong>Prénom:</strong> <span id="detailPrenom"></span></p>
+                <p><strong>Email:</strong> <span id="detailEmail"></span></p>
+                <p><strong>Statut:</strong> <span id="detailActif"></span></p>
+                <p><strong>Entreprise:</strong> <span id="detailEntreprise"></span></p>
+                <p><strong>Rôle:</strong> <span id="detailRole"></span></p>
+                <p><strong>Dernier login:</strong> <span id="detailLogin"></span></p>
+                <p><strong>Description:</strong> <span id="detailDescription"></span></p>
+                <p><strong>LinkedIn:</strong> <a id="detailLinkedIn" href="#" target="_blank"></a></p>
+                <div id="confirmWarning" class="alert alert-danger d-none mt-3"></div>
+            </div>
+            <div class="modal-footer">
+                <form id="toggleActifForm" method="post" asp-action="ToggleUtilisateurActif" class="d-flex gap-2 align-items-center m-0">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" id="toggleUserId" value="" />
+                    <button type="button" id="toggleActifButton" class="btn btn-primary">
+                        <span id="toggleActifButtonText"></span>
+                    </button>
+                </form>
+                <button type="button" class="btn btn-outline-primary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        let confirming = false;
+        let currentIsActive = true;
+
+        const userDetailsModal = document.getElementById('userDetailsModal');
+        const toggleActifForm = document.getElementById('toggleActifForm');
+        const toggleUserIdInput = document.getElementById('toggleUserId');
+        const toggleActifButton = document.getElementById('toggleActifButton');
+        const toggleActifButtonText = document.getElementById('toggleActifButtonText');
+        const confirmWarning = document.getElementById('confirmWarning');
+
+        userDetailsModal.addEventListener('show.bs.modal', event => {
+            confirming = false;
+            confirmWarning.classList.add('d-none');
+            confirmWarning.textContent = '';
+
+            const button = event.relatedTarget;
+            const id = button.getAttribute('data-id');
+            const nom = button.getAttribute('data-nom');
+            const prenom = button.getAttribute('data-prenom');
+            const email = button.getAttribute('data-email');
+            const actif = button.getAttribute('data-actif') === 'True';
+            currentIsActive = actif;
+            const entreprise = button.getAttribute('data-entreprise');
+            const role = button.getAttribute('data-role');
+            const login = button.getAttribute('data-login') || 'Jamais';
+            const description = button.getAttribute('data-description') || '—';
+            const linkedin = button.getAttribute('data-linkedin');
+
+            document.getElementById('detailNom').textContent = nom;
+            document.getElementById('detailPrenom').textContent = prenom;
+            document.getElementById('detailEmail').textContent = email;
+            document.getElementById('detailActif').textContent = actif ? 'Actif' : 'Inactif';
+            document.getElementById('detailEntreprise').textContent = entreprise;
+            document.getElementById('detailRole').textContent = role;
+            document.getElementById('detailLogin').textContent = login;
+            document.getElementById('detailDescription').textContent = description;
+            const linkedinLink = document.getElementById('detailLinkedIn');
+            if (linkedin) {
+                linkedinLink.href = linkedin;
+                linkedinLink.textContent = linkedin;
+            } else {
+                linkedinLink.href = '#';
+                linkedinLink.textContent = '—';
+            }
+
+            toggleUserIdInput.value = id;
+
+            // Setup initial button text
+            if (actif) {
+                toggleActifButtonText.textContent = 'Désactiver ce profil';
+                toggleActifButton.classList.remove('btn-success');
+                toggleActifButton.classList.add('btn-warning');
+            } else {
+                toggleActifButtonText.textContent = 'Activer ce profil';
+                toggleActifButton.classList.remove('btn-warning');
+                toggleActifButton.classList.add('btn-success');
+            }
+        });
+
+        toggleActifButton.addEventListener('click', () => {
+            if (!confirming) {
+                // First click: show confirmation
+                confirming = true;
+                confirmWarning.classList.remove('d-none');
+                if (currentIsActive) {
+                    confirmWarning.innerHTML = "Êtes-vous sûr de vouloir <strong>désactiver</strong> ce profil ? Attention, l'utilisateur sera <strong>déconnecté immédiatement</strong> et averti par mail.";
+                    toggleActifButtonText.textContent = 'Confirmer la désactivation';
+                    toggleActifButton.classList.remove('btn-warning');
+                    toggleActifButton.classList.add('btn-danger');
+                } else {
+                    confirmWarning.textContent = "Êtes-vous sûr de vouloir activer ce profil ?";
+                    toggleActifButtonText.textContent = 'Confirmer l’activation';
+                    toggleActifButton.classList.remove('btn-success');
+                    toggleActifButton.classList.add('btn-primary');
+                }
+            } else {
+                // Second click: submit form
+                toggleActifForm.submit();
+            }
+        });
+    });
+</script>
+
