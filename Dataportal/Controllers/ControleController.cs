@@ -289,5 +289,150 @@ namespace Dataportal.Controllers
             TempData["Success"] = "Licence modifiée avec succès.";
             return RedirectToAction("Licences");
         }
+
+        // GET: /Controle/Appareils
+        [HttpGet]
+        public IActionResult Appareils(string search, bool? actif)
+        {
+            var query = _context.Appareil.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                query = query.Where(a =>
+                    a.Nom.Contains(search) ||
+                    a.Description.Contains(search) ||
+                    a.Capacite.Contains(search) ||
+                    a.Model.Contains(search) ||
+                    a.Manufacturer.Contains(search));
+            }
+
+            if (actif.HasValue)
+            {
+                query = query.Where(a => a.Actif == actif.Value);
+            }
+
+            var vm = new AppareilViewModel
+            {
+                Appareils = query.ToList(),
+                Search = search,
+                Actif = actif
+            };
+
+            return View(vm);
+        }
+
+        // POST: /Controle/CreateAppareil
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult CreateAppareil(string Nom, string Description, string Capacite, string Model, string Manufacturer, bool Actif)
+        {
+            if (string.IsNullOrWhiteSpace(Nom))
+            {
+                TempData["Error"] = "Le nom est requis.";
+                return RedirectToAction("Appareils");
+            }
+
+            var normalized = Nom.Trim().ToLower();
+            var exists = _context.Appareil.Any(a => a.Nom.Trim().ToLower() == normalized);
+            if (exists)
+            {
+                TempData["Error"] = "Un appareil avec ce nom existe déjà.";
+                return RedirectToAction("Appareils");
+            }
+
+            var appareil = new Appareil
+            {
+                Nom = Nom.Trim(),
+                Description = Description?.Trim(),
+                Capacite = Capacite?.Trim(),
+                Model = Model?.Trim(),
+                Manufacturer = Manufacturer?.Trim(),
+                Actif = Actif
+            };
+
+            _context.Appareil.Add(appareil);
+            _context.SaveChanges();
+
+            TempData["Success"] = "Appareil créé avec succès.";
+            return RedirectToAction("Appareils");
+        }
+
+        // POST: /Controle/ActivateAppareil
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult ActivateAppareil(int id)
+        {
+            var appareil = _context.Appareil.FirstOrDefault(a => a.Id == id);
+            if (appareil == null)
+            {
+                TempData["Error"] = "Appareil introuvable.";
+                return RedirectToAction("Appareils");
+            }
+
+            appareil.Actif = true;
+            _context.SaveChanges();
+
+            TempData["Success"] = "Appareil activé avec succès.";
+            return RedirectToAction("Appareils");
+        }
+
+        // POST: /Controle/DeactivateAppareil
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult DeactivateAppareil(int id)
+        {
+            var appareil = _context.Appareil.FirstOrDefault(a => a.Id == id);
+            if (appareil == null)
+            {
+                TempData["Error"] = "Appareil introuvable.";
+                return RedirectToAction("Appareils");
+            }
+
+            appareil.Actif = false;
+            _context.SaveChanges();
+
+            TempData["Success"] = "Appareil désactivé avec succès.";
+            return RedirectToAction("Appareils");
+        }
+
+        // POST: /Controle/EditAppareil
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult EditAppareil(int Id, string Nom, string Description, string Capacite, string Model, string Manufacturer, bool Actif)
+        {
+            if (string.IsNullOrWhiteSpace(Nom))
+            {
+                TempData["Error"] = "Le nom est requis.";
+                return RedirectToAction("Appareils");
+            }
+
+            var appareil = _context.Appareil.FirstOrDefault(a => a.Id == Id);
+            if (appareil == null)
+            {
+                TempData["Error"] = "Appareil introuvable.";
+                return RedirectToAction("Appareils");
+            }
+
+            // Check for duplicate name
+            var normalizedNom = Nom.Trim().ToLower();
+            var duplicate = _context.Appareil.Any(a => a.Id != Id && a.Nom.Trim().ToLower() == normalizedNom);
+            if (duplicate)
+            {
+                TempData["Error"] = "Un autre appareil avec ce nom existe déjà.";
+                return RedirectToAction("Appareils");
+            }
+
+            appareil.Nom = Nom.Trim();
+            appareil.Description = Description?.Trim();
+            appareil.Capacite = Capacite?.Trim();
+            appareil.Model = Model?.Trim();
+            appareil.Manufacturer = Manufacturer?.Trim();
+            appareil.Actif = Actif;
+
+            _context.SaveChanges();
+
+            TempData["Success"] = "Appareil modifié avec succès.";
+            return RedirectToAction("Appareils");
+        }
     }
 }

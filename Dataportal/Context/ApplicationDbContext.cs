@@ -23,7 +23,6 @@ namespace Dataportal.Context
         public DbSet<DonneesContexteEnvironnemental> DonneesContexteEnvironnemental { get; set; }
         public DbSet<DonneesEventLogs> DonneesEventLogs { get; set; }
         public DbSet<Entreprise> Entreprise { get; set; }
-        public DbSet<Historique> Historique { get; set; }
         public DbSet<Licence> Licence { get; set; }
         public DbSet<Metadonnee> Metadonnee { get; set; }
         public DbSet<Metadonnee_Appareil> Metadonnee_Appareil { get; set; }
@@ -171,20 +170,6 @@ namespace Dataportal.Context
                       .HasForeignKey(d => d.IdEntreprise)
                       .OnDelete(DeleteBehavior.Restrict);
             });
-            modelBuilder.Entity<Historique>(entity =>
-            {
-                entity.HasKey(h => h.Id);
-                entity.Property(h => h.Date)
-                      .IsRequired();
-                entity.Property(h => h.Lien)
-                      .HasMaxLength(500);
-                entity.Property(h => h.Description)
-                      .HasMaxLength(1000);
-                entity.HasOne(h => h.Metadonnee)
-                      .WithMany(m => m.Historiques)
-                      .HasForeignKey(h => h.IdMetadonnee)
-                      .OnDelete(DeleteBehavior.Restrict);
-            });
             modelBuilder.Entity<Licence>(entity =>
             {
                 entity.HasKey(l => l.Id);
@@ -222,11 +207,6 @@ namespace Dataportal.Context
                 entity.HasOne(m => m.Utilisateur)
                       .WithMany(u => u.Metadonnees)
                       .HasForeignKey(m => m.IdUtilisateur);
-                entity.Property(m => m.EndTimestamp);
-                entity.Property(m => m.StartTimestamp);
-                entity.HasMany(m => m.Historiques)
-                      .WithOne(h => h.Metadonnee)
-                      .HasForeignKey(h => h.IdMetadonnee);
                 entity.HasOne(m => m.Donnees)
                       .WithOne(d => d.Metadonnee)
                       .HasForeignKey<Metadonnee>(m => m.IdDonnees);

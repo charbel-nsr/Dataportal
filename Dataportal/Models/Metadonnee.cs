@@ -30,10 +30,6 @@ namespace Dataportal.Models
 
         public DateTime? DernierMiseAJour { get; set; }
 
-        [Required]
-        [ForeignKey("Documentation")]
-        public int IdDocumentation { get; set; }
-
         public bool SeriesTemporelles { get; set; }
 
         public int QualiteDesDonnees { get; set; }
@@ -55,23 +51,13 @@ namespace Dataportal.Models
 
         public Utilisateur Utilisateur { get; set; }
 
-        public DateTime StartTimestamp { get; set; }
-
-        public DateTime EndTimestamp { get; set; }
-
         public bool AutoriserApi { get; set; }
 
         public bool Anonymiser { get; set; }
 
         public bool AutoriserLeTelechargement { get; set; }
 
-        public bool VisualiserLesdonnees { get; set; }
-
-        public bool AutoriserLesSQL { get; set; }
-
         public ICollection<Metadonnee_Appareil> Metadonnee_Appareils { get; set; }
-
-        public ICollection<Historique> Historiques { get; set; }
 
         [ForeignKey("Donnees")]
         public int IdDonnees { get; set; }
