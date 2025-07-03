@@ -1,0 +1,65 @@
+﻿@model Dataportal.ViewModels.DonneesContexteEnvironnementalCreateStep4ViewModel
+
+@{
+    ViewData["Title"] = "Créer un ensemble de données - Étape 4";
+}
+
+<div class="container">
+    <h2 class="mb-4">Ajouter les données de Contexte Environnemental (Étape 4/5)</h2>
+
+    <div class="alert alert-info">
+        <p>⚠️ Cette étape est <strong>optionnelle</strong>. Vous pouvez ajouter des fichiers de contexte environnemental, ou cliquer sur <strong>Ignorer</strong> pour passer à l'étape suivante.</p>
+    </div>
+
+    <form asp-action="CreateStep4" method="post" enctype="multipart/form-data" class="bg-light p-4 rounded shadow-sm">
+        @Html.AntiForgeryToken()
+
+        <input type="hidden" asp-for="IdMetadonnee" />
+
+        <div class="form-floating mb-3">
+            <input asp-for="Libelle" class="form-control" placeholder="Libellé">
+            <label asp-for="Libelle"></label>
+            <span asp-validation-for="Libelle" class="text-danger"></span>
+        </div>
+
+        <div class="form-floating mb-3">
+            <input asp-for="Code" class="form-control" placeholder="Code">
+            <label asp-for="Code"></label>
+            <span asp-validation-for="Code" class="text-danger"></span>
+        </div>
+
+        <div class="form-floating mb-3">
+            <textarea asp-for="Description" class="form-control" style="height: 100px;" placeholder="Description"></textarea>
+            <label asp-for="Description"></label>
+            <span asp-validation-for="Description" class="text-danger"></span>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label asp-for="StartTimestamp" class="form-label"></label>
+                <input asp-for="StartTimestamp" class="form-control" type="datetime-local" />
+                <span asp-validation-for="StartTimestamp" class="text-danger"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="EndTimestamp" class="form-label"></label>
+                <input asp-for="EndTimestamp" class="form-control" type="datetime-local" />
+                <span asp-validation-for="EndTimestamp" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="UploadedFiles" class="form-label">Importer des fichiers CSV (optionnel)</label>
+            <input asp-for="UploadedFiles" class="form-control" type="file" multiple>
+            <span asp-validation-for="UploadedFiles" class="text-danger"></span>
+        </div>
+
+        <div class="d-flex justify-content-between">
+            <a asp-action="Details" asp-route-id="@Model.IdMetadonnee" class="btn btn-outline-secondary">Ignorer cette étape</a>
+            <button type="submit" class="btn btn-primary">Suivant</button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

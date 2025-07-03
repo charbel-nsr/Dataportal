@@ -17,6 +17,15 @@ using System.Data;
 //TODO: do step 3, 4 and 5
 //TODO: add a process bar
 //TODO: implement SqlBulkCopy for faster inserts 
+//TODO: add confirmatio on each next button
+//TODO: control on the dates to be by default the curent date and not bigger then from not biger the the too
+//TODO: add at the end of the id a code to describe wich step it is, like data or logs or env event
+//TODO: check why Metadonnee_Appareil is not beign saved in step1
+//TODO: add tabel of data details in step 3 and 4
+//TODO: make ui of step 3 more like 4
+//TODO: id metadone in step 2 is not being filled
+//TODO: allow user to create pivate data and edit the cmnt in the database of is role
+//TODO: create a many to many relation in the data page creation to pick this data is intern to wich compani
 
 namespace Dataportal.Controllers
 {
@@ -216,7 +225,7 @@ namespace Dataportal.Controllers
 
             return dt;
         }
-
+         
         private bool ColumnsMatch(DataTable dt1, DataTable dt2)
         {
             if (dt1.Columns.Count != dt2.Columns.Count) return false;
@@ -270,6 +279,272 @@ namespace Dataportal.Controllers
                 }
                 await insertCmd.ExecuteNonQueryAsync();
             }
+        }
+
+        [HttpGet]
+        public IActionResult CreateStep3(int id)
+        {
+            // Validate Metadonnee exists
+            var metadonnee = _context.Metadonnee.Find(id);
+            if (metadonnee == null)
+            {
+                return NotFound();
+            }
+
+            var vm = new DonneesEventLogsCreateStep3ViewModel
+            {
+                IdMetadonnee = id
+            };
+            return View(vm);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateStep3(DonneesEventLogsCreateStep3ViewModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+
+            var metadonnee = await _context.Metadonnee.FindAsync(model.IdMetadonnee);
+            if (metadonnee == null)
+            {
+                TempData["Error"] = "Métadonnée introuvable.";
+                return RedirectToAction("CreateStep1");
+            }
+
+            // Handle skip: if no file uploaded, user wants to skip
+            if (model.UploadedFiles == null || !model.UploadedFiles.Any())
+            {
+                return RedirectToAction("CreateStep4", new { id = model.IdMetadonnee });
+            }
+
+            // Merge uploaded CSVs
+            var mergedData = new DataTable();
+            foreach (var file in model.UploadedFiles)
+            {
+                using var stream = file.OpenReadStream();
+                using var reader = new StreamReader(stream);
+                var csv = await reader.ReadToEndAsync();
+                var table = CsvToDataTable(csv);
+
+                if (mergedData.Columns.Count == 0)
+                {
+                    mergedData = table;
+                }
+                else
+                {
+                    if (!ColumnsMatch(mergedData, table))
+                    {
+                        TempData["Error"] = "Les fichiers CSV doivent avoir les mêmes colonnes.";
+                        return View(model);
+                    }
+                    foreach (DataRow row in table.Rows)
+                    {
+                        mergedData.ImportRow(row);
+                    }
+                }
+            }
+
+            // Create SQL Table
+            var tableName = $"{model.Libelle}-{model.Code}".Replace(" ", "_");
+            await CreateSqlTableFromDataTable(tableName, mergedData);
+
+            // Create DonneesEventLogs
+            var eventLogs = new DonneesEventLogs
+            {
+                Libelle = model.Libelle.Trim(),
+                Code = model.Code.Trim(),
+                NomDeLaTable = tableName,
+                Description = model.Description?.Trim(),
+                DateAjouter = DateTime.Now,
+                StartTimestamp = model.StartTimestamp,
+                EndTimestamp = model.EndTimestamp,
+                NombreDEvents = model.NombreDEvents,
+                IdMetadonnee = model.IdMetadonnee
+            };
+
+            _context.DonneesEventLogs.Add(eventLogs);
+            await _context.SaveChangesAsync();
+
+            // Link to Metadonnee
+            metadonnee.IdDonneesEventLogs = eventLogs.Id;
+            _context.Update(metadonnee);
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction("CreateStep4", new { id = model.IdMetadonnee });
+        }
+
+        // GET: /Donnees/CreateStep4/{id}
+        [HttpGet]
+        public IActionResult CreateStep4(int id)
+        {
+            var metadonnee = _context.Metadonnee.Find(id);
+            if (metadonnee == null)
+            {
+                return NotFound();
+            }
+
+            var vm = new DonneesContexteEnvironnementalCreateStep4ViewModel
+            {
+                IdMetadonnee = id
+            };
+            return View(vm);
+        }
+
+        // POST: /Donnees/CreateStep4
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateStep4(DonneesContexteEnvironnementalCreateStep4ViewModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+
+            var metadonnee = await _context.Metadonnee.FindAsync(model.IdMetadonnee);
+            if (metadonnee == null)
+            {
+                TempData["Error"] = "Métadonnée introuvable.";
+                return RedirectToAction("CreateStep1");
+            }
+
+            if (model.UploadedFiles == null || !model.UploadedFiles.Any())
+            {
+                // User skipped uploading: go straight to next step
+                return RedirectToAction("Details", new { id = metadonnee.Id });
+            }
+
+            // Merge uploaded CSV files
+            var mergedData = new DataTable();
+            foreach (var file in model.UploadedFiles)
+            {
+                using var stream = file.OpenReadStream();
+                using var reader = new StreamReader(stream);
+                var csv = await reader.ReadToEndAsync();
+                var table = CsvToDataTable(csv);
+
+                if (mergedData.Columns.Count == 0)
+                {
+                    mergedData = table;
+                }
+                else
+                {
+                    if (!ColumnsMatch(mergedData, table))
+                    {
+                        TempData["Error"] = "Les fichiers CSV doivent avoir les mêmes colonnes.";
+                        return View(model);
+                    }
+                    foreach (DataRow row in table.Rows)
+                    {
+                        mergedData.ImportRow(row);
+                    }
+                }
+            }
+
+            // Create SQL Table
+            var tableName = $"{model.Libelle}-{model.Code}".Replace(" ", "_");
+            await CreateSqlTableFromDataTable(tableName, mergedData);
+
+            // Save DonneesContexteEnvironnemental
+            var donneesContext = new DonneesContexteEnvironnemental
+            {
+                Libelle = model.Libelle.Trim(),
+                Code = model.Code.Trim(),
+                NomDeLaTable = tableName,
+                Description = model.Description?.Trim(),
+                DateAjouter = DateTime.Now,
+                StartTimestamp = model.StartTimestamp,
+                EndTimestamp = model.EndTimestamp,
+                IdMetadonnee = metadonnee.Id
+            };
+
+            _context.DonneesContexteEnvironnemental.Add(donneesContext);
+            await _context.SaveChangesAsync();
+
+            // Link to Metadonnee
+            metadonnee.IdDonneesContexteEnvironnemental = donneesContext.Id;
+            _context.Update(metadonnee);
+            await _context.SaveChangesAsync();
+
+            // Proceed to next step
+            return RedirectToAction("Details", new { id = metadonnee.Id });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Details(int id)
+        {
+            // 1️⃣ Load Metadonnee + navigation
+            var metadonnee = await _context.Metadonnee
+                .Include(m => m.Licence)
+                .Include(m => m.Site)
+                .Include(m => m.Visibilite)
+                .Include(m => m.Utilisateur)
+                .Include(m => m.Metadonnee_Appareils).ThenInclude(ma => ma.Appareil)
+                .FirstOrDefaultAsync(m => m.Id == id);
+
+            if (metadonnee == null)
+                return NotFound();
+
+            // 2️⃣ Load Donnees / EventLogs / Contexte
+            var donnees = await _context.Donnees.FirstOrDefaultAsync(d => d.Id == metadonnee.IdDonnees);
+            var eventLogs = await _context.DonneesEventLogs.FirstOrDefaultAsync(e => e.Id == metadonnee.IdDonneesEventLogs);
+            var contexte = await _context.DonneesContexteEnvironnemental.FirstOrDefaultAsync(c => c.Id == metadonnee.IdDonneesContexteEnvironnemental);
+
+            // 3️⃣ Load preview data
+            var donneesPreview = donnees?.NomDeLaTable != null ? await GetTablePreviewRows(donnees.NomDeLaTable) : null;
+            var eventLogsPreview = eventLogs?.NomDeLaTable != null ? await GetTablePreviewRows(eventLogs.NomDeLaTable) : null;
+            var contextePreview = contexte?.NomDeLaTable != null ? await GetTablePreviewRows(contexte.NomDeLaTable) : null;
+
+            // 4️⃣ Build ViewModel
+            var vm = new MetadonneeDetailsViewModel
+            {
+                Metadonnee = metadonnee,
+                Licence = metadonnee.Licence,
+                Site = metadonnee.Site,
+                Visibilite = metadonnee.Visibilite,
+                Utilisateur = metadonnee.Utilisateur,
+                AppareilsLies = metadonnee.Metadonnee_Appareils?.ToList(),
+
+                Donnees = donnees,
+                DonneesPreviewRows = donneesPreview,
+
+                DonneesEventLogs = eventLogs,
+                EventLogsPreviewRows = eventLogsPreview,
+
+                DonneesContexteEnvironnemental = contexte,
+                ContextePreviewRows = contextePreview
+            };
+
+            return View(vm);
+        }
+
+        private async Task<List<Dictionary<string, object>>> GetTablePreviewRows(string tableName)
+        {
+            var results = new List<Dictionary<string, object>>();
+
+            if (string.IsNullOrWhiteSpace(tableName))
+                return results;
+
+            using var connection = new SqlConnection(_context.Database.GetConnectionString());
+            await connection.OpenAsync();
+
+            var query = $"SELECT TOP 10 * FROM [{tableName}]";
+            using var command = new SqlCommand(query, connection);
+            using var reader = await command.ExecuteReaderAsync();
+
+            while (await reader.ReadAsync())
+            {
+                var row = new Dictionary<string, object>();
+                for (var i = 0; i < reader.FieldCount; i++)
+                {
+                    row[reader.GetName(i)] = reader.GetValue(i)?.ToString() ?? "";
+                }
+                results.Add(row);
+            }
+
+            return results;
         }
     }
 }

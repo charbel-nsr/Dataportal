@@ -1,0 +1,191 @@
+﻿@model Dataportal.ViewModels.MetadonneeDetailsViewModel
+
+@{
+    ViewData["Title"] = "Détails de l'ensemble de données";
+}
+
+<div class="container my-4">
+    <h2 class="mb-4">@Model.Metadonnee.Nom</h2>
+
+    <!-- ✅ 1. METADATA -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-primary text-white">
+            Métadonnée
+        </div>
+        <div class="card-body">
+            <p><strong>Description:</strong> @Model.Metadonnee.Description</p>
+            <p><strong>Licence:</strong> @Model.Licence?.Libelle</p>
+            <p><strong>Site:</strong> @Model.Site?.Nom</p>
+            <p><strong>Visibilité:</strong> @Model.Visibilite?.Libelle</p>
+            <p><strong>Créateur:</strong> @Model.Utilisateur?.Nom @Model.Utilisateur?.Prenom (@Model.Utilisateur?.Email)</p>
+            <p><strong>Taille des données:</strong> @Model.Metadonnee.TailleDesDonnees ?? "—"</p>
+            <p><strong>Séries temporelles:</strong> @(Model.Metadonnee.SeriesTemporelles ? "Oui" : "Non")</p>
+            <p><strong>API Autorisée:</strong> @(Model.Metadonnee.AutoriserApi ? "Oui" : "Non")</p>
+            <p><strong>Anonymisation:</strong> @(Model.Metadonnee.Anonymiser ? "Oui" : "Non")</p>
+            <p><strong>Téléchargement autorisé:</strong> @(Model.Metadonnee.AutoriserLeTelechargement ? "Oui" : "Non")</p>
+            <p><strong>Dernière mise à jour:</strong> @Model.Metadonnee.DernierMiseAJour?.ToString("g")</p>
+
+            @if (Model.AppareilsLies != null && Model.AppareilsLies.Any())
+            {
+                <hr />
+                <h5>Appareils associés</h5>
+                <ul>
+                    @foreach (var app in Model.AppareilsLies)
+                    {
+                        <li>
+                            @app.Appareil?.Nom (@app.Commentaire)
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+
+    <!-- ✅ 2. DONNEES -->
+    @if (Model.Donnees != null)
+    {
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header bg-success text-white">
+                Données
+            </div>
+            <div class="card-body">
+                <p><strong>Libellé:</strong> @Model.Donnees.Libelle</p>
+                <p><strong>Code:</strong> @Model.Donnees.Code</p>
+                <p><strong>Nom de la table:</strong> @Model.Donnees.NomDeLaTable</p>
+                <p><strong>Description:</strong> @Model.Donnees.Description</p>
+                <p><strong>Nombre de capteurs:</strong> @Model.Donnees.NombreDeCapteurs</p>
+                <p><strong>Fréquence de collecte:</strong> @Model.Donnees.FrequenceDeCollect</p>
+                <p><strong>Dates:</strong> @Model.Donnees.StartTimestamp.ToShortDateString() - @Model.Donnees.EndTimestamp.ToShortDateString()</p>
+
+                @if (Model.DonneesPreviewRows?.Any() == true)
+                {
+                    <hr />
+                    <h6>Aperçu des données</h6>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-sm">
+                            <thead>
+                                <tr>
+                                    @foreach (var col in Model.DonneesPreviewRows.First().Keys)
+                                    {
+                                        <th>@col</th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var row in Model.DonneesPreviewRows)
+                                {
+                                    <tr>
+                                        @foreach (var val in row.Values)
+                                        {
+                                            <td>@val</td>
+                                        }
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <!-- ✅ 3. EVENT LOGS -->
+    @if (Model.DonneesEventLogs != null)
+    {
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header bg-warning text-dark">
+                Event Logs
+            </div>
+            <div class="card-body">
+                <p><strong>Libellé:</strong> @Model.DonneesEventLogs.Libelle</p>
+                <p><strong>Code:</strong> @Model.DonneesEventLogs.Code</p>
+                <p><strong>Nom de la table:</strong> @Model.DonneesEventLogs.NomDeLaTable</p>
+                <p><strong>Description:</strong> @Model.DonneesEventLogs.Description</p>
+                <p><strong>Nombre d'événements:</strong> @Model.DonneesEventLogs.NombreDEvents</p>
+                <p><strong>Dates:</strong> @Model.DonneesEventLogs.StartTimestamp.ToShortDateString() - @Model.DonneesEventLogs.EndTimestamp.ToShortDateString()</p>
+
+                @if (Model.EventLogsPreviewRows?.Any() == true)
+                {
+                    <hr />
+                    <h6>Aperçu des Event Logs</h6>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-sm">
+                            <thead>
+                                <tr>
+                                    @foreach (var col in Model.EventLogsPreviewRows.First().Keys)
+                                    {
+                                        <th>@col</th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var row in Model.EventLogsPreviewRows)
+                                {
+                                    <tr>
+                                        @foreach (var val in row.Values)
+                                        {
+                                            <td>@val</td>
+                                        }
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <!-- ✅ 4. CONTEXTE ENVIRONNEMENTAL -->
+    @if (Model.DonneesContexteEnvironnemental != null)
+    {
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header bg-info text-white">
+                Contexte Environnemental
+            </div>
+            <div class="card-body">
+                <p><strong>Libellé:</strong> @Model.DonneesContexteEnvironnemental.Libelle</p>
+                <p><strong>Code:</strong> @Model.DonneesContexteEnvironnemental.Code</p>
+                <p><strong>Nom de la table:</strong> @Model.DonneesContexteEnvironnemental.NomDeLaTable</p>
+                <p><strong>Description:</strong> @Model.DonneesContexteEnvironnemental.Description</p>
+                <p><strong>Dates:</strong> @Model.DonneesContexteEnvironnemental.StartTimestamp.ToShortDateString() - @Model.DonneesContexteEnvironnemental.EndTimestamp.ToShortDateString()</p>
+
+                @if (Model.ContextePreviewRows?.Any() == true)
+                {
+                    <hr />
+                    <h6>Aperçu du contexte environnemental</h6>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-sm">
+                            <thead>
+                                <tr>
+                                    @foreach (var col in Model.ContextePreviewRows.First().Keys)
+                                    {
+                                        <th>@col</th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var row in Model.ContextePreviewRows)
+                                {
+                                    <tr>
+                                        @foreach (var val in row.Values)
+                                        {
+                                            <td>@val</td>
+                                        }
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <!-- ✅ BUTTON TO GO HOME -->
+    <div class="text-center mt-4">
+        <a href="@Url.Action("Index", "Home")" class="btn btn-outline-primary">
+            Retour à l'accueil
+        </a>
+    </div>
+</div>

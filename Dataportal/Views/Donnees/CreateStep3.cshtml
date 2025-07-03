@@ -1,0 +1,69 @@
+﻿@model Dataportal.ViewModels.DonneesEventLogsCreateStep3ViewModel
+
+@{
+    ViewData["Title"] = "Créer Event Logs - Étape 3";
+}
+
+<div class="container">
+    <h2 class="mb-4">Ajouter les Event Logs (Étape 3/5)</h2>
+    <form asp-action="CreateStep3" method="post" enctype="multipart/form-data" class="bg-light p-4 rounded shadow-sm">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="IdMetadonnee" />
+
+        <div class="form-floating mb-3">
+            <input asp-for="Libelle" class="form-control" placeholder="Libellé" required>
+            <label asp-for="Libelle"></label>
+            <span asp-validation-for="Libelle" class="text-danger"></span>
+        </div>
+
+        <div class="form-floating mb-3">
+            <input asp-for="Code" class="form-control" placeholder="Code" required>
+            <label asp-for="Code"></label>
+            <span asp-validation-for="Code" class="text-danger"></span>
+        </div>
+
+        <div class="form-floating mb-3">
+            <textarea asp-for="Description" class="form-control" placeholder="Description" style="height: 100px;"></textarea>
+            <label asp-for="Description"></label>
+            <span asp-validation-for="Description" class="text-danger"></span>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="form-floating">
+                    <input asp-for="StartTimestamp" type="datetime-local" class="form-control" required>
+                    <label asp-for="StartTimestamp"></label>
+                    <span asp-validation-for="StartTimestamp" class="text-danger"></span>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-floating">
+                    <input asp-for="EndTimestamp" type="datetime-local" class="form-control" required>
+                    <label asp-for="EndTimestamp"></label>
+                    <span asp-validation-for="EndTimestamp" class="text-danger"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-floating mb-3">
+            <input asp-for="NombreDEvents" type="number" class="form-control">
+            <label asp-for="NombreDEvents"></label>
+            <span asp-validation-for="NombreDEvents" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="UploadedFiles" class="form-label">Fichiers CSV (optionnels)</label>
+            <input asp-for="UploadedFiles" class="form-control" type="file" multiple>
+            <span asp-validation-for="UploadedFiles" class="text-danger"></span>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100">Suivant</button>
+        <a class="btn btn-secondary w-100 mt-2" href="@Url.Action("CreateStep4", "Donnees", new { id = Model.IdMetadonnee })">
+            Passer cette étape
+        </a>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
