@@ -65,14 +65,14 @@ namespace Dataportal.Models
         public Donnees Donnees { get; set; }
 
         [ForeignKey("DonneesEventLogs")]
-        public int IdDonneesEventLogs { get; set; }
+        public int? IdDonneesEventLogs { get; set; }
 
-        public DonneesEventLogs DonneesEventLogs { get; set; }
+        public DonneesEventLogs? DonneesEventLogs { get; set; }
 
         [ForeignKey("DonneesContexteEnvironnemental")]
-        public int IdDonneesContexteEnvironnemental { get; set; }
+        public int? IdDonneesContexteEnvironnemental { get; set; }
 
-        public DonneesContexteEnvironnemental DonneesContexteEnvironnemental { get; set; }
+        public DonneesContexteEnvironnemental? DonneesContexteEnvironnemental { get; set; }
         
     }
 }

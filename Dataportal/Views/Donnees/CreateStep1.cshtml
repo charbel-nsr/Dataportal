@@ -1,0 +1,87 @@
+﻿@model Dataportal.ViewModels.MetadonneeCreateViewModel
+
+@{
+    ViewData["Title"] = "Créer un ensemble de données - Étape 1";
+}
+
+<div class="container">
+    <h2 class="mb-4">Créer une métadonnée (Étape 1/5)</h2>
+    <form method="post" class="bg-light p-4 rounded shadow-sm">
+        @Html.AntiForgeryToken()
+
+        <div class="form-floating mb-3">
+            <input asp-for="Nom" class="form-control" placeholder="Nom" required>
+            <label asp-for="Nom"></label>
+            <span asp-validation-for="Nom" class="text-danger"></span>
+        </div>
+
+        <div class="form-floating mb-3">
+            <textarea asp-for="Description" class="form-control" placeholder="Description" style="height: 100px;" required></textarea>
+            <label asp-for="Description"></label>
+            <span asp-validation-for="Description" class="text-danger"></span>
+        </div>
+
+        <div class="form-floating mb-3">
+            <select asp-for="IdLicence" class="form-select" asp-items="@(new SelectList(Model.Licences, "Id", "Libelle"))" required>
+                <option value="">Sélectionnez une licence</option>
+            </select>
+            <label asp-for="IdLicence"></label>
+            <span asp-validation-for="IdLicence" class="text-danger"></span>
+        </div>
+
+        <div class="form-floating mb-3">
+            <select asp-for="IdSite" class="form-select" asp-items="@(new SelectList(Model.Sites, "Id", "Nom"))" required>
+                <option value="">Sélectionnez un site</option>
+            </select>
+            <label asp-for="IdSite"></label>
+            <span asp-validation-for="IdSite" class="text-danger"></span>
+        </div>
+
+        <div class="form-floating mb-3">
+            <select asp-for="SelectedAppareils" asp-items="@(new MultiSelectList(Model.Appareils, "Id", "Nom"))" class="form-select" multiple>
+            </select>
+            <label asp-for="SelectedAppareils"></label>
+            <span asp-validation-for="SelectedAppareils" class="text-danger"></span>
+        </div>
+
+        <div class="form-floating mb-3">
+            <select asp-for="IdVisibilite" class="form-select" asp-items="@(new SelectList(Model.Visibilites, "Id", "Libelle"))" required>
+                <option value="">Sélectionnez une visibilité</option>
+            </select>
+            <label asp-for="IdVisibilite"></label>
+            <span asp-validation-for="IdVisibilite" class="text-danger"></span>
+        </div>
+
+        <div class="form-floating mb-3">
+            <input asp-for="TailleDesDonnees" class="form-control" placeholder="Taille des données">
+            <label asp-for="TailleDesDonnees"></label>
+            <span asp-validation-for="TailleDesDonnees" class="text-danger"></span>
+        </div>
+
+        <div class="form-check mb-2">
+            <input class="form-check-input" asp-for="SeriesTemporelles" />
+            <label class="form-check-label" asp-for="SeriesTemporelles"></label>
+        </div>
+
+        <div class="form-check mb-2">
+            <input class="form-check-input" asp-for="AutoriserApi" />
+            <label class="form-check-label" asp-for="AutoriserApi"></label>
+        </div>
+
+        <div class="form-check mb-2">
+            <input class="form-check-input" asp-for="Anonymiser" />
+            <label class="form-check-label" asp-for="Anonymiser"></label>
+        </div>
+
+        <div class="form-check mb-4">
+            <input class="form-check-input" asp-for="AutoriserLeTelechargement" />
+            <label class="form-check-label" asp-for="AutoriserLeTelechargement"></label>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100">Suivant</button>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
