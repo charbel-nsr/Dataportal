@@ -3,8 +3,20 @@ using Dataportal.Models;
 using Dataportal.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
+using System.Data;
 //TODO: fix the multi select aparence
+//TODO: add fields for the data of Metadonnee_Appareil dans step1
+//TODO: validate and limite file sizer in import step2, 3 amd 4
+//TODO: add a processing page between step2 and step3
+//TODO: add a processing page between step3 and step4
+//TODO: Support batch inserts for performance.
+//TODO: suport diffrent types of files, other then csv
+//TODO: do step 3, 4 and 5
+//TODO: add a process bar
+//TODO: implement SqlBulkCopy for faster inserts 
 
 namespace Dataportal.Controllers
 {
@@ -57,6 +69,207 @@ namespace Dataportal.Controllers
                 throw new UnauthorizedAccessException("UserId claim missing.");
 
             return int.Parse(userIdClaim);
+        }
+
+        [HttpGet]
+        public IActionResult CreateStep2()
+        {
+            var step1Json = TempData.Peek("Step1Data") as string;
+            if (string.IsNullOrEmpty(step1Json))
+            {
+                TempData["Error"] = "Vous devez d'abord remplir la première étape.";
+                return RedirectToAction("CreateStep1");
+            }
+
+            // show the upload + Donnees form
+            var vm = new DonneesCreateStep2ViewModel();
+            return View(vm);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateStep2(DonneesCreateStep2ViewModel model)
+        {
+            var step1Json = TempData["Step1Data"] as string;
+            if (string.IsNullOrEmpty(step1Json))
+            {
+                TempData["Error"] = "Les informations de la première étape sont manquantes.";
+                return RedirectToAction("CreateStep1");
+            }
+
+            var step1Data = JsonConvert.DeserializeObject<MetadonneeCreateViewModel>(step1Json);
+
+            if (!ModelState.IsValid)
+            {
+                TempData.Keep("Step1Data");
+                return View(model);
+            }
+
+            if (model.UploadedFiles == null || !model.UploadedFiles.Any())
+            {
+                ModelState.AddModelError("UploadedFiles", "Vous devez importer au moins un fichier CSV.");
+                TempData.Keep("Step1Data");
+                return View(model);
+            }
+
+            // -- Show optional processing page here if you want
+            // return View("Processing");
+
+            // Merge CSVs
+            var mergedData = new DataTable();
+            foreach (var file in model.UploadedFiles)
+            {
+                using var stream = file.OpenReadStream();
+                using var reader = new StreamReader(stream);
+                var csv = await reader.ReadToEndAsync();
+                var table = CsvToDataTable(csv);
+
+                if (mergedData.Columns.Count == 0)
+                {
+                    mergedData = table;
+                }
+                else
+                {
+                    if (!ColumnsMatch(mergedData, table))
+                    {
+                        ModelState.AddModelError("", "Les fichiers CSV doivent avoir les mêmes colonnes.");
+                        TempData.Keep("Step1Data");
+                        return View(model);
+                    }
+                    foreach (DataRow row in table.Rows)
+                    {
+                        mergedData.ImportRow(row);
+                    }
+                }
+            }
+
+            // Create SQL table
+            var tableName = $"{model.Libelle}-{model.Code}".Replace(" ", "_");
+            await CreateSqlTableFromDataTable(tableName, mergedData);
+
+            // Create Donnees
+            var donnees = new Donnees
+            {
+                Libelle = model.Libelle.Trim(),
+                Code = model.Code.Trim(),
+                NomDeLaTable = tableName,
+                Description = model.Description?.Trim(),
+                NombreDeCapteurs = model.NombreDeCapteurs,
+                FrequenceDeCollect = model.FrequenceDeCollect,
+                DateAjouter = DateTime.Now,
+                StartTimestamp = model.StartTimestamp,
+                EndTimestamp = model.EndTimestamp
+            };
+
+            _context.Donnees.Add(donnees);
+            await _context.SaveChangesAsync();
+
+            // Create Metadonnee
+            var metadonnee = new Metadonnee
+            {
+                Nom = step1Data.Nom.Trim(),
+                Description = step1Data.Description.Trim(),
+                IdLicence = step1Data.IdLicence,
+                IdSite = step1Data.IdSite,
+                IdVisibilite = step1Data.IdVisibilite,
+                TailleDesDonnees = step1Data.TailleDesDonnees?.Trim(),
+                SeriesTemporelles = step1Data.SeriesTemporelles,
+                AutoriserApi = step1Data.AutoriserApi,
+                Anonymiser = step1Data.Anonymiser,
+                AutoriserLeTelechargement = step1Data.AutoriserLeTelechargement,
+                IdUtilisateur = GetCurrentUserId(),
+                DernierMiseAJour = DateTime.Now,
+                NombreDeTelechargements = 0,
+                QualiteDesDonnees = 0,
+                IdDonnees = donnees.Id
+            };
+
+            _context.Metadonnee.Add(metadonnee);
+            await _context.SaveChangesAsync();
+
+            // Clear Step1Data from TempData
+            TempData.Remove("Step1Data");
+
+            return RedirectToAction("CreateStep3", new { id = metadonnee.Id });
+        }
+
+        private DataTable CsvToDataTable(string csvContent)
+        {
+            var dt = new DataTable();
+            using var reader = new StringReader(csvContent);
+            var header = reader.ReadLine()?.Split(',');
+            if (header == null) throw new Exception("CSV vide.");
+
+            foreach (var column in header)
+            {
+                dt.Columns.Add(column.Trim());
+            }
+
+            while (reader.Peek() > -1)
+            {
+                var line = reader.ReadLine();
+                if (!string.IsNullOrWhiteSpace(line))
+                {
+                    dt.Rows.Add(line.Split(','));
+                }
+            }
+
+            return dt;
+        }
+
+        private bool ColumnsMatch(DataTable dt1, DataTable dt2)
+        {
+            if (dt1.Columns.Count != dt2.Columns.Count) return false;
+            for (int i = 0; i < dt1.Columns.Count; i++)
+            {
+                if (!dt1.Columns[i].ColumnName.Equals(dt2.Columns[i].ColumnName, StringComparison.OrdinalIgnoreCase))
+                    return false;
+            }
+            return true;
+        }
+
+        private async Task CreateSqlTableFromDataTable(string tableName, DataTable data)
+        {
+            using var connection = new SqlConnection(_context.Database.GetConnectionString());
+            await connection.OpenAsync();
+
+            var columnDefs = string.Join(", ", data.Columns
+                .Cast<DataColumn>()
+                .Select(c => $"[{c.ColumnName}] NVARCHAR(MAX)"));
+            // Check if 'id' column exists
+            bool hasIdColumn = data.Columns.Cast<DataColumn>().Any(c => string.Equals(c.ColumnName, "id", StringComparison.OrdinalIgnoreCase));
+
+            string createTableCmd;
+            if (hasIdColumn)
+            {
+                // Use CSV-provided 'id'
+                createTableCmd = $"CREATE TABLE [DataPortal].[dbo].[{tableName}] ({columnDefs})";
+            }
+            else
+            {
+                // Add our own IDENTITY
+                createTableCmd = $"CREATE TABLE [DataPortal].[dbo].[{tableName}] (Id INT IDENTITY(1,1) PRIMARY KEY, {columnDefs})";
+            }
+
+            using (var cmd = new SqlCommand(createTableCmd, connection))
+            {
+                await cmd.ExecuteNonQueryAsync();
+            }
+
+            // Batch insert
+            foreach (DataRow row in data.Rows)
+            {
+                var columns = string.Join(", ", data.Columns.Cast<DataColumn>().Select(c => $"[{c.ColumnName}]"));
+                var values = string.Join(", ", data.Columns.Cast<DataColumn>().Select(c => $"@{c.ColumnName}"));
+
+                var insertCmdText = $"INSERT INTO [{tableName}] ({columns}) VALUES ({values})";
+                using var insertCmd = new SqlCommand(insertCmdText, connection);
+                foreach (DataColumn col in data.Columns)
+                {
+                    insertCmd.Parameters.AddWithValue($"@{col.ColumnName}", row[col.ColumnName] ?? DBNull.Value);
+                }
+                await insertCmd.ExecuteNonQueryAsync();
+            }
         }
     }
 }
