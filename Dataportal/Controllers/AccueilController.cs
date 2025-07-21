@@ -30,4 +30,15 @@ public class AccueilController : Controller
     {
         return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
     }
+
+    [Route("Accueil/Status/{code}")]
+    public IActionResult Status(int code)
+    {
+        ViewData["StatusCode"] = code;
+        if (code >= 400 && code < 500)
+        {
+            return View("40X");
+        }
+        return View("50X");
+    }
 }
