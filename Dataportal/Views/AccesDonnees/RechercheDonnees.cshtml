@@ -1,0 +1,161 @@
+﻿@model Dataportal.ViewModels.RechercheDonneesViewModel
+
+@{
+    ViewData["Title"] = "Recherche de données";
+}
+
+<div class="container">
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="row bg-light rounded shadow p-4 mb-4">
+        <form method="get" class="row gx-3 gy-2">
+            <div class="col-12">
+                <div class="row">
+                    <div class="col-lg-12 d-flex flex-wrap">
+                        <div class="form-check me-3 mb-2">
+                            <input class="form-check-input" type="checkbox" value="true" name="seriesTemporelles" id="seriesTemporelles" @(Model.SeriesTemporelles == true ? "checked" : "")>
+                            <label class="form-check-label" for="seriesTemporelles">Séries temporelles</label>
+                        </div>
+                        <div class="form-check me-3 mb-2">
+                            <input class="form-check-input" type="checkbox" value="true" name="anonymiser" id="anonymiser" @(Model.Anonymiser == true ? "checked" : "")>
+                            <label class="form-check-label" for="anonymiser">Anonymiser</label>
+                        </div>
+                        <div class="form-check me-3 mb-2">
+                            <input class="form-check-input" type="checkbox" value="true" name="autoriserLeTelechargement" id="autoriserLeTelechargement" @(Model.AutoriserLeTelechargement == true ? "checked" : "")>
+                            <label class="form-check-label" for="autoriserLeTelechargement">Autoriser le téléchargement</label>
+                        </div>
+                        <div class="form-check me-3 mb-2">
+                            <input class="form-check-input" type="checkbox" value="true" name="hasEventLogs" id="hasEventLogs" @(Model.HasEventLogs == true ? "checked" : "")>
+                            <label class="form-check-label" for="hasEventLogs">Avec Event Logs</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" value="true" name="hasContextEnv" id="hasContextEnv" @(Model.HasContextEnv == true ? "checked" : "")>
+                            <label class="form-check-label" for="hasContextEnv">Avec Contexte Environnemental</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 mt-3">
+                <div class="form-floating">
+                    <input type="text" class="form-control" id="search" name="search" placeholder="Recherche" value="@Model.Search">
+                    <label for="search">Nom ou Description</label>
+                </div>
+            </div>
+
+            <div class="col-md-6 mt-3">
+                <div class="row">
+                    <div class="col-12 col-lg-6 mb-3 mb-lg-0">
+                        <div class="form-floating">
+                            <select class="form-select" name="idLicence" id="idLicence">
+                                <option value="">Toutes les licences</option>
+                                @foreach (var licence in Model.Licences ?? new List<Dataportal.Models.Licence>())
+                                {
+                                    <option value="@licence.Id" selected="@(licence.Id == Model.IdLicence ? "selected" : null)">@licence.Libelle</option>
+                                }
+                            </select>
+                            <label for="idLicence">Licence</label>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-6">
+                        <div class="form-floating">
+                            <select class="form-select" name="idSite" id="idSite">
+                                <option value="">Tous les sites</option>
+                                @foreach (var site in Model.Sites ?? new List<Dataportal.Models.Site>())
+                                {
+                                    <option value="@site.Id" selected="@(site.Id == Model.IdSite ? "selected" : null)">@site.Nom</option>
+                                }
+                            </select>
+                            <label for="idSite">Site</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="col-md-6 offset-md-6 mt-3 d-flex flex-column flex-md-row">
+                <button type="submit" class="btn btn-primary flex-grow-1 w-100 mb-2 mb-md-0 me-md-2">
+                    Filtrer
+                </button>
+                <a href="@Url.Action("RechercheDonnees", "AccesDonnees")" class="btn btn-outline-primary flex-grow-1 w-100">
+                    Réinitialiser
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <div class="col-12 col-md-auto mb-3">
+        <a class="btn btn-success" href="@Url.Action("CreateStep1", "Donnees")">
+            <i class="bi bi-plus-circle"></i> Créer des données
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle shadow-sm">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nom</th>
+                        <th>Taille</th>
+                        <th>Téléchargements</th>
+                        <th>Dernière mise à jour</th>
+                        <th>Séries temporelles</th>
+                        <th>Visibilité</th>
+                        <th>Créateur</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Metadonnees != null && Model.Metadonnees.Any())
+                    {
+                        @foreach (var m in Model.Metadonnees)
+                        {
+                            <tr>
+                                <td>@m.Nom</td>
+                                <td>@m.TailleDesDonnees ?? "—"</td>
+                                <td>@m.NombreDeTelechargements</td>
+                                <td>@(m.DernierMiseAJour?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                <td>
+                                    @if (m.SeriesTemporelles)
+                                    {
+                                        <span class="badge bg-success">Oui</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Non</span>
+                                    }
+                                </td>
+                                <td>@m.Visibilite?.Libelle</td>
+                                <td>@($"{m.Utilisateur?.Prenom} {m.Utilisateur?.Nom}")</td>
+                                <td>
+                                    <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("Details", "Donnees", new { id = m.Id })" title="Voir les détails">
+                                        <i class="bi bi-exclamation-circle"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center text-muted">Aucune donnée trouvée.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

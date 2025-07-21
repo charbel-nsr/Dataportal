@@ -26,6 +26,11 @@ using System.Data;
 //TODO: id metadone in step 2 is not being filled
 //TODO: allow user to create pivate data and edit the cmnt in the database of is role
 //TODO: create a many to many relation in the data page creation to pick this data is intern to wich compani
+//TODO: fix error after step 4
+//TODO: create tabel for data quality silver, bronze, gold, dimanond
+//TODO: automaticly calculate the data size at the end
+//TODO: make the control on wich visibilite each user can assign to the data
+//TODO: create the data tabels in a sub folder
 
 namespace Dataportal.Controllers
 {
@@ -527,10 +532,13 @@ namespace Dataportal.Controllers
             if (string.IsNullOrWhiteSpace(tableName))
                 return results;
 
+            // Sanitize table name for SQL Server
+            var safeTableName = $"[{tableName.Replace("]", "]]")}]";
+
             using var connection = new SqlConnection(_context.Database.GetConnectionString());
             await connection.OpenAsync();
 
-            var query = $"SELECT TOP 10 * FROM [{tableName}]";
+            var query = $"SELECT TOP 10 * FROM {safeTableName}";
             using var command = new SqlCommand(query, connection);
             using var reader = await command.ExecuteReaderAsync();
 

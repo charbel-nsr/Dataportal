@@ -4,6 +4,8 @@ using Dataportal.Models;
 
 namespace Dataportal.Controllers;
 
+//TODO: pages 40X and 50X
+
 public class AccueilController : Controller
 {
     private readonly ILogger<AccueilController> _logger;

@@ -7,7 +7,6 @@
 <div class="container my-4">
     <h2 class="mb-4">@Model.Metadonnee.Nom</h2>
 
-    <!-- ✅ 1. METADATA -->
     <div class="card mb-4 shadow-sm">
         <div class="card-header bg-primary text-white">
             Métadonnée
@@ -41,7 +40,6 @@
         </div>
     </div>
 
-    <!-- ✅ 2. DONNEES -->
     @if (Model.Donnees != null)
     {
         <div class="card mb-4 shadow-sm">
@@ -89,7 +87,6 @@
         </div>
     }
 
-    <!-- ✅ 3. EVENT LOGS -->
     @if (Model.DonneesEventLogs != null)
     {
         <div class="card mb-4 shadow-sm">
@@ -136,7 +133,6 @@
         </div>
     }
 
-    <!-- ✅ 4. CONTEXTE ENVIRONNEMENTAL -->
     @if (Model.DonneesContexteEnvironnemental != null)
     {
         <div class="card mb-4 shadow-sm">
@@ -182,10 +178,9 @@
         </div>
     }
 
-    <!-- ✅ BUTTON TO GO HOME -->
     <div class="text-center mt-4">
-        <a href="@Url.Action("Index", "Home")" class="btn btn-outline-primary">
-            Retour à l'accueil
+        <a href="@Url.Action("RechercheDonnees", "AccesDonnees")" class="btn btn-outline-primary">
+            Toutes les données
         </a>
     </div>
 </div>
