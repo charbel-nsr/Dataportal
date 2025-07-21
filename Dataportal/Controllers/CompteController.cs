@@ -260,8 +260,8 @@ namespace Dataportal.Controllers
 
                 //TODO: Send email befor adding to tabel to user mail verification then page of mail verification then succes message
                 // For now, assume you will send a verification email next.
-                TempData["Message"] = "Votre demande de compte a été reçue. Veuillez vérifier votre email pour confirmation.";
-                return RedirectToAction("DemanderUnCompte");
+                TempData["Success"] = "Votre demande de compte a été reçue. Veuillez vérifier votre email pour confirmation.";
+                return RedirectToAction("SeConnecter");
 
                 //TODO: Send email to admin for approval
             }
@@ -274,7 +274,6 @@ namespace Dataportal.Controllers
                     Value = e.Id.ToString(),
                     Text = e.Nom
                 }).ToListAsync();
-            //TODO: after requesting a profil the user should be redirected to the request page with a success message and the input should empty
             return View(model);
         }
 

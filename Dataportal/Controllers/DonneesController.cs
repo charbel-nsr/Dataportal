@@ -7,7 +7,6 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using System.Data;
-//TODO: fix the multi select aparence
 //TODO: add fields for the data of Metadonnee_Appareil dans step1
 //TODO: validate and limite file sizer in import step2, 3 amd 4
 //TODO: add a processing page between step2 and step3

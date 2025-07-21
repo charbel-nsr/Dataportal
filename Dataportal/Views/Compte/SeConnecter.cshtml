@@ -12,6 +12,13 @@
             <div class="col-md-6 d-flex align-items-center justify-content-center">
                 <div class="p-4 bg-white rounded shadow" style="max-width: 450px; width: 100%;">
                     <h2 class="mb-4 text-center">@ViewData["Title"]</h2>
+                    @if (TempData["Success"] != null)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            @TempData["Success"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
                     <form asp-action="SeConnecter" method="post" novalidate>
                         @Html.AntiForgeryToken()
                         <div asp-validation-summary="All" class="text-danger mb-3"></div>

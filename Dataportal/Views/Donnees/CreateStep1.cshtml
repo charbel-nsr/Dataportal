@@ -37,9 +37,12 @@
             <span asp-validation-for="IdSite" class="text-danger"></span>
         </div>
 
-        <div class="form-floating mb-3">
-            <select asp-for="SelectedAppareils" asp-items="@(new MultiSelectList(Model.Appareils, "Id", "Nom"))" class="form-select" multiple>
-            </select>
+        <div class="form-floating mb-3 position-relative" id="appareilsMultiSelectWrapper">
+            <select asp-for="SelectedAppareils" asp-items="@(new MultiSelectList(Model.Appareils, "Id", "Nom"))" class="d-none" multiple></select>
+            <div id="appareilsSelectDisplay" class="form-control multi-select-container">
+                <input type="text" id="appareilsFilterInput" class="multi-select-input" placeholder="Rechercher..." />
+            </div>
+            <div id="appareilsSelectOptions" class="multi-select-dropdown"></div>
             <label asp-for="SelectedAppareils"></label>
             <span asp-validation-for="SelectedAppareils" class="text-danger"></span>
         </div>
@@ -84,4 +87,5 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/multiSelectTags.js" asp-append-version="true"></script>
 }
