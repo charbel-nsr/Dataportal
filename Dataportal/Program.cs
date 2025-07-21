@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Dataportal.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Localization;
+using Microsoft.AspNetCore.Diagnostics;
 using System.Globalization;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -33,6 +34,7 @@ var app = builder.Build();
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Accueil/Error");
+    app.UseStatusCodePagesWithReExecute("/Accueil/Status/{0}");
     // TODO: change HSTS in production
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();

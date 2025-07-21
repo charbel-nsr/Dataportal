@@ -4,7 +4,7 @@ using Dataportal.Models;
 
 namespace Dataportal.Controllers;
 
-//TODO: pages 40X and 50X
+// Custom pages for 40X and 50X errors
 
 public class AccueilController : Controller
 {
@@ -29,5 +29,17 @@ public class AccueilController : Controller
     public IActionResult Error()
     {
         return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+    }
+
+    [Route("Accueil/Status/{code}")]
+    public IActionResult Status(int code)
+    {
+        ViewData["StatusCode"] = code;
+        if (code >= 400 && code < 500)
+        {
+            return View("40X");
+        }
+
+        return View("50X");
     }
 }
