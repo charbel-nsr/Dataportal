@@ -72,73 +72,83 @@
             </div>
         </form>
     </div>
-    <div class="container">
-        <div class="table-responsive">
-            <table class="table table-hover shadow-sm">
-                <thead class="table-light">
-                    <tr>
-                        <th>Nom</th>
-                        <th>Prénom</th>
-                        <th>Email</th>
-                        <th>Statut</th>
-                        <th>Entreprise</th>
-                        <th>Rôle</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var u in Model.Utilisateurs)
-                    {
+
+    @if (Model.Utilisateurs != null && Model.Utilisateurs.Any()){
+        <div class="container">
+            <div class="table-responsive">
+                <table class="table table-hover shadow-sm">
+                    <thead class="table-light">
                         <tr>
-                            <td>@u.Nom</td>
-                            <td>@u.Prenom</td>
-                            <td>@u.Email</td>
-                            <td>
-                                @if (u.CompteActif)
-                                {
-                                    <span class="badge bg-success">Actif</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-secondary">Inactif</span>
-                                }
-                            </td>
-                            <td>@u.Entreprise?.Nom</td>
-                            <td>@u.Role?.Libelle</td>
-                            <td>
-                                <button type="button"
-                                        class="btn btn-sm btn-outline-secondary"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#userDetailsModal"
-                                        data-id="@u.Id"
-                                        data-nom="@u.Nom"
-                                        data-prenom="@u.Prenom"
-                                        data-email="@u.Email"
-                                        data-actif="@u.CompteActif"
-                                        data-entreprise="@u.Entreprise?.Nom"
-                                        data-role="@u.Role?.Libelle"
-                                        data-login="@u.DernierLogin?.ToString("g")"
-                                        data-description="@u.DescriptionProfil"
-                                        data-linkedin="@u.LienLinkedIn">
-                                    <i class="bi bi-exclamation-circle"></i>
-                                </button>
-                                <button type="button"
-                                        class="btn btn-sm btn-outline-primary"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#editRoleModal"
-                                        data-id="@u.Id"
-                                        data-roleid="@u.IdRole"
-                                        data-nom="@u.Nom"
-                                        data-prenom="@u.Prenom">
-                                    <i class="bi bi-pencil"></i>
-                                </button>
-                            </td>
+                            <th>Nom</th>
+                            <th>Prénom</th>
+                            <th>Email</th>
+                            <th>Statut</th>
+                            <th>Entreprise</th>
+                            <th>Rôle</th>
+                            <th>Action</th>
                         </tr>
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @foreach (var u in Model.Utilisateurs)
+                        {
+                            <tr>
+                                <td>@u.Nom</td>
+                                <td>@u.Prenom</td>
+                                <td>@u.Email</td>
+                                <td>
+                                    @if (u.CompteActif)
+                                    {
+                                        <span class="badge bg-success">Actif</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Inactif</span>
+                                    }
+                                </td>
+                                <td>@u.Entreprise?.Nom</td>
+                                <td>@u.Role?.Libelle</td>
+                                <td>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-secondary"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#userDetailsModal"
+                                            data-id="@u.Id"
+                                            data-nom="@u.Nom"
+                                            data-prenom="@u.Prenom"
+                                            data-email="@u.Email"
+                                            data-actif="@u.CompteActif"
+                                            data-entreprise="@u.Entreprise?.Nom"
+                                            data-role="@u.Role?.Libelle"
+                                            data-login="@u.DernierLogin?.ToString("g")"
+                                            data-description="@u.DescriptionProfil"
+                                            data-linkedin="@u.LienLinkedIn">
+                                        <i class="bi bi-exclamation-circle"></i>
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-primary"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#editRoleModal"
+                                            data-id="@u.Id"
+                                            data-roleid="@u.IdRole"
+                                            data-nom="@u.Nom"
+                                            data-prenom="@u.Prenom">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
         </div>
-    </div>
+    }
+    else
+    {
+        <div class="text-center">
+            <img src="/illustration/empty-search.svg" alt="Aucune donnée trouvée" class="img-fluid" style="max-height:200px;" />
+            <p class="text-muted mt-2">Aucune donnée trouvée.</p>
+        </div>
+    }
 </div>
 
 <div class="modal fade" id="userDetailsModal" tabindex="-1" aria-labelledby="userDetailsModalLabel" aria-hidden="true">

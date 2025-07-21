@@ -54,86 +54,95 @@
         </button>
     </div>
 
-    <div class="row">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle shadow-sm">
-                <thead class="table-light">
-                    <tr>
-                        <th>Nom</th>
-                        <th>Modèle</th>
-                        <th>Actif</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var appareil in Model.Appareils)
-                    {
+    @if (Model.Appareils != null && Model.Appareils.Any()){
+        <div class="row">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle shadow-sm">
+                    <thead class="table-light">
                         <tr>
-                            <td>@appareil.Nom</td>
-                            <td>@appareil.Model</td>
-                            <td>
-                                @if (appareil.Actif)
-                                {
-                                    <span class="badge bg-success">Actif</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-secondary">Inactif</span>
-                                }
-                            </td>
-                            <td>
-                                @if (!appareil.Actif)
-                                {
-                                    <form method="post" asp-action="ActivateAppareil" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="id" value="@appareil.Id" />
-                                        <button class="btn btn-sm btn-outline-success" title="Activer">
-                                            <i class="bi bi-check-circle"></i>
-                                        </button>
-                                    </form>
-                                }
-                                else
-                                {
-                                    <form method="post" asp-action="DeactivateAppareil" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="id" value="@appareil.Id" />
-                                        <button class="btn btn-sm btn-outline-warning" title="Désactiver">
-                                            <i class="bi bi-x-circle"></i>
-                                        </button>
-                                    </form>
-                                }
-                                <button type="button"
-                                        class="btn btn-sm btn-outline-secondary"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#detailsModal"
-                                        data-nom="@appareil.Nom"
-                                        data-description="@appareil.Description"
-                                        data-capacite="@appareil.Capacite"
-                                        data-model="@appareil.Model"
-                                        data-manufacturer="@appareil.Manufacturer"
-                                        data-actif="@appareil.Actif">
-                                    <i class="bi bi-exclamation-circle"></i>
-                                </button>
-                                <button type="button"
-                                        class="btn btn-sm btn-outline-primary"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#editAppareilModal"
-                                        data-id="@appareil.Id"
-                                        data-nom="@appareil.Nom"
-                                        data-description="@appareil.Description"
-                                        data-capacite="@appareil.Capacite"
-                                        data-model="@appareil.Model"
-                                        data-manufacturer="@appareil.Manufacturer"
-                                        data-actif="@appareil.Actif">
-                                    <i class="bi bi-pencil"></i>
-                                </button>
-                            </td>
+                            <th>Nom</th>
+                            <th>Modèle</th>
+                            <th>Actif</th>
+                            <th>Action</th>
                         </tr>
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @foreach (var appareil in Model.Appareils)
+                        {
+                            <tr>
+                                <td>@appareil.Nom</td>
+                                <td>@appareil.Model</td>
+                                <td>
+                                    @if (appareil.Actif)
+                                    {
+                                        <span class="badge bg-success">Actif</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Inactif</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (!appareil.Actif)
+                                    {
+                                        <form method="post" asp-action="ActivateAppareil" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@appareil.Id" />
+                                            <button class="btn btn-sm btn-outline-success" title="Activer">
+                                                <i class="bi bi-check-circle"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form method="post" asp-action="DeactivateAppareil" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@appareil.Id" />
+                                            <button class="btn btn-sm btn-outline-warning" title="Désactiver">
+                                                <i class="bi bi-x-circle"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-secondary"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#detailsModal"
+                                            data-nom="@appareil.Nom"
+                                            data-description="@appareil.Description"
+                                            data-capacite="@appareil.Capacite"
+                                            data-model="@appareil.Model"
+                                            data-manufacturer="@appareil.Manufacturer"
+                                            data-actif="@appareil.Actif">
+                                        <i class="bi bi-exclamation-circle"></i>
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-primary"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#editAppareilModal"
+                                            data-id="@appareil.Id"
+                                            data-nom="@appareil.Nom"
+                                            data-description="@appareil.Description"
+                                            data-capacite="@appareil.Capacite"
+                                            data-model="@appareil.Model"
+                                            data-manufacturer="@appareil.Manufacturer"
+                                            data-actif="@appareil.Actif">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
         </div>
-    </div>
+    }
+    else
+    {
+        <div class="text-center">
+            <img src="/illustration/empty-search.svg" alt="Aucune donnée trouvée" class="img-fluid" style="max-height:200px;" />
+            <p class="text-muted mt-2">Aucune donnée trouvée.</p>
+        </div>
+    }
 </div>
 
 <!-- Create Modal -->

@@ -53,79 +53,89 @@
             <i class="bi bi-plus-circle"></i> Créer une licence
         </button>
     </div>
-
-    <div class="row">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle shadow-sm">
-                <thead class="table-light">
-                    <tr>
-                        <th>Libellé</th>
-                        <th>Actif</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var licence in Model.Licences)
-                    {
+    
+    @if (Model.Licences != null && Model.Licences.Any())
+    {
+        <div class="row">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle shadow-sm">
+                    <thead class="table-light">
                         <tr>
-                            <td>@licence.Libelle</td>
-                            <td>
-                                @if (licence.Actif)
-                                {
-                                    <span class="badge bg-success">Actif</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-secondary">Inactif</span>
-                                }
-                            </td>
-                            <td>
-                                @if (!licence.Actif)
-                                {
-                                    <form method="post" asp-action="ActivateLicence" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="id" value="@licence.Id" />
-                                        <button class="btn btn-sm btn-outline-success" title="Activer">
-                                            <i class="bi bi-check-circle"></i>
-                                        </button>
-                                    </form>
-                                }
-                                else
-                                {
-                                    <form method="post" asp-action="DeactivateLicence" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="id" value="@licence.Id" />
-                                        <button class="btn btn-sm btn-outline-warning" title="Désactiver">
-                                            <i class="bi bi-x-circle"></i>
-                                        </button>
-                                    </form>
-                                }
-                                <button type="button"
-                                        class="btn btn-sm btn-outline-secondary"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#detailsModal"
-                                        data-libelle="@licence.Libelle"
-                                        data-description="@licence.Description"
-                                        data-actif="@licence.Actif">
-                                    <i class="bi bi-exclamation-circle"></i>
-                                </button>
-                                <button type="button"
-                                        class="btn btn-sm btn-outline-primary"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#editLicenceModal"
-                                        data-id="@licence.Id"
-                                        data-libelle="@licence.Libelle"
-                                        data-description="@licence.Description"
-                                        data-actif="@licence.Actif">
-                                    <i class="bi bi-pencil"></i>
-                                </button>
-                            </td>
+                            <th>Libellé</th>
+                            <th>Actif</th>
+                            <th>Action</th>
                         </tr>
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @foreach (var licence in Model.Licences)
+                        {
+                            <tr>
+                                <td>@licence.Libelle</td>
+                                <td>
+                                    @if (licence.Actif)
+                                    {
+                                        <span class="badge bg-success">Actif</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Inactif</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (!licence.Actif)
+                                    {
+                                        <form method="post" asp-action="ActivateLicence" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@licence.Id" />
+                                            <button class="btn btn-sm btn-outline-success" title="Activer">
+                                                <i class="bi bi-check-circle"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form method="post" asp-action="DeactivateLicence" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@licence.Id" />
+                                            <button class="btn btn-sm btn-outline-warning" title="Désactiver">
+                                                <i class="bi bi-x-circle"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-secondary"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#detailsModal"
+                                            data-libelle="@licence.Libelle"
+                                            data-description="@licence.Description"
+                                            data-actif="@licence.Actif">
+                                        <i class="bi bi-exclamation-circle"></i>
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-primary"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#editLicenceModal"
+                                            data-id="@licence.Id"
+                                            data-libelle="@licence.Libelle"
+                                            data-description="@licence.Description"
+                                            data-actif="@licence.Actif">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
         </div>
-    </div>
+    }
+    else
+    {
+        <div class="text-center">
+            <img src="/illustration/empty-search.svg" alt="Aucune donnée trouvée" class="img-fluid" style="max-height:200px;" />
+            <p class="text-muted mt-2">Aucune donnée trouvée.</p>
+        </div>
+    }
 </div>
 
 <!-- Create Modal -->

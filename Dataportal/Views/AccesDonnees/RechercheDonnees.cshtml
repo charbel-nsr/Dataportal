@@ -96,66 +96,71 @@
             </div>
         </form>
     </div>
-
-    <div class="col-12 col-md-auto mb-3">
-        <a class="btn btn-success" href="@Url.Action("CreateStep1", "Donnees")">
-            <i class="bi bi-plus-circle"></i> Créer des données
-        </a>
-    </div>
-
-    <div class="row">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle shadow-sm">
-                <thead class="table-light">
-                    <tr>
-                        <th>Nom</th>
-                        <th>Taille</th>
-                        <th>Téléchargements</th>
-                        <th>Dernière mise à jour</th>
-                        <th>Séries temporelles</th>
-                        <th>Visibilité</th>
-                        <th>Créateur</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @if (Model.Metadonnees != null && Model.Metadonnees.Any())
-                    {
-                        @foreach (var m in Model.Metadonnees)
-                        {
-                            <tr>
-                                <td>@m.Nom</td>
-                                <td>@m.TailleDesDonnees ?? "—"</td>
-                                <td>@m.NombreDeTelechargements</td>
-                                <td>@(m.DernierMiseAJour?.ToString("dd/MM/yyyy") ?? "—")</td>
-                                <td>
-                                    @if (m.SeriesTemporelles)
-                                    {
-                                        <span class="badge bg-success">Oui</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge bg-secondary">Non</span>
-                                    }
-                                </td>
-                                <td>@m.Visibilite?.Libelle</td>
-                                <td>@($"{m.Utilisateur?.Prenom} {m.Utilisateur?.Nom}")</td>
-                                <td>
-                                    <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("Details", "Donnees", new { id = m.Id })" title="Voir les détails">
-                                        <i class="bi bi-exclamation-circle"></i>
-                                    </a>
-                                </td>
-                            </tr>
-                        }
-                    }
-                    else
-                    {
-                        <tr>
-                            <td colspan="8" class="text-center text-muted">Aucune donnée trouvée.</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+    
+    @if (User.IsInRole("administrateur") || User.IsInRole("editeur"))
+    {
+        <div class="col-12 col-md-auto mb-3">
+            <a class="btn btn-success" href="@Url.Action("CreateStep1", "Donnees")">
+                <i class="bi bi-plus-circle"></i> Créer des données
+            </a>
         </div>
-    </div>
+    }
+
+    
+    @if (Model.Metadonnees != null && Model.Metadonnees.Any())
+    {
+        <div class="row">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle shadow-sm">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Nom</th>
+                            <th>Taille</th>
+                            <th>Téléchargements</th>
+                            <th>Dernière mise à jour</th>
+                            <th>Séries temporelles</th>
+                            <th>Visibilité</th>
+                            <th>Créateur</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                            @foreach (var m in Model.Metadonnees)
+                            {
+                                <tr>
+                                    <td>@m.Nom</td>
+                                    <td>@m.TailleDesDonnees ?? "—"</td>
+                                    <td>@m.NombreDeTelechargements</td>
+                                    <td>@(m.DernierMiseAJour?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                    <td>
+                                        @if (m.SeriesTemporelles)
+                                        {
+                                            <span class="badge bg-success">Oui</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Non</span>
+                                        }
+                                    </td>
+                                    <td>@m.Visibilite?.Libelle</td>
+                                    <td>@($"{m.Utilisateur?.Prenom} {m.Utilisateur?.Nom}")</td>
+                                    <td>
+                                        <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("Details", "Donnees", new { id = m.Id })" title="Voir les détails">
+                                            <i class="bi bi-exclamation-circle"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="text-center">
+                <img src="/illustration/empty-search.svg" alt="Aucune donnée trouvée" class="img-fluid" style="max-height:200px;" />
+                <p class="text-muted mt-2">Aucune donnée trouvée.</p>
+        </div>
+    }
 </div>

@@ -99,65 +99,74 @@
         </form>
     </div>
 
-    <div class="row mt-4">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle shadow-sm">
-                <thead class="table-light">
-                    <tr>
-                        <th>Nom</th>
-                        <th>Prénom</th>
-                        <th>Email</th>
-                        <th>Entreprise</th>
-                        <th>Statut</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var demande in Model.Demandes)
-                    {
+    @if (Model.Demandes != null && Model.Demandes.Any()){
+        <div class="row mt-4">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle shadow-sm">
+                    <thead class="table-light">
                         <tr>
-                            <td>@demande.Nom</td>
-                            <td>@demande.Prenom</td>
-                            <td>@demande.Email</td>
-                            <td>@demande.Entreprise?.Nom</td>
-                            <td>
-                                @switch (demande.StatutDeLaDemande?.Libelle?.ToLower())
-                                {
-                                    case "attente":
-                                        <i class="bi bi-hourglass-split text-warning" title="En attente">En attente</i>
-                                        break;
-                                    case "valider":
-                                        <i class="bi bi-check-circle-fill text-success" title="Validé">Validé</i>
-                                        break;
-                                    case "refuser":
-                                        <i class="bi bi-x-circle-fill text-danger" title="Refusé">Refusé</i>
-                                        break;
-                                    default:
-                                        <i class="bi bi-question-circle text-secondary" title="Inconnu">Inconnu</i>
-                                        break;
-                                }
-                            </td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editModal" data-id="@demande.Id">
-                                    <i class="bi bi-pencil"></i>
-                                </button>
-                                @if (demande.StatutDeLaDemande?.Libelle?.ToLower() == "refuser")
-                                {
-                                    <form method="post" asp-action="DeleteDemande" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="id" value="@demande.Id" />
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </form>
-                                }
-                            </td>
+                            <th>Nom</th>
+                            <th>Prénom</th>
+                            <th>Email</th>
+                            <th>Entreprise</th>
+                            <th>Statut</th>
+                            <th>Action</th>
                         </tr>
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @foreach (var demande in Model.Demandes)
+                        {
+                            <tr>
+                                <td>@demande.Nom</td>
+                                <td>@demande.Prenom</td>
+                                <td>@demande.Email</td>
+                                <td>@demande.Entreprise?.Nom</td>
+                                <td>
+                                    @switch (demande.StatutDeLaDemande?.Libelle?.ToLower())
+                                    {
+                                        case "attente":
+                                            <i class="bi bi-hourglass-split text-warning" title="En attente">En attente</i>
+                                            break;
+                                        case "valider":
+                                            <i class="bi bi-check-circle-fill text-success" title="Validé">Validé</i>
+                                            break;
+                                        case "refuser":
+                                            <i class="bi bi-x-circle-fill text-danger" title="Refusé">Refusé</i>
+                                            break;
+                                        default:
+                                            <i class="bi bi-question-circle text-secondary" title="Inconnu">Inconnu</i>
+                                            break;
+                                    }
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editModal" data-id="@demande.Id">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    @if (demande.StatutDeLaDemande?.Libelle?.ToLower() == "refuser")
+                                    {
+                                        <form method="post" asp-action="DeleteDemande" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@demande.Id" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
         </div>
-    </div>
+    }
+    else
+    {
+        <div class="text-center">
+            <img src="/illustration/empty-search.svg" alt="Aucune donnée trouvée" class="img-fluid" style="max-height:200px;" />
+            <p class="text-muted mt-2">Aucune donnée trouvée.</p>
+        </div>
+    }
 </div>
 
 <!-- Modal -->
