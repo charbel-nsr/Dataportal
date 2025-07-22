@@ -17,7 +17,6 @@ using System.Data;
 //TODO: add confirmatio on each next button
 //TODO: control on the dates to be by default the curent date and not bigger then from not biger the the too
 //TODO: add at the end of the id a code to describe wich step it is, like data or logs or env event
-//TODO: add tabel of data details in step 3 and 4
 //TODO: id metadone in step 2 is not being filled
 //TODO: allow user to create pivate data and edit the cmnt in the database of is role
 //TODO: create a many to many relation in the data page creation to pick this data is intern to wich compani
@@ -530,7 +529,7 @@ namespace Dataportal.Controllers
             await _context.SaveChangesAsync();
 
             // Proceed to next step
-            return RedirectToAction("Details", new { id = metadonnee.Id });
+            return RedirectToAction("Details", new { id = metadonnee.Id, creation = true });
         }
 
         [HttpGet]
@@ -555,7 +554,7 @@ namespace Dataportal.Controllers
 
             if (creation == true)
             {
-                ViewData["CurrentStep"] = 4;
+                ViewData["CurrentStep"] = 5;
             }
 
             // 3️⃣ Load preview data
