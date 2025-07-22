@@ -46,6 +46,7 @@
             <label asp-for="SelectedAppareils"></label>
             <span asp-validation-for="SelectedAppareils" class="text-danger"></span>
         </div>
+        <div id="appareilDetailsContainer" class="mb-3"></div>
 
         <div class="form-floating mb-3">
             <select asp-for="IdVisibilite" class="form-select" asp-items="@(new SelectList(Model.Visibilites, "Id", "Libelle"))" required>

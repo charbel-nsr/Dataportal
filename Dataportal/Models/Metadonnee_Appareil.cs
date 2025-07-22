@@ -19,7 +19,7 @@ namespace Dataportal.Models
 
         public Appareil Appareil { get; set; }
 
-        public int IdAppareilDansDonnees { get; set; }
+        public string IdAppareilDansDonnees { get; set; }
 
         [MaxLength(500)]
         public string Commentaire { get; set; }

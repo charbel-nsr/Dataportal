@@ -4,6 +4,7 @@
     var container = $('#appareilsSelectDisplay');
     var dropdown = $('#appareilsSelectOptions');
     var input = $('#appareilsFilterInput');
+    var detailsContainer = $('#appareilDetailsContainer');
 
     select.hide();
 
@@ -25,6 +26,7 @@
         dropdown.find('input[value="' + value + '"]').prop('checked', true);
         addTag($(this).text(), value);
     });
+    updateDetails();
 
     container.on('click', function (e) {
         if (!$(e.target).is('#appareilsFilterInput') && !$(e.target).hasClass('remove-tag')) {
@@ -57,9 +59,11 @@
             if (!container.find('.tag[data-value="' + value + '"]').length) {
                 addTag(text, value);
             }
+            updateDetails();
         } else {
             select.find('option[value="' + value + '"]').prop('selected', false);
             container.find('.tag[data-value="' + value + '"]').remove();
+            updateDetails();
         }
     });
 
@@ -70,6 +74,34 @@
         e.stopPropagation();
         input.focus();
     });
+
+    function updateDetails() {
+        var selected = dropdown.find('input[type=checkbox]:checked');
+        var existing = {};
+        detailsContainer.find('.appareil-detail').each(function () {
+            var id = $(this).data('id');
+            existing[id] = {
+                ident: $(this).find('input[name$="IdAppareilDansDonnees"]').val(),
+                com: $(this).find('input[name$="Commentaire"]').val()
+            };
+        });
+        detailsContainer.empty();
+        selected.each(function (index) {
+            var id = $(this).val();
+            var name = dropdown.find('label[for="' + $(this).attr('id') + '"]').text();
+            var data = existing[id] || {};
+            var detail = $('<details class="appareil-detail mb-2" data-id="' + id + '"></details>');
+            detail.append('<summary>' + name + '</summary>');
+            var inner = $('<div class="mt-2"></div>');
+            inner.append('<input type="hidden" name="AppareilInfos[' + index + '].IdAppareil" value="' + id + '" />');
+            inner.append('<div class="form-floating mb-2"><input type="text" class="form-control" name="AppareilInfos[' + index + '].IdAppareilDansDonnees" value="' + (data.ident || '') + '" placeholder="Id dans les données"/><label>Id dans les données</label></div>');
+            inner.append('<div class="form-floating mb-2"><input type="text" class="form-control" name="AppareilInfos[' + index + '].Commentaire" value="' + (data.com || '') + '" placeholder="Commentaire"/><label>Commentaire</label></div><hr>');
+            detail.append(inner);
+            detailsContainer.append(detail);
+        });
+    }
+
+    updateDetails();
 
     function addTag(text, value) {
         var tag = $('<span class="tag badge bg-secondary me-1 mb-1" data-value="' + value + '">' + text + '<span class="remove-tag ms-1" role="button">&times;</span></span>');

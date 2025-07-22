@@ -7,7 +7,6 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using System.Data;
-//TODO: add fields for the data of Metadonnee_Appareil dans step1
 //TODO: validate and limite file sizer in import step2, 3 amd 4
 //TODO: add a processing page between step2 and step3
 //TODO: add a processing page between step3 and step4
@@ -51,7 +50,8 @@ namespace Dataportal.Controllers
                 Licences = _context.Licence.Where(l => l.Actif).ToList(),
                 Sites = _context.Site.Where(s => s.Actif).ToList(),
                 Visibilites = _context.Visibilite.ToList(),
-        Appareils = _context.Appareil.Where(a => a.Actif).ToList()
+                Appareils = _context.Appareil.Where(a => a.Actif).ToList(),
+                AppareilInfos = new List<MetadonneeAppareilInfo>()
             };
             return View(vm);
         }
@@ -67,6 +67,7 @@ namespace Dataportal.Controllers
                 model.Sites = _context.Site.Where(s => s.Actif).ToList();
                 model.Visibilites = _context.Visibilite.ToList();
                 model.Appareils = _context.Appareil.Where(a => a.Actif).ToList();
+                model.AppareilInfos ??= new List<MetadonneeAppareilInfo>();
                 return View(model);
             }
 
@@ -199,6 +200,22 @@ namespace Dataportal.Controllers
 
             _context.Metadonnee.Add(metadonnee);
             await _context.SaveChangesAsync();
+
+            if (step1Data.AppareilInfos != null)
+            {
+                foreach (var info in step1Data.AppareilInfos)
+                {
+                    var link = new Metadonnee_Appareil
+                    {
+                        IdMetadonnee = metadonnee.Id,
+                        IdAppareil = info.IdAppareil,
+                        IdAppareilDansDonnees = info.IdAppareilDansDonnees?.Trim() ?? string.Empty,
+                        Commentaire = info.Commentaire?.Trim() ?? string.Empty
+                    };
+                    _context.Metadonnee_Appareil.Add(link);
+                }
+                await _context.SaveChangesAsync();
+            }
 
             // Clear Step1Data from TempData
             TempData.Remove("Step1Data");

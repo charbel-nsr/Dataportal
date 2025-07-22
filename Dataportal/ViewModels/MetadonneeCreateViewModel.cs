@@ -51,5 +51,7 @@ namespace Dataportal.ViewModels
         [Display(Name = "Appareils")]
         public IEnumerable<int> SelectedAppareils { get; set; }
         public IEnumerable<Appareil>? Appareils { get; set; }
+
+        public List<MetadonneeAppareilInfo> AppareilInfos { get; set; } = new();
     }
 }
