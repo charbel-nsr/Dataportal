@@ -18,7 +18,6 @@ using System.Data;
 //TODO: control on the dates to be by default the curent date and not bigger then from not biger the the too
 //TODO: add at the end of the id a code to describe wich step it is, like data or logs or env event
 //TODO: add tabel of data details in step 3 and 4
-//TODO: make ui of step 3 more like 4
 //TODO: id metadone in step 2 is not being filled
 //TODO: allow user to create pivate data and edit the cmnt in the database of is role
 //TODO: create a many to many relation in the data page creation to pick this data is intern to wich compani
@@ -26,7 +25,6 @@ using System.Data;
 //TODO: create tabel for data quality silver, bronze, gold, dimanond
 //TODO: automaticly calculate the data size at the end
 //TODO: make the control on wich visibilite each user can assign to the data
-//TODO: create the data tabels in a sub folder
 
 namespace Dataportal.Controllers
 {
@@ -117,6 +115,22 @@ namespace Dataportal.Controllers
                 return View(model);
             }
 
+            var duplicate = await _context.Donnees
+                .FirstOrDefaultAsync(d =>
+                    d.Libelle.ToLower() == model.Libelle.Trim().ToLower() ||
+                    d.Code.ToLower() == model.Code.Trim().ToLower());
+
+            if (duplicate != null)
+            {
+                if (duplicate.Libelle.Equals(model.Libelle.Trim(), StringComparison.OrdinalIgnoreCase))
+                    ModelState.AddModelError("Libelle", "Ce libellé existe déjà.");
+                if (duplicate.Code.Equals(model.Code.Trim(), StringComparison.OrdinalIgnoreCase))
+                    ModelState.AddModelError("Code", "Ce code existe déjà.");
+
+                TempData.Keep("Step1Data");
+                return View(model);
+            }
+
             if (model.UploadedFiles == null || !model.UploadedFiles.Any())
             {
                 ModelState.AddModelError("UploadedFiles", "Vous devez importer au moins un fichier CSV.");
@@ -156,7 +170,7 @@ namespace Dataportal.Controllers
             }
 
             // Create SQL table
-            var tableName = $"{model.Libelle}-{model.Code}".Replace(" ", "_");
+            var tableName = $"Donnees.{model.Libelle}-{model.Code}".Replace(" ", "_");
             await CreateSqlTableFromDataTable(tableName, mergedData);
 
             // Create Donnees
@@ -339,6 +353,20 @@ namespace Dataportal.Controllers
                 return RedirectToAction("CreateStep4", new { id = model.IdMetadonnee });
             }
 
+            var duplicate = await _context.DonneesEventLogs.FirstOrDefaultAsync(e =>
+                            e.Libelle.ToLower() == model.Libelle.Trim().ToLower() ||
+                            e.Code.ToLower() == model.Code.Trim().ToLower());
+
+            if (duplicate != null)
+            {
+                if (duplicate.Libelle.Equals(model.Libelle.Trim(), StringComparison.OrdinalIgnoreCase))
+                    ModelState.AddModelError("Libelle", "Ce libellé existe déjà.");
+                if (duplicate.Code.Equals(model.Code.Trim(), StringComparison.OrdinalIgnoreCase))
+                    ModelState.AddModelError("Code", "Ce code existe déjà.");
+
+                return View(model);
+            }
+
             // Merge uploaded CSVs
             var mergedData = new DataTable();
             foreach (var file in model.UploadedFiles)
@@ -367,7 +395,7 @@ namespace Dataportal.Controllers
             }
 
             // Create SQL Table
-            var tableName = $"{model.Libelle}-{model.Code}".Replace(" ", "_");
+            var tableName = $"DonneesEventLogs.{model.Libelle}-{model.Code}".Replace(" ", "_");
             await CreateSqlTableFromDataTable(tableName, mergedData);
 
             // Create DonneesEventLogs
@@ -435,6 +463,20 @@ namespace Dataportal.Controllers
                 return RedirectToAction("Details", new { id = metadonnee.Id, creation = true });
             }
 
+            var duplicate = await _context.DonneesContexteEnvironnemental.FirstOrDefaultAsync(c =>
+                            c.Libelle.ToLower() == model.Libelle.Trim().ToLower() ||
+                            c.Code.ToLower() == model.Code.Trim().ToLower());
+
+            if (duplicate != null)
+            {
+                if (duplicate.Libelle.Equals(model.Libelle.Trim(), StringComparison.OrdinalIgnoreCase))
+                    ModelState.AddModelError("Libelle", "Ce libellé existe déjà.");
+                if (duplicate.Code.Equals(model.Code.Trim(), StringComparison.OrdinalIgnoreCase))
+                    ModelState.AddModelError("Code", "Ce code existe déjà.");
+
+                return View(model);
+            }
+
             // Merge uploaded CSV files
             var mergedData = new DataTable();
             foreach (var file in model.UploadedFiles)
@@ -463,7 +505,7 @@ namespace Dataportal.Controllers
             }
 
             // Create SQL Table
-            var tableName = $"{model.Libelle}-{model.Code}".Replace(" ", "_");
+            var tableName = $"DonneesContexteEnvironnemental.{model.Libelle}-{model.Code}".Replace(" ", "_");
             await CreateSqlTableFromDataTable(tableName, mergedData);
 
             // Save DonneesContexteEnvironnemental

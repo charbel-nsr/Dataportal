@@ -8,6 +8,11 @@
 <div class="container">
     <h2 class="mb-4">Ajouter les Event Logs (Étape 3/5)</h2>
     @await Html.PartialAsync("_CreationProgress")
+
+    <div class="alert alert-info">
+        <p>⚠️ Cette étape est <strong>optionnelle</strong>. Vous pouvez ajouter des fichiers d'Event Logs, ou cliquer sur <strong>Passer cette étape</strong> pour continuer.</p>
+    </div>
+
     <form asp-action="CreateStep3" method="post" enctype="multipart/form-data" class="bg-light p-4 rounded shadow-sm">
         @Html.AntiForgeryToken()
         <input type="hidden" asp-for="IdMetadonnee" />
@@ -59,10 +64,10 @@
             <span asp-validation-for="UploadedFiles" class="text-danger"></span>
         </div>
 
-        <button type="submit" class="btn btn-primary w-100">Suivant</button>
-        <a class="btn btn-secondary w-100 mt-2" href="@Url.Action("CreateStep4", "Donnees", new { id = Model.IdMetadonnee })">
-            Passer cette étape
-        </a>
+        <div class="d-flex justify-content-between">
+            <a class="btn btn-outline-secondary" href="@Url.Action("CreateStep4", "Donnees", new { id = Model.IdMetadonnee })">Passer cette étape</a>
+            <button type="submit" class="btn btn-primary">Suivant</button>
+        </div>
     </form>
 </div>
 
