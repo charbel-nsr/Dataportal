@@ -13,12 +13,10 @@ using System.Data;
 //TODO: Support batch inserts for performance.
 //TODO: suport diffrent types of files, other then csv
 //TODO: do step 3, 4 and 5
-//TODO: add a process bar
 //TODO: implement SqlBulkCopy for faster inserts 
 //TODO: add confirmatio on each next button
 //TODO: control on the dates to be by default the curent date and not bigger then from not biger the the too
 //TODO: add at the end of the id a code to describe wich step it is, like data or logs or env event
-//TODO: check why Metadonnee_Appareil is not beign saved in step1
 //TODO: add tabel of data details in step 3 and 4
 //TODO: make ui of step 3 more like 4
 //TODO: id metadone in step 2 is not being filled
@@ -434,7 +432,7 @@ namespace Dataportal.Controllers
             if (model.UploadedFiles == null || !model.UploadedFiles.Any())
             {
                 // User skipped uploading: go straight to next step
-                return RedirectToAction("Details", new { id = metadonnee.Id });
+                return RedirectToAction("Details", new { id = metadonnee.Id, creation = true });
             }
 
             // Merge uploaded CSV files
@@ -494,7 +492,7 @@ namespace Dataportal.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Details(int id)
+        public async Task<IActionResult> Details(int id, bool? creation)
         {
             // 1️⃣ Load Metadonnee + navigation
             var metadonnee = await _context.Metadonnee
@@ -512,6 +510,11 @@ namespace Dataportal.Controllers
             var donnees = await _context.Donnees.FirstOrDefaultAsync(d => d.Id == metadonnee.IdDonnees);
             var eventLogs = await _context.DonneesEventLogs.FirstOrDefaultAsync(e => e.Id == metadonnee.IdDonneesEventLogs);
             var contexte = await _context.DonneesContexteEnvironnemental.FirstOrDefaultAsync(c => c.Id == metadonnee.IdDonneesContexteEnvironnemental);
+
+            if (creation == true)
+            {
+                ViewData["CurrentStep"] = 4;
+            }
 
             // 3️⃣ Load preview data
             var donneesPreview = donnees?.NomDeLaTable != null ? await GetTablePreviewRows(donnees.NomDeLaTable) : null;

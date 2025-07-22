@@ -2,10 +2,12 @@
 
 @{
     ViewData["Title"] = "Créer un ensemble de données - Étape 4";
+    ViewData["CurrentStep"] = 4;
 }
 
 <div class="container">
     <h2 class="mb-4">Ajouter les données de Contexte Environnemental (Étape 4/5)</h2>
+    @await Html.PartialAsync("_CreationProgress")
 
     <div class="alert alert-info">
         <p>⚠️ Cette étape est <strong>optionnelle</strong>. Vous pouvez ajouter des fichiers de contexte environnemental, ou cliquer sur <strong>Ignorer</strong> pour passer à l'étape suivante.</p>

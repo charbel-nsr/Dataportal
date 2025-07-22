@@ -1,11 +1,12 @@
 ﻿@model Dataportal.ViewModels.DonneesCreateStep2ViewModel
 @{
     ViewData["Title"] = "Créer un ensemble de données - Étape 2";
+    ViewData["CurrentStep"] = 2;
 }
 
 <div class="container">
     <h2 class="mb-4">Ajouter Données (Étape 2/5)</h2>
-
+    @await Html.PartialAsync("_CreationProgress")
     <form method="post" enctype="multipart/form-data" class="bg-light p-4 rounded shadow-sm">
         @Html.AntiForgeryToken()
 

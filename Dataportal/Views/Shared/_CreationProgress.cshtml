@@ -1,0 +1,89 @@
+﻿@{
+    int currentStep = ViewData["CurrentStep"] as int? ?? 1;
+    string[] labels = new[] { "Métadonnée", "Données", "Event Logs", "Contexte", "Résumé" };
+}
+<style>
+    .step-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .step {
+        text-align: center;
+        position: relative;
+        flex: 1;
+    }
+
+    .circle {
+        width: 40px;
+        height: 40px;
+        background-color: white;
+        border-radius: 50%;
+        border: 2px solid #e72b37;
+        color: #e72b37;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+        position: relative;
+        z-index: 1;
+    }
+
+    .step.completed .circle {
+        background-color: #e72b37;
+        color: white;
+    }
+
+    .step.current .circle {
+        background-color: #e72b37;
+        border: 4px solid white;
+        color: white;
+        z-index: 2;
+    }
+
+    .label {
+        margin-top: 10px;
+        font-weight: bold;
+        color: #e72b37;
+    }
+
+    .step.completed .label {
+        color: white;
+    }
+
+    .step:not(:last-child)::after {
+        content: "";
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        width: 100%;
+        height: 2px;
+        background-color: #e72b37;
+        z-index: 0;
+    }
+
+    .step:last-child::after {
+        content: none;
+    }
+</style>
+<div class="step-container">
+    @for (int i = 1; i <= labels.Length; i++)
+    {
+        var cls = "step";
+        if (i < currentStep)
+        {
+            cls += " completed";
+        }
+        else if (i == currentStep)
+        {
+            cls += " current";
+        }
+        <div class="@cls">
+            <div class="circle">@(i < currentStep ? "\u2713" : i.ToString())</div>
+            <div class="label">@labels[i - 1]</div>
+        </div>
+    }
+</div>

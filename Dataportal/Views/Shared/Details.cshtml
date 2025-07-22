@@ -2,11 +2,15 @@
 
 @{
     ViewData["Title"] = "Détails de l'ensemble de données";
+    var currentStep = ViewData["CurrentStep"] as int?;
 }
 
 <div class="container my-4">
     <h2 class="mb-4">@Model.Metadonnee.Nom</h2>
-
+    @if (currentStep.HasValue)
+    {
+        @await Html.PartialAsync("_CreationProgress")
+    }
     <div class="card mb-4 shadow-sm">
         <div class="card-header bg-primary text-white">
             Métadonnée

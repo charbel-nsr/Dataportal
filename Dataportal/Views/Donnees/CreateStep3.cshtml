@@ -2,10 +2,12 @@
 
 @{
     ViewData["Title"] = "Créer Event Logs - Étape 3";
+    ViewData["CurrentStep"] = 3;
 }
 
 <div class="container">
     <h2 class="mb-4">Ajouter les Event Logs (Étape 3/5)</h2>
+    @await Html.PartialAsync("_CreationProgress")
     <form asp-action="CreateStep3" method="post" enctype="multipart/form-data" class="bg-light p-4 rounded shadow-sm">
         @Html.AntiForgeryToken()
         <input type="hidden" asp-for="IdMetadonnee" />

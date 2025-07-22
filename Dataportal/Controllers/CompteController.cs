@@ -16,7 +16,6 @@ using Microsoft.Extensions.Logging;
 
 //TODO: Add recaptcha for login and account request forms
 //TODO: Add SeSouvenirDeMoi functionality
-//TODO: check for error or succes meessage if they all exist and work correctly
 
 namespace Dataportal.Controllers
 {

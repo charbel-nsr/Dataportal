@@ -2,10 +2,12 @@
 
 @{
     ViewData["Title"] = "Créer un ensemble de données - Étape 1";
+    ViewData["CurrentStep"] = 1;
 }
 
 <div class="container">
     <h2 class="mb-4">Créer une métadonnée (Étape 1/5)</h2>
+    @await Html.PartialAsync("_CreationProgress")
     <form method="post" class="bg-light p-4 rounded shadow-sm">
         @Html.AntiForgeryToken()
 
