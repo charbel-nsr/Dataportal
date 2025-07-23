@@ -56,16 +56,19 @@
                                     </ul>
                                 </li>
                             }
-                            @if (User.IsInRole("administrateur"))
+                            @if (User.IsInRole("administrateur") || User.IsInRole("editeur"))
                             {
                                 <li class="nav-item dropdown">
                                     <a class="nav-link dropdown-toggle text-dark" href="#" id="gestionDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Gestion</a>
                                     <ul class="dropdown-menu" aria-labelledby="gestionDropdown">
-                                        <li>
-                                            <a class="dropdown-item" asp-area="" asp-controller="Gestion" asp-action="DemandeDeCompte">
-                                                Demandes de compte
-                                            </a>
-                                        </li>
+                                        @if (User.IsInRole("administrateur"))
+                                        {
+                                            <li>
+                                                <a class="dropdown-item" asp-area="" asp-controller="Gestion" asp-action="DemandeDeCompte">
+                                                    Demandes de compte
+                                                </a>
+                                            </li>
+                                        }
                                         <li>
                                             <a class="dropdown-item" asp-area="" asp-controller="Gestion" asp-action="Utilisateurs">
                                                 Utilisateurs

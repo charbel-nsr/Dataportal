@@ -124,16 +124,19 @@
                                             data-linkedin="@u.LienLinkedIn">
                                         <i class="bi bi-exclamation-circle"></i>
                                     </button>
-                                    <button type="button"
-                                            class="btn btn-sm btn-outline-primary"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#editRoleModal"
-                                            data-id="@u.Id"
-                                            data-roleid="@u.IdRole"
-                                            data-nom="@u.Nom"
-                                            data-prenom="@u.Prenom">
-                                        <i class="bi bi-pencil"></i>
-                                    </button>
+                                    @if (User.IsInRole("administrateur"))
+                                    {
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-primary"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#editRoleModal"
+                                                data-id="@u.Id"
+                                                data-roleid="@u.IdRole"
+                                                data-nom="@u.Nom"
+                                                data-prenom="@u.Prenom">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                    }
                                 </td>
                             </tr>
                         }
@@ -168,53 +171,62 @@
                 <p><strong>Dernier login:</strong> <span id="detailLogin"></span></p>
                 <p><strong>Description:</strong> <span id="detailDescription"></span></p>
                 <p><strong>LinkedIn:</strong> <a id="detailLinkedIn" href="#" target="_blank"></a></p>
-                <div id="confirmWarning" class="alert alert-danger d-none mt-3"></div>
+                @if (User.IsInRole("administrateur"))
+                {
+                    <div id="confirmWarning" class="alert alert-danger d-none mt-3"></div>
+                }
             </div>
             <div class="modal-footer">
-                <form id="toggleActifForm" method="post" asp-action="ToggleUtilisateurActif" class="d-flex gap-2 align-items-center m-0">
-                    @Html.AntiForgeryToken()
-                    <input type="hidden" name="id" id="toggleUserId" value="" />
-                    <button type="button" id="toggleActifButton" class="btn btn-primary">
-                        <span id="toggleActifButtonText"></span>
-                    </button>
-                </form>
+                @if (User.IsInRole("administrateur"))
+                {
+                    <form id="toggleActifForm" method="post" asp-action="ToggleUtilisateurActif" class="d-flex gap-2 align-items-center m-0">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" id="toggleUserId" value="" />
+                        <button type="button" id="toggleActifButton" class="btn btn-primary">
+                            <span id="toggleActifButtonText"></span>
+                        </button>
+                    </form>
+                }
                 <button type="button" class="btn btn-outline-primary" data-bs-dismiss="modal">Fermer</button>
             </div>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="editRoleModal" tabindex="-1" aria-labelledby="editRoleModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form method="post" asp-action="EditUserRole">
-                @Html.AntiForgeryToken()
-                <input type="hidden" id="editRoleUserId" name="id" value="" />
-                <div class="modal-header">
-                    <h5 class="modal-title" id="editRoleModalLabel">Modifier le rôle</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
-                </div>
-                <div class="modal-body">
-                    <p><strong>Utilisateur:</strong> <span id="editRoleUserName"></span></p>
-                    <div class="form-floating">
-                        <select class="form-select" id="editRoleSelect" name="newRoleId" required>
-                            <option value="">Sélectionner un rôle</option>
-                            @foreach (var role in Model.Roles)
-                            {
-                                <option value="@role.Id">@role.Libelle</option>
-                            }
-                        </select>
-                        <label for="editRoleSelect">Nouveau rôle</label>
+@if (User.IsInRole("administrateur"))
+{
+    <div class="modal fade" id="editRoleModal" tabindex="-1" aria-labelledby="editRoleModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="post" asp-action="EditUserRole">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" id="editRoleUserId" name="id" value="" />
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editRoleModalLabel">Modifier le rôle</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
                     </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-success">Enregistrer</button>
-                </div>
-            </form>
+                    <div class="modal-body">
+                        <p><strong>Utilisateur:</strong> <span id="editRoleUserName"></span></p>
+                        <div class="form-floating">
+                            <select class="form-select" id="editRoleSelect" name="newRoleId" required>
+                                <option value="">Sélectionner un rôle</option>
+                                @foreach (var role in Model.Roles)
+                                {
+                                    <option value="@role.Id">@role.Libelle</option>
+                                }
+                            </select>
+                            <label for="editRoleSelect">Nouveau rôle</label>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-success">Enregistrer</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
-</div>
+}
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -230,8 +242,10 @@
 
         userDetailsModal.addEventListener('show.bs.modal', event => {
             confirming = false;
-            confirmWarning.classList.add('d-none');
-            confirmWarning.textContent = '';
+            if (confirmWarning) {
+                confirmWarning.classList.add('d-none');
+                confirmWarning.textContent = '';
+            }
 
             const button = event.relatedTarget;
             const id = button.getAttribute('data-id');
@@ -263,55 +277,65 @@
                 linkedinLink.textContent = '—';
             }
 
-            toggleUserIdInput.value = id;
-
-            // Setup initial button text
-            if (actif) {
-                toggleActifButtonText.textContent = 'Désactiver ce profil';
-                toggleActifButton.classList.remove('btn-success');
-                toggleActifButton.classList.add('btn-warning');
-            } else {
-                toggleActifButtonText.textContent = 'Activer ce profil';
-                toggleActifButton.classList.remove('btn-warning');
-                toggleActifButton.classList.add('btn-success');
+            if (toggleUserIdInput) {
+                toggleUserIdInput.value = id;
             }
-        });
 
-        toggleActifButton.addEventListener('click', () => {
-            if (!confirming) {
-                // First click: show confirmation
-                confirming = true;
-                confirmWarning.classList.remove('d-none');
-                if (currentIsActive) {
-                    confirmWarning.innerHTML = "Êtes-vous sûr de vouloir <strong>désactiver</strong> ce profil ? Attention, l'utilisateur sera <strong>déconnecté immédiatement</strong> et averti par mail.";
-                    toggleActifButtonText.textContent = 'Confirmer la désactivation';
-                    toggleActifButton.classList.remove('btn-warning');
-                    toggleActifButton.classList.add('btn-danger');
-                } else {
-                    confirmWarning.textContent = "Êtes-vous sûr de vouloir activer ce profil ?";
-                    toggleActifButtonText.textContent = 'Confirmer l’activation';
+            if (toggleActifButton && toggleActifButtonText) {
+                // Setup initial button text
+                if (actif) {
+                    toggleActifButtonText.textContent = 'Désactiver ce profil';
                     toggleActifButton.classList.remove('btn-success');
-                    toggleActifButton.classList.add('btn-primary');
+                    toggleActifButton.classList.add('btn-warning');
+                } else {
+                    toggleActifButtonText.textContent = 'Activer ce profil';
+                    toggleActifButton.classList.remove('btn-warning');
+                    toggleActifButton.classList.add('btn-success');
                 }
-            } else {
-                // Second click: submit form
-                toggleActifForm.submit();
             }
         });
+
+        if (toggleActifButton) {
+            toggleActifButton.addEventListener('click', () => {
+                if (!confirming) {
+                    // First click: show confirmation
+                    confirming = true;
+                    if (confirmWarning) {
+                        confirmWarning.classList.remove('d-none');
+                        if (currentIsActive) {
+                            confirmWarning.innerHTML = "Êtes-vous sûr de vouloir <strong>désactiver</strong> ce profil ? Attention, l'utilisateur sera <strong>déconnecté immédiatement</strong> et averti par mail.";
+                            toggleActifButtonText.textContent = 'Confirmer la désactivation';
+                            toggleActifButton.classList.remove('btn-warning');
+                            toggleActifButton.classList.add('btn-danger');
+                        } else {
+                            confirmWarning.textContent = "Êtes-vous sûr de vouloir activer ce profil ?";
+                            toggleActifButtonText.textContent = 'Confirmer l’activation';
+                            toggleActifButton.classList.remove('btn-success');
+                            toggleActifButton.classList.add('btn-primary');
+                        }
+                    }
+                } else {
+                    // Second click: submit form
+                    if (toggleActifForm) toggleActifForm.submit();
+                }
+            });
+        }
     });
 
     const editRoleModal = document.getElementById('editRoleModal');
-    editRoleModal.addEventListener('show.bs.modal', event => {
-        const button = event.relatedTarget;
-        const userId = button.getAttribute('data-id');
-        const userNom = button.getAttribute('data-nom');
-        const userPrenom = button.getAttribute('data-prenom');
-        const currentRoleId = button.getAttribute('data-roleid');
+    if (editRoleModal) {
+        editRoleModal.addEventListener('show.bs.modal', event => {
+            const button = event.relatedTarget;
+            const userId = button.getAttribute('data-id');
+            const userNom = button.getAttribute('data-nom');
+            const userPrenom = button.getAttribute('data-prenom');
+            const currentRoleId = button.getAttribute('data-roleid');
 
-        document.getElementById('editRoleUserId').value = userId;
-        document.getElementById('editRoleUserName').textContent = userPrenom + ' ' + userNom;
-        document.getElementById('editRoleSelect').value = currentRoleId;
-    });
+            document.getElementById('editRoleUserId').value = userId;
+            document.getElementById('editRoleUserName').textContent = userPrenom + ' ' + userNom;
+            document.getElementById('editRoleSelect').value = currentRoleId;
+        });
+    }
 
 </script>
 

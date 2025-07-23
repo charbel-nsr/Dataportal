@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace Dataportal.Controllers
 {
-    [Authorize(Roles = "administrateur")]
+    [Authorize(Roles = "administrateur,editeur")]
     public class ControleController : Controller
     {
         private readonly ApplicationDbContext _context;
