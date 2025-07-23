@@ -73,7 +73,7 @@ namespace Dataportal.Controllers
         }
 
         // GET: /Gestion/DemandeDeCompteDetails/5 (for AJAX modal)
-        [HttpGet
+        [HttpGet]
         [Authorize(Roles = "administrateur")]
         public IActionResult DemandeDeCompteDetails(int id)
         {

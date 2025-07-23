@@ -33,6 +33,7 @@ namespace Dataportal.Controllers
                 .Include(m => m.Site)
                 .Include(m => m.Visibilite)
                 .Include(m => m.Utilisateur)
+                    .ThenInclude(u => u.Entreprise)
                 .AsQueryable();
 
             // Visibilite filtering
@@ -43,8 +44,15 @@ namespace Dataportal.Controllers
             query = query.Where(m =>
                 m.IdVisibilite == VisibiliteIds.Public ||
                 (m.IdVisibilite == VisibiliteIds.Prive && userId != null) ||
-                (m.IdVisibilite == VisibiliteIds.Interne && userId != null && m.Utilisateur.IdEntreprise == userEntrepriseId) ||
-                (m.IdVisibilite == VisibiliteIds.Personnelle && m.IdUtilisateur == userId)
+                (
+                    m.IdVisibilite == VisibiliteIds.Interne &&
+                    userId != null &&
+                    (userRole == RoleIds.Administrateur || m.Utilisateur.IdEntreprise == userEntrepriseId)
+                ) ||
+                (
+                    m.IdVisibilite == VisibiliteIds.Personnelle &&
+                    (userRole == RoleIds.Administrateur || m.IdUtilisateur == userId)
+                )
             );
 
             if (!string.IsNullOrWhiteSpace(search))

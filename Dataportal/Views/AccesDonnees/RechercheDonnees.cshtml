@@ -1,4 +1,5 @@
 ﻿@model Dataportal.ViewModels.RechercheDonneesViewModel
+@using Dataportal.Classes
 
 @{
     ViewData["Title"] = "Recherche de données";
@@ -142,7 +143,20 @@
                                             <span class="badge bg-secondary">Non</span>
                                         }
                                     </td>
-                                    <td>@m.Visibilite?.Libelle</td>
+                                    <td>
+                                        @if (User.IsInRole("administrateur") && m.IdVisibilite == VisibiliteIds.Interne)
+                                        {
+                                            @(m.Visibilite?.Libelle + $" ({m.Utilisateur?.Entreprise?.Nom})")
+                                        }
+                                        else if (User.IsInRole("administrateur") && m.IdVisibilite == VisibiliteIds.Personnelle)
+                                        {
+                                            @(m.Visibilite?.Libelle + $" ({m.Utilisateur?.Prenom} {m.Utilisateur?.Nom})")
+                                        }
+                                        else
+                                        {
+                                            @m.Visibilite?.Libelle
+                                        }
+                                    </td>
                                     <td>@($"{m.Utilisateur?.Prenom} {m.Utilisateur?.Nom}")</td>
                                     <td>
                                         <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("Details", "Donnees", new { id = m.Id })" title="Voir les détails">
