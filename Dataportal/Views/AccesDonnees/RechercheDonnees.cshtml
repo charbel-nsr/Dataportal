@@ -148,6 +148,12 @@
                                         <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("Details", "Donnees", new { id = m.Id })" title="Voir les détails">
                                             <i class="bi bi-exclamation-circle"></i>
                                         </a>
+                                        @if (User.IsInRole("administrateur") || (User.Identity.IsAuthenticated && User.FindFirst("UserId")?.Value == m.IdUtilisateur.ToString()))
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-danger ms-1" data-bs-toggle="modal" data-bs-target="#deleteModal" data-id="@m.Id" title="Supprimer">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        }
                                     </td>
                                 </tr>
                             }
@@ -164,3 +170,37 @@
         </div>
     }
 </div>
+
+<!-- Delete Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" asp-controller="Donnees" asp-action="Delete">
+                @Html.AntiForgeryToken()
+                <input type="hidden" id="delete-id" name="id" />
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteModalLabel">Confirmer la suppression</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-danger">Toutes les données liées à ce sujet seront définitivement perdues. Êtes-vous sûr de vouloir continuer ?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-danger">Supprimer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const deleteModal = document.getElementById('deleteModal');
+        deleteModal.addEventListener('show.bs.modal', event => {
+            const button = event.relatedTarget;
+            const id = button.getAttribute('data-id');
+            document.getElementById('delete-id').value = id;
+        });
+    </script>
+}

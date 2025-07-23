@@ -1,6 +1,7 @@
 ﻿using Dataportal.Context;
 using Dataportal.Models;
 using Dataportal.ViewModels;
+using Dataportal.Classes;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
@@ -16,10 +17,8 @@ using System.Data;
 //TODO: implement SqlBulkCopy for faster inserts 
 //TODO: add confirmatio on each next button
 //TODO: control on the dates to be by default the curent date and not bigger then from not biger the the too
-//TODO: add at the end of the id a code to describe wich step it is, like data or logs or env event
 //TODO: id metadone in step 2 is not being filled
 //TODO: allow user to create pivate data and edit the cmnt in the database of is role
-//TODO: create a many to many relation in the data page creation to pick this data is intern to wich compani
 //TODO: fix error after step 4
 //TODO: create tabel for data quality silver, bronze, gold, dimanond
 //TODO: automaticly calculate the data size at the end
@@ -27,7 +26,6 @@ using System.Data;
 
 namespace Dataportal.Controllers
 {
-    [Authorize(Roles = "administrateur")]
     public class DonneesController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -38,6 +36,7 @@ namespace Dataportal.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = "administrateur")]
         public IActionResult CreateStep1()
         {
             var vm = new MetadonneeCreateViewModel
@@ -52,6 +51,7 @@ namespace Dataportal.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "administrateur")]
         [ValidateAntiForgeryToken]
         public IActionResult CreateStep1(MetadonneeCreateViewModel model)
         {
@@ -81,6 +81,7 @@ namespace Dataportal.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = "administrateur")]
         public IActionResult CreateStep2()
         {
             var step1Json = TempData.Peek("Step1Data") as string;
@@ -96,6 +97,7 @@ namespace Dataportal.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "administrateur")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateStep2(DonneesCreateStep2ViewModel model)
         {
@@ -203,6 +205,7 @@ namespace Dataportal.Controllers
                 Anonymiser = step1Data.Anonymiser,
                 AutoriserLeTelechargement = step1Data.AutoriserLeTelechargement,
                 IdUtilisateur = GetCurrentUserId(),
+                TraitementEnCours = false,
                 DernierMiseAJour = DateTime.Now,
                 NombreDeTelechargements = 0,
                 QualiteDesDonnees = 0,
@@ -314,6 +317,7 @@ namespace Dataportal.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = "administrateur")]
         public IActionResult CreateStep3(int id)
         {
             // Validate Metadonnee exists
@@ -331,6 +335,7 @@ namespace Dataportal.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "administrateur")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateStep3(DonneesEventLogsCreateStep3ViewModel model)
         {
@@ -424,6 +429,7 @@ namespace Dataportal.Controllers
 
         // GET: /Donnees/CreateStep4/{id}
         [HttpGet]
+        [Authorize(Roles = "administrateur")]
         public IActionResult CreateStep4(int id)
         {
             var metadonnee = _context.Metadonnee.Find(id);
@@ -441,6 +447,7 @@ namespace Dataportal.Controllers
 
         // POST: /Donnees/CreateStep4
         [HttpPost]
+        [Authorize(Roles = "administrateur")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateStep4(DonneesContexteEnvironnementalCreateStep4ViewModel model)
         {
@@ -533,6 +540,7 @@ namespace Dataportal.Controllers
         }
 
         [HttpGet]
+        [AllowAnonymous]
         public async Task<IActionResult> Details(int id, bool? creation)
         {
             // 1️⃣ Load Metadonnee + navigation
@@ -613,6 +621,69 @@ namespace Dataportal.Controllers
             }
 
             return results;
+        }
+
+        private int? GetCurrentUserRole()
+        {
+            var claim = User.FindFirst("RoleId")?.Value;
+            return claim != null ? int.Parse(claim) : (int?)null;
+        }
+
+        private async Task DropSqlTableIfExists(string tableName)
+        {
+            if (string.IsNullOrWhiteSpace(tableName)) return;
+
+            using var connection = new SqlConnection(_context.Database.GetConnectionString());
+            await connection.OpenAsync();
+
+            var safeName = $"[{tableName.Replace("]", "]]")}]";
+            var query = $"IF OBJECT_ID('{safeName}', 'U') IS NOT NULL DROP TABLE {safeName}";
+            using var cmd = new SqlCommand(query, connection);
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var metadonnee = await _context.Metadonnee
+                .Include(m => m.Donnees)
+                .Include(m => m.DonneesEventLogs)
+                .Include(m => m.DonneesContexteEnvironnemental)
+                .FirstOrDefaultAsync(m => m.Id == id);
+
+            if (metadonnee == null)
+                return NotFound();
+
+            var userId = GetCurrentUserId();
+            var role = GetCurrentUserRole();
+            if (role != RoleIds.Administrateur && metadonnee.IdUtilisateur != userId)
+                return Forbid();
+
+            if (metadonnee.TraitementEnCours == true)
+            {
+                TempData["Error"] = "Impossible de supprimer : traitement en cours.";
+                return RedirectToAction("RechercheDonnees", "AccesDonnees");
+            }
+
+            await DropSqlTableIfExists(metadonnee.Donnees?.NomDeLaTable);
+            if (metadonnee.DonneesEventLogs != null)
+                await DropSqlTableIfExists(metadonnee.DonneesEventLogs.NomDeLaTable);
+            if (metadonnee.DonneesContexteEnvironnemental != null)
+                await DropSqlTableIfExists(metadonnee.DonneesContexteEnvironnemental.NomDeLaTable);
+
+            var links = _context.Metadonnee_Appareil.Where(l => l.IdMetadonnee == id);
+            _context.Metadonnee_Appareil.RemoveRange(links);
+            if (metadonnee.DonneesEventLogs != null) _context.DonneesEventLogs.Remove(metadonnee.DonneesEventLogs);
+            if (metadonnee.DonneesContexteEnvironnemental != null) _context.DonneesContexteEnvironnemental.Remove(metadonnee.DonneesContexteEnvironnemental);
+            if (metadonnee.Donnees != null) _context.Donnees.Remove(metadonnee.Donnees);
+
+            _context.Metadonnee.Remove(metadonnee);
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "Données supprimées avec succès.";
+            return RedirectToAction("RechercheDonnees", "AccesDonnees");
         }
     }
 }

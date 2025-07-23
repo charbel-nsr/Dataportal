@@ -11,7 +11,6 @@ using System.Linq;
 //TODO: only allow rquestes from users who have verified there emails to be accepted
 //TODO: send emails to user accepting or rejecting there request
 //TODO: send email asking users to rechange ther password if there requeast is accepted
-//TODO: add a button to allow admins to creat users
 //TODO: fill and hide selection of rolle in request depending on the situation
 //TODO: check the delete function for requests
 
@@ -516,7 +515,6 @@ namespace Dataportal.Controllers
         {
             //TODO: verify and test this function
             //TODO: send email on activation or deactivation of the user
-            //TODO: LogOut the user if deactivated
             //TODO: Check the button that activate and desactivate if its working
             var utilisateur = _context.Utilisateur.FirstOrDefault(u => u.Id == id);
             if (utilisateur == null)

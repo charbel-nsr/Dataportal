@@ -57,6 +57,8 @@ namespace Dataportal.Models
 
         public bool AutoriserLeTelechargement { get; set; }
 
+        public bool? TraitementEnCours { get; set; }
+
         public ICollection<Metadonnee_Appareil> Metadonnee_Appareils { get; set; }
 
         [ForeignKey("Donnees")]
