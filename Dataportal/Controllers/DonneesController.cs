@@ -171,6 +171,10 @@ namespace Dataportal.Controllers
                 return View(model);
             }
 
+            // Calculate uploaded data size and store for next steps
+            long dataSize = model.UploadedFiles.Sum(f => f.Length);
+            TempData["DataSizeBytes"] = dataSize;
+
             // -- Show optional processing page here if you want
             // return View("Processing");
 
@@ -231,7 +235,7 @@ namespace Dataportal.Controllers
                 IdLicence = step1Data.IdLicence,
                 IdSite = step1Data.IdSite,
                 IdVisibilite = step1Data.IdVisibilite,
-                TailleDesDonnees = step1Data.TailleDesDonnees?.Trim(),
+                TailleDesDonnees = FormatDataSize(dataSize),
                 SeriesTemporelles = step1Data.SeriesTemporelles,
                 AutoriserApi = step1Data.AutoriserApi,
                 Anonymiser = step1Data.Anonymiser,
@@ -415,6 +419,14 @@ namespace Dataportal.Controllers
                 return View(model);
             }
 
+            // Update data size with uploaded files
+            long dataSize = 0;
+            if (TempData.ContainsKey("DataSizeBytes"))
+                dataSize = Convert.ToInt64(TempData["DataSizeBytes"]);
+            long stepSize = model.UploadedFiles.Sum(f => f.Length);
+            dataSize += stepSize;
+            TempData["DataSizeBytes"] = dataSize;
+
             // Merge uploaded CSVs
             var mergedData = new DataTable();
             foreach (var file in model.UploadedFiles)
@@ -463,8 +475,9 @@ namespace Dataportal.Controllers
             _context.DonneesEventLogs.Add(eventLogs);
             await _context.SaveChangesAsync();
 
-            // Link to Metadonnee
+            // Link to Metadonnee and update data size
             metadonnee.IdDonneesEventLogs = eventLogs.Id;
+            metadonnee.TailleDesDonnees = FormatDataSize(dataSize);
             _context.Update(metadonnee);
             await _context.SaveChangesAsync();
 
@@ -539,6 +552,14 @@ namespace Dataportal.Controllers
                 return View(model);
             }
 
+            // Update data size with uploaded files
+            long dataSize = 0;
+            if (TempData.ContainsKey("DataSizeBytes"))
+                dataSize = Convert.ToInt64(TempData["DataSizeBytes"]);
+            long stepSize = model.UploadedFiles.Sum(f => f.Length);
+            dataSize += stepSize;
+            TempData["DataSizeBytes"] = dataSize;
+
             // Merge uploaded CSV files
             var mergedData = new DataTable();
             foreach (var file in model.UploadedFiles)
@@ -586,10 +607,12 @@ namespace Dataportal.Controllers
             _context.DonneesContexteEnvironnemental.Add(donneesContext);
             await _context.SaveChangesAsync();
 
-            // Link to Metadonnee
+            // Link to Metadonnee and update data size
             metadonnee.IdDonneesContexteEnvironnemental = donneesContext.Id;
+            metadonnee.TailleDesDonnees = FormatDataSize(dataSize);
             _context.Update(metadonnee);
             await _context.SaveChangesAsync();
+            TempData.Remove("DataSizeBytes");
 
             // Proceed to next step
             return RedirectToAction("Details", new { id = metadonnee.Id, creation = true });
@@ -696,6 +719,17 @@ namespace Dataportal.Controllers
             var query = $"IF OBJECT_ID('{safeName}', 'U') IS NOT NULL DROP TABLE {safeName}";
             using var cmd = new SqlCommand(query, connection);
             await cmd.ExecuteNonQueryAsync();
+        }
+
+        private static string FormatDataSize(long bytes)
+        {
+            if (bytes < 1024) return $"{bytes} B";
+            double kb = bytes / 1024.0;
+            if (kb < 1024) return $"{kb:F1} KB";
+            double mb = kb / 1024.0;
+            if (mb < 1024) return $"{mb:F1} MB";
+            double gb = mb / 1024.0;
+            return $"{gb:F1} GB";
         }
 
         [HttpPost]

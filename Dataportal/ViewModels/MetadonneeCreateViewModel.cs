@@ -27,10 +27,6 @@ namespace Dataportal.ViewModels
         [Display(Name = "Visibilité")]
         public int IdVisibilite { get; set; }
 
-        [MaxLength(10)]
-        [Display(Name = "Taille des données")]
-        public string TailleDesDonnees { get; set; }
-
         [Display(Name = "Séries temporelles")]
         public bool SeriesTemporelles { get; set; }
 
