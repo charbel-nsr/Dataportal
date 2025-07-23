@@ -34,14 +34,20 @@ namespace Dataportal.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "administrateur")]
+        [Authorize(Roles = "administrateur,editeur,utilisateur")]
         public IActionResult CreateStep1()
         {
+            var visibilites = _context.Visibilite.AsQueryable();
+            if (User.IsInRole("utilisateur"))
+            {
+                visibilites = visibilites.Where(v => v.Id == VisibiliteIds.Personnelle);
+            }
+
             var vm = new MetadonneeCreateViewModel
             {
                 Licences = _context.Licence.Where(l => l.Actif).ToList(),
                 Sites = _context.Site.Where(s => s.Actif).ToList(),
-                Visibilites = _context.Visibilite.ToList(),
+                Visibilites = visibilites.ToList(),
                 Appareils = _context.Appareil.Where(a => a.Actif).ToList(),
                 AppareilInfos = new List<MetadonneeAppareilInfo>()
             };
@@ -49,7 +55,7 @@ namespace Dataportal.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "administrateur")]
+        [Authorize(Roles = "administrateur,editeur,utilisateur")]
         [ValidateAntiForgeryToken]
         public IActionResult CreateStep1(MetadonneeCreateViewModel model)
         {
@@ -58,7 +64,25 @@ namespace Dataportal.Controllers
                 // Reload choices
                 model.Licences = _context.Licence.Where(l => l.Actif).ToList();
                 model.Sites = _context.Site.Where(s => s.Actif).ToList();
-                model.Visibilites = _context.Visibilite.ToList();
+                var visibilites = _context.Visibilite.AsQueryable();
+                if (User.IsInRole("utilisateur"))
+                {
+                    visibilites = visibilites.Where(v => v.Id == VisibiliteIds.Personnelle);
+                }
+                model.Visibilites = visibilites.ToList();
+                model.Appareils = _context.Appareil.Where(a => a.Actif).ToList();
+                model.AppareilInfos ??= new List<MetadonneeAppareilInfo>();
+                return View(model);
+            }
+
+            if (User.IsInRole("utilisateur") && model.IdVisibilite != VisibiliteIds.Personnelle)
+            {
+                ModelState.AddModelError("IdVisibilite", "Les utilisateurs standards ne peuvent créer que des données personnelles.");
+                // Reload choices
+                var visibilites = _context.Visibilite.Where(v => v.Id == VisibiliteIds.Personnelle).ToList();
+                model.Licences = _context.Licence.Where(l => l.Actif).ToList();
+                model.Sites = _context.Site.Where(s => s.Actif).ToList();
+                model.Visibilites = visibilites;
                 model.Appareils = _context.Appareil.Where(a => a.Actif).ToList();
                 model.AppareilInfos ??= new List<MetadonneeAppareilInfo>();
                 return View(model);
@@ -79,7 +103,7 @@ namespace Dataportal.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "administrateur")]
+        [Authorize(Roles = "administrateur,editeur,utilisateur")]
         public IActionResult CreateStep2()
         {
             var step1Json = TempData.Peek("Step1Data") as string;
@@ -99,7 +123,7 @@ namespace Dataportal.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "administrateur")]
+        [Authorize(Roles = "administrateur,editeur,utilisateur")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateStep2(DonneesCreateStep2ViewModel model)
         {
@@ -111,6 +135,12 @@ namespace Dataportal.Controllers
             }
 
             var step1Data = JsonConvert.DeserializeObject<MetadonneeCreateViewModel>(step1Json);
+
+            if (User.IsInRole("utilisateur") && step1Data.IdVisibilite != VisibiliteIds.Personnelle)
+            {
+                TempData.Remove("Step1Data");
+                return Forbid();
+            }
 
             if (!ModelState.IsValid)
             {
@@ -319,7 +349,7 @@ namespace Dataportal.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "administrateur")]
+        [Authorize(Roles = "administrateur,editeur,utilisateur")]
         public IActionResult CreateStep3(int id)
         {
             // Validate Metadonnee exists
@@ -327,6 +357,11 @@ namespace Dataportal.Controllers
             if (metadonnee == null)
             {
                 return NotFound();
+            }
+
+            if (User.IsInRole("utilisateur") && metadonnee.IdVisibilite != VisibiliteIds.Personnelle)
+            {
+                return Forbid();
             }
 
             var vm = new DonneesEventLogsCreateStep3ViewModel
@@ -339,7 +374,7 @@ namespace Dataportal.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "administrateur")]
+        [Authorize(Roles = "administrateur,editeur,utilisateur")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateStep3(DonneesEventLogsCreateStep3ViewModel model)
         {
@@ -353,6 +388,11 @@ namespace Dataportal.Controllers
             {
                 TempData["Error"] = "Métadonnée introuvable.";
                 return RedirectToAction("CreateStep1");
+            }
+
+            if (User.IsInRole("utilisateur") && metadonnee.IdVisibilite != VisibiliteIds.Personnelle)
+            {
+                return Forbid();
             }
 
             // Handle skip: if no file uploaded, user wants to skip
@@ -433,13 +473,18 @@ namespace Dataportal.Controllers
 
         // GET: /Donnees/CreateStep4/{id}
         [HttpGet]
-        [Authorize(Roles = "administrateur")]
+        [Authorize(Roles = "administrateur,editeur,utilisateur")]
         public IActionResult CreateStep4(int id)
         {
             var metadonnee = _context.Metadonnee.Find(id);
             if (metadonnee == null)
             {
                 return NotFound();
+            }
+
+            if (User.IsInRole("utilisateur") && metadonnee.IdVisibilite != VisibiliteIds.Personnelle)
+            {
+                return Forbid();
             }
 
             var vm = new DonneesContexteEnvironnementalCreateStep4ViewModel
@@ -453,7 +498,7 @@ namespace Dataportal.Controllers
 
         // POST: /Donnees/CreateStep4
         [HttpPost]
-        [Authorize(Roles = "administrateur")]
+        [Authorize(Roles = "administrateur,editeur,utilisateur")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateStep4(DonneesContexteEnvironnementalCreateStep4ViewModel model)
         {
@@ -467,6 +512,11 @@ namespace Dataportal.Controllers
             {
                 TempData["Error"] = "Métadonnée introuvable.";
                 return RedirectToAction("CreateStep1");
+            }
+
+            if (User.IsInRole("utilisateur") && metadonnee.IdVisibilite != VisibiliteIds.Personnelle)
+            {
+                return Forbid();
             }
 
             if (model.UploadedFiles == null || !model.UploadedFiles.Any())
