@@ -11,7 +11,6 @@ using System.Linq;
 //TODO: only allow rquestes from users who have verified there emails to be accepted
 //TODO: send emails to user accepting or rejecting there request
 //TODO: send email asking users to rechange ther password if there requeast is accepted
-//TODO: fill and hide selection of rolle in request depending on the situation
 //TODO: check the delete function for requests
 
 namespace Dataportal.Controllers
@@ -528,32 +527,33 @@ namespace Dataportal.Controllers
         [Authorize(Roles = "administrateur")]
         public IActionResult ToggleUtilisateurActif(int id)
         {
-            //TODO: verify and test this function
             //TODO: send email on activation or deactivation of the user
-            //TODO: Check the button that activate and desactivate if its working
-            var utilisateur = _context.Utilisateur.FirstOrDefault(u => u.Id == id);
+            var utilisateur = _context.Utilisateur
+                .Include(u => u.Role)
+                .FirstOrDefault(u => u.Id == id);
+
             if (utilisateur == null)
             {
                 TempData["Error"] = "Utilisateur introuvable.";
                 return RedirectToAction("Utilisateurs");
             }
 
+            // Prevent administrators from deactivating another administrator
+            if (utilisateur.IdRole == RoleIds.Administrateur && utilisateur.CompteActif)
+            {
+                TempData["Error"] = "Impossible de désactiver un compte administrateur.";
+                return RedirectToAction("Utilisateurs");
+            }
+
+            utilisateur.CompteActif = !utilisateur.CompteActif;
+
             if (utilisateur.CompteActif)
             {
-                // Deactivate
-                utilisateur.CompteActif = false;
-                // Disconnect:...
-                //...
-            }
-            else
-            {
-                // Reactivate
-                utilisateur.CompteActif = true;
+                // Reactivation removes any lockout that might still be active
                 utilisateur.FinLockout = null;
             }
 
             utilisateur.DateModification = DateTime.Now;
-
             _context.SaveChanges();
 
             TempData["Success"] = "Statut du compte mis à jour.";

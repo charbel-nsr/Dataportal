@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Http;
 
 namespace Dataportal.ViewModels
 {
-    public class DonneesEventLogsCreateStep3ViewModel
+    public class DonneesEventLogsCreateStep3ViewModel : IValidatableObject
     {
         [Required]
         public int IdMetadonnee { get; set; }
@@ -37,5 +37,15 @@ namespace Dataportal.ViewModels
 
         [Display(Name = "Fichiers CSV (optionnels)")]
         public ICollection<IFormFile>? UploadedFiles { get; set; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (StartTimestamp > EndTimestamp)
+            {
+                yield return new ValidationResult(
+                    "Le timestamp de début doit précéder le timestamp de fin.",
+                    new[] { nameof(StartTimestamp), nameof(EndTimestamp) });
+            }
+        }
     }
 }

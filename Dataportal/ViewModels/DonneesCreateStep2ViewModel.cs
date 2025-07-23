@@ -1,9 +1,10 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Http;
+using System.Collections.Generic;
 
 namespace Dataportal.ViewModels
 {
-    public class DonneesCreateStep2ViewModel
+    public class DonneesCreateStep2ViewModel : IValidatableObject
     {
         [Required]
         [MaxLength(100)]
@@ -39,5 +40,15 @@ namespace Dataportal.ViewModels
         [Required(ErrorMessage = "Veuillez importer au moins un fichier CSV.")]
         [Display(Name = "Fichiers CSV")]
         public List<IFormFile> UploadedFiles { get; set; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (StartTimestamp > EndTimestamp)
+            {
+                yield return new ValidationResult(
+                    "Le timestamp de début doit précéder le timestamp de fin.",
+                    new[] { nameof(StartTimestamp), nameof(EndTimestamp) });
+            }
+        }
     }
 }

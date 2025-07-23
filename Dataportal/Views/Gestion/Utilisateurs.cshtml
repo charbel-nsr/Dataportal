@@ -281,16 +281,22 @@
                 toggleUserIdInput.value = id;
             }
 
-            if (toggleActifButton && toggleActifButtonText) {
-                // Setup initial button text
-                if (actif) {
-                    toggleActifButtonText.textContent = 'Désactiver ce profil';
-                    toggleActifButton.classList.remove('btn-success');
-                    toggleActifButton.classList.add('btn-warning');
+            if (toggleActifForm && toggleActifButton && toggleActifButtonText) {
+                if (role && role.toLowerCase() === 'administrateur') {
+                    // Hide activation controls for administrators
+                    toggleActifForm.classList.add('d-none');
                 } else {
-                    toggleActifButtonText.textContent = 'Activer ce profil';
-                    toggleActifButton.classList.remove('btn-warning');
-                    toggleActifButton.classList.add('btn-success');
+                    toggleActifForm.classList.remove('d-none');
+                    // Setup initial button text
+                    if (actif) {
+                        toggleActifButtonText.textContent = 'Désactiver ce profil';
+                        toggleActifButton.classList.remove('btn-success');
+                        toggleActifButton.classList.add('btn-warning');
+                    } else {
+                        toggleActifButtonText.textContent = 'Activer ce profil';
+                        toggleActifButton.classList.remove('btn-warning');
+                        toggleActifButton.classList.add('btn-success');
+                    }
                 }
             }
         });

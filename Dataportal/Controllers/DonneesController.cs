@@ -13,13 +13,11 @@ using System.Data;
 //TODO: add a processing page between step3 and step4
 //TODO: Support batch inserts for performance.
 //TODO: suport diffrent types of files, other then csv
-//TODO: do step 3, 4 and 5
 //TODO: implement SqlBulkCopy for faster inserts 
-//TODO: add confirmatio on each next button
+//TODO: add confirmation on each next button
 //TODO: control on the dates to be by default the curent date and not bigger then from not biger the the too
 //TODO: id metadone in step 2 is not being filled
 //TODO: allow user to create pivate data and edit the cmnt in the database of is role
-//TODO: fix error after step 4
 //TODO: create tabel for data quality silver, bronze, gold, dimanond
 //TODO: automaticly calculate the data size at the end
 //TODO: make the control on wich visibilite each user can assign to the data
@@ -92,7 +90,11 @@ namespace Dataportal.Controllers
             }
 
             // show the upload + Donnees form
-            var vm = new DonneesCreateStep2ViewModel();
+            var vm = new DonneesCreateStep2ViewModel
+            {
+                StartTimestamp = DateTime.Now,
+                EndTimestamp = DateTime.Now
+            };
             return View(vm);
         }
 
@@ -329,7 +331,9 @@ namespace Dataportal.Controllers
 
             var vm = new DonneesEventLogsCreateStep3ViewModel
             {
-                IdMetadonnee = id
+                IdMetadonnee = id,
+                StartTimestamp = DateTime.Now,
+                EndTimestamp = DateTime.Now
             };
             return View(vm);
         }
@@ -440,7 +444,9 @@ namespace Dataportal.Controllers
 
             var vm = new DonneesContexteEnvironnementalCreateStep4ViewModel
             {
-                IdMetadonnee = id
+                IdMetadonnee = id,
+                StartTimestamp = DateTime.Now,
+                EndTimestamp = DateTime.Now
             };
             return View(vm);
         }
