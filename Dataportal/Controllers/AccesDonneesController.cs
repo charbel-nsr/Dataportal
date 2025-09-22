@@ -41,17 +41,29 @@ namespace Dataportal.Controllers
             var userRole = GetCurrentUserRole();
             var userEntrepriseId = GetCurrentUserEntrepriseId();
 
+            var isAuthenticated = userId.HasValue;
+            var isAdmin = userRole == RoleIds.Administrateur;
+            var isInternalRole = userRole == RoleIds.Utilisateur || userRole == RoleIds.Editeur;
+
             query = query.Where(m =>
                 m.IdVisibilite == VisibiliteIds.Public ||
-                (m.IdVisibilite == VisibiliteIds.Prive && userId != null) ||
+                (m.IdVisibilite == VisibiliteIds.Prive && isAuthenticated) ||
                 (
                     m.IdVisibilite == VisibiliteIds.Interne &&
-                    userId != null &&
-                    (userRole == RoleIds.Administrateur || m.Utilisateur.IdEntreprise == userEntrepriseId)
+                    isAuthenticated &&
+                    (
+                        isAdmin ||
+                        (
+                            isInternalRole &&
+                            userEntrepriseId.HasValue &&
+                            m.Utilisateur != null &&
+                            m.Utilisateur.IdEntreprise == userEntrepriseId
+                        )
+                    )
                 ) ||
                 (
                     m.IdVisibilite == VisibiliteIds.Personnelle &&
-                    (userRole == RoleIds.Administrateur || m.IdUtilisateur == userId)
+                    (isAdmin || (isAuthenticated && m.IdUtilisateur == userId))
                 )
             );
 
@@ -89,19 +101,75 @@ namespace Dataportal.Controllers
         private int? GetCurrentUserId()
         {
             var claim = User.FindFirst("UserId")?.Value;
-            return claim != null ? int.Parse(claim) : (int?)null;
+            return int.TryParse(claim, out var id) ? id : (int?)null;
         }
 
         private int? GetCurrentUserEntrepriseId()
         {
+            if (HttpContext.Items.TryGetValue(nameof(GetCurrentUserEntrepriseId), out var cached) && cached is int cachedId)
+            {
+                return cachedId;
+            }
+
             var claim = User.FindFirst("EntrepriseId")?.Value;
-            return claim != null ? int.Parse(claim) : (int?)null;
+            if (int.TryParse(claim, out var entrepriseId))
+            {
+                HttpContext.Items[nameof(GetCurrentUserEntrepriseId)] = entrepriseId;
+                return entrepriseId;
+            }
+
+            var userId = GetCurrentUserId();
+            if (!userId.HasValue)
+            {
+                return null;
+            }
+
+            var resolvedEntrepriseId = _context.Utilisateur
+                .AsNoTracking()
+                .Where(u => u.Id == userId.Value)
+                .Select(u => (int?)u.IdEntreprise)
+                .FirstOrDefault();
+
+            if (resolvedEntrepriseId.HasValue)
+            {
+                HttpContext.Items[nameof(GetCurrentUserEntrepriseId)] = resolvedEntrepriseId.Value;
+            }
+
+            return resolvedEntrepriseId;
         }
 
         private int? GetCurrentUserRole()
         {
+            if (HttpContext.Items.TryGetValue(nameof(GetCurrentUserRole), out var cached) && cached is int cachedRole)
+            {
+                return cachedRole;
+            }
+
             var claim = User.FindFirst("RoleId")?.Value;
-            return claim != null ? int.Parse(claim) : (int?)null;
+            if (int.TryParse(claim, out var roleId))
+            {
+                HttpContext.Items[nameof(GetCurrentUserRole)] = roleId;
+                return roleId;
+            }
+
+            var userId = GetCurrentUserId();
+            if (!userId.HasValue)
+            {
+                return null;
+            }
+
+            var resolvedRoleId = _context.Utilisateur
+                .AsNoTracking()
+                .Where(u => u.Id == userId.Value)
+                .Select(u => (int?)u.IdRole)
+                .FirstOrDefault();
+
+            if (resolvedRoleId.HasValue)
+            {
+                HttpContext.Items[nameof(GetCurrentUserRole)] = resolvedRoleId.Value;
+            }
+
+            return resolvedRoleId;
         }
     }
 

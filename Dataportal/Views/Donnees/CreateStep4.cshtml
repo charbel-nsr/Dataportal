@@ -18,6 +18,8 @@
 
         <input type="hidden" asp-for="IdMetadonnee" />
 
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
+
         <div class="form-floating mb-3">
             <input asp-for="Libelle" class="form-control" placeholder="Libellé">
             <label asp-for="Libelle"></label>
@@ -80,25 +82,27 @@
                 confirmMessage: 'Une fois cette étape validée, les données seront créées temporairement. Souhaitez-vous continuer ?'
             });
 
-            fileInput.addEventListener('change', () => {
-                fileListDiv.innerHTML = '';
-                if (fileInput.files.length > 0) {
-                    const table = document.createElement('table');
-                    table.className = 'table table-sm table-bordered';
-                    const thead = document.createElement('thead');
-                    thead.innerHTML = '<tr><th>Nom</th><th>Taille</th><th>Type</th></tr>';
-                    table.appendChild(thead);
+            if (fileInput && fileListDiv) {
+                fileInput.addEventListener('change', () => {
+                    fileListDiv.innerHTML = '';
+                    if (fileInput.files.length > 0) {
+                        const table = document.createElement('table');
+                        table.className = 'table table-sm table-bordered';
+                        const thead = document.createElement('thead');
+                        thead.innerHTML = '<tr><th>Nom</th><th>Taille</th><th>Type</th></tr>';
+                        table.appendChild(thead);
 
-                    const tbody = document.createElement('tbody');
-                    Array.from(fileInput.files).forEach(file => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `<td>${file.name}</td><td>${(file.size / 1024).toFixed(2)} KB</td><td>${file.type}</td>`;
-                        tbody.appendChild(row);
-                    });
-                    table.appendChild(tbody);
-                    fileListDiv.appendChild(table);
-                }
-            });
+                        const tbody = document.createElement('tbody');
+                        Array.from(fileInput.files).forEach(file => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `<td>${file.name}</td><td>${(file.size / 1024).toFixed(2)} KB</td><td>${file.type}</td>`;
+                            tbody.appendChild(row);
+                        });
+                        table.appendChild(tbody);
+                        fileListDiv.appendChild(table);
+                    }
+                });
+            }
         });
     </script>
 }

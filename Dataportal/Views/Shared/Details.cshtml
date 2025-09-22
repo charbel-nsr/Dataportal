@@ -21,7 +21,7 @@
             <p><strong>Site:</strong> @Model.Site?.Nom</p>
             <p><strong>Visibilité:</strong> @Model.Visibilite?.Libelle</p>
             <p><strong>Créateur:</strong> @Model.Utilisateur?.Nom @Model.Utilisateur?.Prenom (@Model.Utilisateur?.Email)</p>
-            <p><strong>Taille des données:</strong> @Model.Metadonnee.TailleDesDonnees ?? "—"</p>
+            <p><strong>Taille des données:</strong> @(Model.Metadonnee?.TailleDesDonnees ?? "—")</p>
             <p><strong>Séries temporelles:</strong> @(Model.Metadonnee.SeriesTemporelles ? "Oui" : "Non")</p>
             <p><strong>API Autorisée:</strong> @(Model.Metadonnee.AutoriserApi ? "Oui" : "Non")</p>
             <p><strong>Anonymisation:</strong> @(Model.Metadonnee.Anonymiser ? "Oui" : "Non")</p>

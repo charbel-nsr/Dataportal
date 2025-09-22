@@ -94,11 +94,17 @@ namespace Dataportal.Controllers
 
         private int GetCurrentUserId()
         {
-            var userIdClaim = User.FindFirst("UserId")?.Value;
-            if (string.IsNullOrEmpty(userIdClaim))
+            var userId = TryGetCurrentUserId();
+            if (!userId.HasValue)
                 throw new UnauthorizedAccessException("UserId claim missing.");
 
-            return int.Parse(userIdClaim);
+            return userId.Value;
+        }
+
+        private int? TryGetCurrentUserId()
+        {
+            var claim = User.FindFirst("UserId")?.Value;
+            return int.TryParse(claim, out var id) ? id : (int?)null;
         }
 
         [HttpGet]
@@ -183,19 +189,19 @@ namespace Dataportal.Controllers
             }
             catch (InvalidOperationException ex)
             {
-                ModelState.AddModelError(string.Empty, ex.Message);
+                ModelState.AddModelError(nameof(model.UploadedFiles), ex.Message);
                 TempData.Keep("Step1Data");
                 return View(model);
             }
             catch (SqlException)
             {
-                ModelState.AddModelError(string.Empty, "Une erreur est survenue lors de l'import des données.");
+                ModelState.AddModelError(nameof(model.UploadedFiles), "Une erreur est survenue lors de l'import des données.");
                 TempData.Keep("Step1Data");
                 return View(model);
             }
             catch (Exception)
             {
-                ModelState.AddModelError(string.Empty, "Une erreur inattendue est survenue lors de l'import des données.");
+                ModelState.AddModelError(nameof(model.UploadedFiles), "Une erreur inattendue est survenue lors de l'import des données.");
                 TempData.Keep("Step1Data");
                 return View(model);
             }
@@ -610,17 +616,17 @@ namespace Dataportal.Controllers
             }
             catch (InvalidOperationException ex)
             {
-                TempData["Error"] = ex.Message;
+                ModelState.AddModelError(nameof(model.UploadedFiles), ex.Message);
                 return View(model);
             }
             catch (SqlException)
             {
-                TempData["Error"] = "Une erreur est survenue lors de l'import des données.";
+                ModelState.AddModelError(nameof(model.UploadedFiles), "Une erreur est survenue lors de l'import des données.");
                 return View(model);
             }
             catch (Exception)
             {
-                TempData["Error"] = "Une erreur inattendue est survenue lors de l'import des données.";
+                ModelState.AddModelError(nameof(model.UploadedFiles), "Une erreur inattendue est survenue lors de l'import des données.");
                 return View(model);
             }
 
@@ -737,17 +743,17 @@ namespace Dataportal.Controllers
             }
             catch (InvalidOperationException ex)
             {
-                TempData["Error"] = ex.Message;
+                ModelState.AddModelError(nameof(model.UploadedFiles), ex.Message);
                 return View(model);
             }
             catch (SqlException)
             {
-                TempData["Error"] = "Une erreur est survenue lors de l'import des données.";
+                ModelState.AddModelError(nameof(model.UploadedFiles), "Une erreur est survenue lors de l'import des données.");
                 return View(model);
             }
             catch (Exception)
             {
-                TempData["Error"] = "Une erreur inattendue est survenue lors de l'import des données.";
+                ModelState.AddModelError(nameof(model.UploadedFiles), "Une erreur inattendue est survenue lors de l'import des données.");
                 return View(model);
             }
 
@@ -793,6 +799,11 @@ namespace Dataportal.Controllers
 
             if (metadonnee == null)
                 return NotFound();
+
+            if (!CanCurrentUserAccessMetadonnee(metadonnee, out var requiresAuthentication))
+            {
+                return requiresAuthentication ? Challenge() : Forbid();
+            }
 
             // 2️⃣ Load Donnees / EventLogs / Contexte
             var donnees = await _context.Donnees.FirstOrDefaultAsync(d => d.Id == metadonnee.IdDonnees);
@@ -864,9 +875,125 @@ namespace Dataportal.Controllers
 
         private int? GetCurrentUserRole()
         {
+            if (HttpContext.Items.TryGetValue(nameof(GetCurrentUserRole), out var cached) && cached is int cachedRole)
+            {
+                return cachedRole;
+            }
+
             var claim = User.FindFirst("RoleId")?.Value;
-            return claim != null ? int.Parse(claim) : (int?)null;
+            if (int.TryParse(claim, out var roleId))
+            {
+                HttpContext.Items[nameof(GetCurrentUserRole)] = roleId;
+                return roleId;
+            }
+
+            var userId = TryGetCurrentUserId();
+            if (!userId.HasValue)
+            {
+                return null;
+            }
+
+            var resolvedRoleId = _context.Utilisateur
+                .AsNoTracking()
+                .Where(u => u.Id == userId.Value)
+                .Select(u => (int?)u.IdRole)
+                .FirstOrDefault();
+
+            if (resolvedRoleId.HasValue)
+            {
+                HttpContext.Items[nameof(GetCurrentUserRole)] = resolvedRoleId.Value;
+            }
+
+            return resolvedRoleId;
         }
+
+        private int? GetCurrentUserEntrepriseId()
+        {
+            if (HttpContext.Items.TryGetValue(nameof(GetCurrentUserEntrepriseId), out var cached) && cached is int cachedId)
+            {
+                return cachedId;
+            }
+
+            var claim = User.FindFirst("EntrepriseId")?.Value;
+            if (int.TryParse(claim, out var entrepriseId))
+            {
+                HttpContext.Items[nameof(GetCurrentUserEntrepriseId)] = entrepriseId;
+                return entrepriseId;
+            }
+
+            var userId = TryGetCurrentUserId();
+            if (!userId.HasValue)
+            {
+                return null;
+            }
+
+            var resolvedEntrepriseId = _context.Utilisateur
+                .AsNoTracking()
+                .Where(u => u.Id == userId.Value)
+                .Select(u => (int?)u.IdEntreprise)
+                .FirstOrDefault();
+
+            if (resolvedEntrepriseId.HasValue)
+            {
+                HttpContext.Items[nameof(GetCurrentUserEntrepriseId)] = resolvedEntrepriseId.Value;
+            }
+
+            return resolvedEntrepriseId;
+        }
+
+        private bool CanCurrentUserAccessMetadonnee(Metadonnee metadonnee, out bool requiresAuthentication)
+        {
+            var isAuthenticated = User.Identity?.IsAuthenticated ?? false;
+            requiresAuthentication = false;
+
+            if (metadonnee.IdVisibilite == VisibiliteIds.Public)
+            {
+                return true;
+            }
+
+            if (!isAuthenticated)
+            {
+                requiresAuthentication = true;
+                return false;
+            }
+
+            var role = GetCurrentUserRole();
+            var userId = TryGetCurrentUserId();
+
+            switch (metadonnee.IdVisibilite)
+            {
+                case VisibiliteIds.Prive:
+                    return true;
+
+                case VisibiliteIds.Interne:
+                    if (role == RoleIds.Administrateur)
+                    {
+                        return true;
+                    }
+
+                    if (role == RoleIds.Utilisateur || role == RoleIds.Editeur)
+                    {
+                        var entrepriseId = GetCurrentUserEntrepriseId();
+                        return entrepriseId.HasValue &&
+                            metadonnee.Utilisateur != null &&
+                            metadonnee.Utilisateur.IdEntreprise == entrepriseId.Value;
+                    }
+
+                    return false;
+
+                case VisibiliteIds.Personnelle:
+                    if (role == RoleIds.Administrateur)
+                    {
+                        return true;
+                    }
+
+                    return userId.HasValue && metadonnee.IdUtilisateur == userId.Value;
+
+                default:
+                    return false;
+            }
+        }
+
 
         private async Task DropSqlTableIfExists(string tableName)
         {

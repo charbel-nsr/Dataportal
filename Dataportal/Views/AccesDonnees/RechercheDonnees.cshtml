@@ -130,7 +130,7 @@
                             {
                                 <tr>
                                     <td>@m.Nom</td>
-                                    <td>@m.TailleDesDonnees ?? "—"</td>
+                                    <td>@(string.IsNullOrWhiteSpace(m.TailleDesDonnees) ? "—" : m.TailleDesDonnees)</td>
                                     <td>@m.NombreDeTelechargements</td>
                                     <td>@(m.DernierMiseAJour?.ToString("dd/MM/yyyy") ?? "—")</td>
                                     <td>
