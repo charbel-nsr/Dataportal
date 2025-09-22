@@ -198,3 +198,57 @@ header nav.scrolled {
 .multi-select-container .remove-tag {
     cursor: pointer;
 }
+
+/* Upload overlay */
+.upload-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    z-index: 2000;
+}
+
+.upload-overlay__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+}
+
+.upload-overlay__content {
+    position: relative;
+    max-width: 720px;
+    width: 100%;
+    background: #ffffff;
+    border-radius: 1rem;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
+    padding: 2rem;
+    text-align: left;
+}
+
+.upload-overlay__title {
+    font-size: 1.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.upload-overlay__message {
+    margin-bottom: 1.5rem;
+    font-size: 1rem;
+}
+
+.upload-overlay__json {
+    background: #0f172a;
+    color: #e2e8f0;
+    border-radius: 0.75rem;
+    padding: 1rem 1.5rem;
+    max-height: 320px;
+    overflow: auto;
+    font-family: 'Fira Code', 'Consolas', 'Courier New', monospace;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+body.upload-overlay-open {
+    overflow: hidden;
+}

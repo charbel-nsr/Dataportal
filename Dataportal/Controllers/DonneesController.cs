@@ -6,27 +6,26 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.VisualBasic.FileIO;
 using Newtonsoft.Json;
 using System.Data;
+using System.Globalization;
 //TODO: validate and limite file sizer in import step2, 3 amd 4
 //TODO: add a processing page between step2 and step3
 //TODO: add a processing page between step3 and step4
-//TODO: Support batch inserts for performance.
 //TODO: suport diffrent types of files, other then csv
-//TODO: implement SqlBulkCopy for faster inserts 
 //TODO: add confirmation on each next button
 //TODO: control on the dates to be by default the curent date and not bigger then from not biger the the too
 //TODO: id metadone in step 2 is not being filled
 //TODO: allow user to create pivate data and edit the cmnt in the database of is role
 //TODO: create tabel for data quality silver, bronze, gold, dimanond
-//TODO: automaticly calculate the data size at the end
-//TODO: make the control on wich visibilite each user can assign to the data
 
 namespace Dataportal.Controllers
 {
     public class DonneesController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private const string DataSizeTempDataKey = "DataSizeBytes";
 
         public DonneesController(ApplicationDbContext context)
         {
@@ -173,42 +172,35 @@ namespace Dataportal.Controllers
 
             // Calculate uploaded data size and store for next steps
             long dataSize = model.UploadedFiles.Sum(f => f.Length);
-            TempData["DataSizeBytes"] = dataSize;
 
             // -- Show optional processing page here if you want
             // return View("Processing");
 
-            // Merge CSVs
-            var mergedData = new DataTable();
-            foreach (var file in model.UploadedFiles)
+            var tableName = $"Donnees.{model.Libelle}-{model.Code}".Replace(" ", "_");
+            try
             {
-                using var stream = file.OpenReadStream();
-                using var reader = new StreamReader(stream);
-                var csv = await reader.ReadToEndAsync();
-                var table = CsvToDataTable(csv);
-
-                if (mergedData.Columns.Count == 0)
-                {
-                    mergedData = table;
-                }
-                else
-                {
-                    if (!ColumnsMatch(mergedData, table))
-                    {
-                        ModelState.AddModelError("", "Les fichiers CSV doivent avoir les mêmes colonnes.");
-                        TempData.Keep("Step1Data");
-                        return View(model);
-                    }
-                    foreach (DataRow row in table.Rows)
-                    {
-                        mergedData.ImportRow(row);
-                    }
-                }
+                await CreateSqlTableFromCsvFilesAsync(tableName, model.UploadedFiles);
+            }
+            catch (InvalidOperationException ex)
+            {
+                ModelState.AddModelError(string.Empty, ex.Message);
+                TempData.Keep("Step1Data");
+                return View(model);
+            }
+            catch (SqlException)
+            {
+                ModelState.AddModelError(string.Empty, "Une erreur est survenue lors de l'import des données.");
+                TempData.Keep("Step1Data");
+                return View(model);
+            }
+            catch (Exception)
+            {
+                ModelState.AddModelError(string.Empty, "Une erreur inattendue est survenue lors de l'import des données.");
+                TempData.Keep("Step1Data");
+                return View(model);
             }
 
-            // Create SQL table
-            var tableName = $"Donnees.{model.Libelle}-{model.Code}".Replace(" ", "_");
-            await CreateSqlTableFromDataTable(tableName, mergedData);
+            TempData[DataSizeTempDataKey] = dataSize.ToString(CultureInfo.InvariantCulture);
 
             // Create Donnees
             var donnees = new Donnees
@@ -273,86 +265,268 @@ namespace Dataportal.Controllers
             return RedirectToAction("CreateStep3", new { id = metadonnee.Id });
         }
 
-        private DataTable CsvToDataTable(string csvContent)
+        private async Task CreateSqlTableFromCsvFilesAsync(string tableName, IEnumerable<IFormFile> files)
         {
-            var dt = new DataTable();
-            using var reader = new StringReader(csvContent);
-            var header = reader.ReadLine()?.Split(',');
-            if (header == null) throw new Exception("CSV vide.");
+            if (files == null) throw new ArgumentNullException(nameof(files));
 
-            foreach (var column in header)
+            var fileList = files.Where(f => f != null).ToList();
+            if (fileList.Count == 0)
             {
-                dt.Columns.Add(column.Trim());
+                throw new InvalidOperationException("Les fichiers CSV fournis sont vides.");
             }
 
-            while (reader.Peek() > -1)
+            await using var connection = new SqlConnection(_context.Database.GetConnectionString());
+            await connection.OpenAsync();
+
+            List<string>? headers = null;
+            SqlBulkCopy? bulkCopy = null;
+            DataTable? buffer = null;
+            var tableCreated = false;
+
+            try
             {
-                var line = reader.ReadLine();
-                if (!string.IsNullOrWhiteSpace(line))
+                foreach (var file in fileList)
                 {
-                    dt.Rows.Add(line.Split(','));
+                    using var stream = file.OpenReadStream();
+                    using var reader = new StreamReader(stream);
+                    using var parser = CreateCsvParser(reader);
+
+                    var normalizedHeader = ReadNormalizedHeader(parser);
+                    if (normalizedHeader == null || normalizedHeader.Length == 0)
+                    {
+                        continue;
+                    }
+
+                    if (normalizedHeader.Any(string.IsNullOrWhiteSpace))
+                    {
+                        throw new InvalidOperationException("Les en-têtes de colonnes ne peuvent pas être vides.");
+                    }
+
+                    if (headers == null)
+                    {
+                        EnsureUniqueHeaders(normalizedHeader);
+                        headers = normalizedHeader.ToList();
+                        await CreateSqlTableAsync(connection, tableName, headers);
+                        bulkCopy = CreateBulkCopy(connection, tableName, headers);
+                        buffer = CreateBufferTable(headers);
+                        tableCreated = true;
+                    }
+                    else if (!HeadersMatch(headers, normalizedHeader))
+                    {
+                        throw new InvalidOperationException("Les fichiers CSV doivent avoir les mêmes colonnes.");
+                    }
+
+                    if (bulkCopy != null && buffer != null)
+                    {
+                        await BulkCopyParserRowsAsync(bulkCopy, buffer, headers!, parser);
+                    }
+                }
+            }
+            catch
+            {
+                if (tableCreated)
+                {
+                    await DropSqlTableIfExists(connection, tableName);
+                }
+                throw;
+            }
+            finally
+            {
+                if (bulkCopy != null)
+                {
+                    bulkCopy.Close();
+                    if (bulkCopy is System.IDisposable disposableBulkCopy)
+                    {
+                        disposableBulkCopy.Dispose();
+                    }
+                }
+
+                buffer?.Dispose();
+            }
+
+            if (!tableCreated)
+            {
+                throw new InvalidOperationException("Les fichiers CSV fournis sont vides.");
+            }
+        }
+
+        private static void EnsureUniqueHeaders(IEnumerable<string> headers)
+        {
+            var duplicates = headers
+                .GroupBy(h => h, StringComparer.OrdinalIgnoreCase)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .ToList();
+
+            if (duplicates.Count > 0)
+            {
+                throw new InvalidOperationException("Les en-têtes de colonnes doivent être uniques.");
+            }
+        }
+
+        private static bool HeadersMatch(IReadOnlyList<string> expected, IReadOnlyList<string> candidate)
+        {
+            if (expected.Count != candidate.Count)
+            {
+                return false;
+            }
+
+            for (var i = 0; i < expected.Count; i++)
+            {
+                if (!string.Equals(expected[i], candidate[i], StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
                 }
             }
 
-            return dt;
-        }
-         
-        private bool ColumnsMatch(DataTable dt1, DataTable dt2)
-        {
-            if (dt1.Columns.Count != dt2.Columns.Count) return false;
-            for (int i = 0; i < dt1.Columns.Count; i++)
-            {
-                if (!dt1.Columns[i].ColumnName.Equals(dt2.Columns[i].ColumnName, StringComparison.OrdinalIgnoreCase))
-                    return false;
-            }
             return true;
         }
 
-        private async Task CreateSqlTableFromDataTable(string tableName, DataTable data)
+        private static DataTable CreateBufferTable(IReadOnlyList<string> headers)
         {
-            using var connection = new SqlConnection(_context.Database.GetConnectionString());
-            await connection.OpenAsync();
-
-            var columnDefs = string.Join(", ", data.Columns
-                .Cast<DataColumn>()
-                .Select(c => $"[{c.ColumnName}] NVARCHAR(MAX)"));
-            // Check if 'id' column exists
-            bool hasIdColumn = data.Columns.Cast<DataColumn>().Any(c => string.Equals(c.ColumnName, "id", StringComparison.OrdinalIgnoreCase));
-
-            string createTableCmd;
-            if (hasIdColumn)
+            var table = new DataTable();
+            foreach (var header in headers)
             {
-                // Use CSV-provided 'id'
-                createTableCmd = $"CREATE TABLE [DataPortal].[dbo].[{tableName}] ({columnDefs})";
-            }
-            else
-            {
-                // Add our own IDENTITY
-                createTableCmd = $"CREATE TABLE [DataPortal].[dbo].[{tableName}] (Id INT IDENTITY(1,1) PRIMARY KEY, {columnDefs})";
+                var column = table.Columns.Add(header, typeof(string));
+                column.AllowDBNull = true;
             }
 
-            using (var cmd = new SqlCommand(createTableCmd, connection))
-            {
-                await cmd.ExecuteNonQueryAsync();
-            }
-
-            // Batch insert
-            foreach (DataRow row in data.Rows)
-            {
-                var columns = string.Join(", ", data.Columns.Cast<DataColumn>().Select(c => $"[{c.ColumnName}]"));
-                var values = string.Join(", ", data.Columns.Cast<DataColumn>().Select(c => $"@{c.ColumnName}"));
-
-                var insertCmdText = $"INSERT INTO [{tableName}] ({columns}) VALUES ({values})";
-                using var insertCmd = new SqlCommand(insertCmdText, connection);
-                foreach (DataColumn col in data.Columns)
-                {
-                    insertCmd.Parameters.AddWithValue($"@{col.ColumnName}", row[col.ColumnName] ?? DBNull.Value);
-                }
-                await insertCmd.ExecuteNonQueryAsync();
-            }
+            return table;
         }
 
-        [HttpGet]
+
+        private static TextFieldParser CreateCsvParser(TextReader reader)
+        {
+            var parser = new TextFieldParser(reader)
+            {
+                TextFieldType = FieldType.Delimited,
+                TrimWhiteSpace = false,
+                HasFieldsEnclosedInQuotes = true
+            };
+            parser.SetDelimiters(",");
+            return parser;
+        }
+
+        private static string[]? ReadNormalizedHeader(TextFieldParser parser)
+        {
+            while (!parser.EndOfData)
+            {
+                var candidate = parser.ReadFields();
+                if (candidate == null)
+                {
+                    continue;
+                }
+
+                if (candidate.Length == 1 && string.IsNullOrWhiteSpace(candidate[0]))
+                {
+                    continue;
+                }
+
+                return candidate
+                    .Select(h => (h ?? string.Empty).Trim())
+                    .ToArray();
+            }
+
+            return null;
+        }
+
+        private static Task BulkCopyParserRowsAsync(SqlBulkCopy bulkCopy, DataTable buffer, IReadOnlyList<string> headers, TextFieldParser parser)
+        {
+            const int batchSize = 5000;
+
+            while (!parser.EndOfData)
+            {
+                var fields = parser.ReadFields();
+                if (fields == null)
+                {
+                    continue;
+                }
+
+                if (fields.Length == 1 && string.IsNullOrWhiteSpace(fields[0]))
+                {
+                    continue;
+                }
+
+                if (fields.Length != headers.Count)
+                {
+                    throw new InvalidOperationException("Une ligne du fichier CSV ne correspond pas au nombre de colonnes de l'en-tête.");
+                }
+
+                var rowValues = new object[headers.Count];
+                for (var i = 0; i < fields.Length; i++)
+                {
+                    rowValues[i] = fields[i] ?? (object)DBNull.Value;
+                }
+
+                buffer.Rows.Add(rowValues);
+
+                if (buffer.Rows.Count >= batchSize)
+                {
+                    bulkCopy.WriteToServer(buffer);
+                    buffer.Clear();
+                }
+            }
+
+            if (buffer.Rows.Count > 0)
+            {
+                bulkCopy.WriteToServer(buffer);
+                buffer.Clear();
+            }
+
+            return Task.CompletedTask;
+        }
+
+        private static SqlBulkCopy CreateBulkCopy(SqlConnection connection, string tableName, IReadOnlyList<string> headers)
+        {
+            var bulkCopy = new SqlBulkCopy(connection, SqlBulkCopyOptions.TableLock, null)
+            {
+                DestinationTableName = GetQualifiedTableName(tableName),
+                BulkCopyTimeout = 0,
+                BatchSize = 5000
+            };
+
+            foreach (var header in headers)
+            {
+                bulkCopy.ColumnMappings.Add(header, header);
+            }
+
+            return bulkCopy;
+        }
+
+        private static async Task CreateSqlTableAsync(SqlConnection connection, string tableName, IReadOnlyList<string> headers)
+        {
+            var columnDefs = string.Join(", ", headers.Select(h =>
+            {
+                var safeColumn = h.Replace("]", "]]");
+                return $"[{safeColumn}] NVARCHAR(MAX)";
+            }));
+            var hasIdColumn = headers.Any(h => string.Equals(h, "id", StringComparison.OrdinalIgnoreCase));
+
+            var createTableCommand = hasIdColumn
+                ? $"CREATE TABLE {GetQualifiedTableName(tableName)} ({columnDefs})"
+                : $"CREATE TABLE {GetQualifiedTableName(tableName)} (Id INT IDENTITY(1,1) PRIMARY KEY, {columnDefs})";
+
+            using var cmd = new SqlCommand(createTableCommand, connection);
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        private static string GetQualifiedTableName(string tableName)
+        {
+            var safeName = tableName.Replace("]", "]]");
+            return $"[DataPortal].[dbo].[{safeName}]";
+        }
+
+        private static async Task DropSqlTableIfExists(SqlConnection connection, string tableName)
+        {
+            var qualifiedName = GetQualifiedTableName(tableName);
+            var objectIdName = qualifiedName.Replace("'", "''");
+            var dropCommand = $"IF OBJECT_ID('{objectIdName}', 'U') IS NOT NULL DROP TABLE {qualifiedName};";
+
+            using var cmd = new SqlCommand(dropCommand, connection);
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+            [HttpGet]
         [Authorize(Roles = "administrateur,editeur,utilisateur")]
         public IActionResult CreateStep3(int id)
         {
@@ -420,43 +594,35 @@ namespace Dataportal.Controllers
             }
 
             // Update data size with uploaded files
-            long dataSize = 0;
-            if (TempData.ContainsKey("DataSizeBytes"))
-                dataSize = Convert.ToInt64(TempData["DataSizeBytes"]);
-            long stepSize = model.UploadedFiles.Sum(f => f.Length);
-            dataSize += stepSize;
-            TempData["DataSizeBytes"] = dataSize;
-
-            // Merge uploaded CSVs
-            var mergedData = new DataTable();
-            foreach (var file in model.UploadedFiles)
+            long existingDataSize = 0;
+            var sizeValue = TempData.Peek(DataSizeTempDataKey);
+            if (sizeValue != null)
             {
-                using var stream = file.OpenReadStream();
-                using var reader = new StreamReader(stream);
-                var csv = await reader.ReadToEndAsync();
-                var table = CsvToDataTable(csv);
-
-                if (mergedData.Columns.Count == 0)
-                {
-                    mergedData = table;
-                }
-                else
-                {
-                    if (!ColumnsMatch(mergedData, table))
-                    {
-                        TempData["Error"] = "Les fichiers CSV doivent avoir les mêmes colonnes.";
-                        return View(model);
-                    }
-                    foreach (DataRow row in table.Rows)
-                    {
-                        mergedData.ImportRow(row);
-                    }
-                }
+                existingDataSize = ParseDataSize(sizeValue);
             }
+            long stepSize = model.UploadedFiles.Sum(f => f.Length);
+            long totalDataSize = existingDataSize + stepSize;
 
-            // Create SQL Table
             var tableName = $"DonneesEventLogs.{model.Libelle}-{model.Code}".Replace(" ", "_");
-            await CreateSqlTableFromDataTable(tableName, mergedData);
+            try
+            {
+                await CreateSqlTableFromCsvFilesAsync(tableName, model.UploadedFiles);
+            }
+            catch (InvalidOperationException ex)
+            {
+                TempData["Error"] = ex.Message;
+                return View(model);
+            }
+            catch (SqlException)
+            {
+                TempData["Error"] = "Une erreur est survenue lors de l'import des données.";
+                return View(model);
+            }
+            catch (Exception)
+            {
+                TempData["Error"] = "Une erreur inattendue est survenue lors de l'import des données.";
+                return View(model);
+            }
 
             // Create DonneesEventLogs
             var eventLogs = new DonneesEventLogs
@@ -477,9 +643,11 @@ namespace Dataportal.Controllers
 
             // Link to Metadonnee and update data size
             metadonnee.IdDonneesEventLogs = eventLogs.Id;
-            metadonnee.TailleDesDonnees = FormatDataSize(dataSize);
+            metadonnee.TailleDesDonnees = FormatDataSize(totalDataSize);
             _context.Update(metadonnee);
             await _context.SaveChangesAsync();
+
+            TempData[DataSizeTempDataKey] = totalDataSize.ToString(CultureInfo.InvariantCulture);
 
             return RedirectToAction("CreateStep4", new { id = model.IdMetadonnee });
         }
@@ -553,43 +721,35 @@ namespace Dataportal.Controllers
             }
 
             // Update data size with uploaded files
-            long dataSize = 0;
-            if (TempData.ContainsKey("DataSizeBytes"))
-                dataSize = Convert.ToInt64(TempData["DataSizeBytes"]);
-            long stepSize = model.UploadedFiles.Sum(f => f.Length);
-            dataSize += stepSize;
-            TempData["DataSizeBytes"] = dataSize;
-
-            // Merge uploaded CSV files
-            var mergedData = new DataTable();
-            foreach (var file in model.UploadedFiles)
+            long existingDataSize = 0;
+            var sizeValue = TempData.Peek(DataSizeTempDataKey);
+            if (sizeValue != null)
             {
-                using var stream = file.OpenReadStream();
-                using var reader = new StreamReader(stream);
-                var csv = await reader.ReadToEndAsync();
-                var table = CsvToDataTable(csv);
-
-                if (mergedData.Columns.Count == 0)
-                {
-                    mergedData = table;
-                }
-                else
-                {
-                    if (!ColumnsMatch(mergedData, table))
-                    {
-                        TempData["Error"] = "Les fichiers CSV doivent avoir les mêmes colonnes.";
-                        return View(model);
-                    }
-                    foreach (DataRow row in table.Rows)
-                    {
-                        mergedData.ImportRow(row);
-                    }
-                }
+                existingDataSize = ParseDataSize(sizeValue);
             }
+            long stepSize = model.UploadedFiles.Sum(f => f.Length);
+            long totalDataSize = existingDataSize + stepSize;
 
-            // Create SQL Table
             var tableName = $"DonneesContexteEnvironnemental.{model.Libelle}-{model.Code}".Replace(" ", "_");
-            await CreateSqlTableFromDataTable(tableName, mergedData);
+            try
+            {
+                await CreateSqlTableFromCsvFilesAsync(tableName, model.UploadedFiles);
+            }
+            catch (InvalidOperationException ex)
+            {
+                TempData["Error"] = ex.Message;
+                return View(model);
+            }
+            catch (SqlException)
+            {
+                TempData["Error"] = "Une erreur est survenue lors de l'import des données.";
+                return View(model);
+            }
+            catch (Exception)
+            {
+                TempData["Error"] = "Une erreur inattendue est survenue lors de l'import des données.";
+                return View(model);
+            }
 
             // Save DonneesContexteEnvironnemental
             var donneesContext = new DonneesContexteEnvironnemental
@@ -609,10 +769,10 @@ namespace Dataportal.Controllers
 
             // Link to Metadonnee and update data size
             metadonnee.IdDonneesContexteEnvironnemental = donneesContext.Id;
-            metadonnee.TailleDesDonnees = FormatDataSize(dataSize);
+            metadonnee.TailleDesDonnees = FormatDataSize(totalDataSize);
             _context.Update(metadonnee);
             await _context.SaveChangesAsync();
-            TempData.Remove("DataSizeBytes");
+            TempData.Remove(DataSizeTempDataKey);
 
             // Proceed to next step
             return RedirectToAction("Details", new { id = metadonnee.Id, creation = true });
@@ -719,6 +879,26 @@ namespace Dataportal.Controllers
             var query = $"IF OBJECT_ID('{safeName}', 'U') IS NOT NULL DROP TABLE {safeName}";
             using var cmd = new SqlCommand(query, connection);
             await cmd.ExecuteNonQueryAsync();
+        }
+
+        private static long ParseDataSize(object? sizeValue)
+        {
+            switch (sizeValue)
+            {
+                case null:
+                    return 0L;
+                case long longValue:
+                    return longValue;
+                case int intValue:
+                    return intValue;
+                case string stringValue when long.TryParse(stringValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed):
+                    return parsed;
+                default:
+                    var invariantText = System.Convert.ToString(sizeValue, CultureInfo.InvariantCulture);
+                    return long.TryParse(invariantText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var converted)
+                        ? converted
+                        : 0L;
+            }
         }
 
         private static string FormatDataSize(long bytes)

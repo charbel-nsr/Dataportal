@@ -7,7 +7,7 @@
 <div class="container">
     <h2 class="mb-4">Ajouter Données (Étape 2/5)</h2>
     @await Html.PartialAsync("_CreationProgress")
-    <form method="post" enctype="multipart/form-data" class="bg-light p-4 rounded shadow-sm">
+    <form method="post" enctype="multipart/form-data" class="bg-light p-4 rounded shadow-sm upload-overlay-form">
         @Html.AntiForgeryToken()
 
         <div class="form-floating mb-3">
@@ -65,13 +65,21 @@
     </form>
 </div>
 
+@await Html.PartialAsync("_UploadOverlay")
+
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/upload-overlay.js" asp-append-version="true"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const fileInput = document.querySelector('input[type="file"][multiple]');
             const fileListDiv = document.getElementById('fileList');
+            const form = document.querySelector('form.upload-overlay-form');
+
+            initUploadOverlay(form, {
+                confirmMessage: 'Une fois cette étape validée, les données seront créées temporairement. Souhaitez-vous continuer ?'
+            });
 
             fileInput.addEventListener('change', () => {
                 fileListDiv.innerHTML = '';

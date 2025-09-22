@@ -13,7 +13,7 @@
         <p>⚠️ Cette étape est <strong>optionnelle</strong>. Vous pouvez ajouter des fichiers d'Event Logs, ou cliquer sur <strong>Passer cette étape</strong> pour continuer.</p>
     </div>
 
-    <form asp-action="CreateStep3" method="post" enctype="multipart/form-data" class="bg-light p-4 rounded shadow-sm">
+    <form asp-action="CreateStep3" method="post" enctype="multipart/form-data" class="bg-light p-4 rounded shadow-sm upload-overlay-form">
         @Html.AntiForgeryToken()
         <input type="hidden" asp-for="IdMetadonnee" />
 
@@ -73,13 +73,21 @@
     </form>
 </div>
 
+@await Html.PartialAsync("_UploadOverlay")
+
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/upload-overlay.js" asp-append-version="true"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const fileInput = document.querySelector('input[type="file"][multiple]');
             const fileListDiv = document.getElementById('fileList');
+            const form = document.querySelector('form.upload-overlay-form');
+
+            initUploadOverlay(form, {
+                confirmMessage: 'Une fois cette étape validée, les données seront créées temporairement. Souhaitez-vous continuer ?'
+            });
 
             fileInput.addEventListener('change', () => {
                 fileListDiv.innerHTML = '';
