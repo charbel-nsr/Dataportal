@@ -2,13 +2,12 @@
 using Dataportal.Models;
 using Dataportal.ViewModels;
 using Dataportal.Classes;
+using Dataportal.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.VisualBasic.FileIO;
 using Newtonsoft.Json;
-using System.Data;
 using System.Globalization;
 //TODO: validate and limite file sizer in import step2, 3 amd 4
 //TODO: add a processing page between step2 and step3
@@ -25,11 +24,13 @@ namespace Dataportal.Controllers
     public class DonneesController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly ITabularFileImporter _fileImporter;
         private const string DataSizeTempDataKey = "DataSizeBytes";
 
-        public DonneesController(ApplicationDbContext context)
+        public DonneesController(ApplicationDbContext context, ITabularFileImporter fileImporter)
         {
             _context = context;
+            _fileImporter = fileImporter;
         }
 
         [HttpGet]
@@ -171,7 +172,7 @@ namespace Dataportal.Controllers
 
             if (model.UploadedFiles == null || !model.UploadedFiles.Any())
             {
-                ModelState.AddModelError("UploadedFiles", "Vous devez importer au moins un fichier CSV.");
+                ModelState.AddModelError("UploadedFiles", "Vous devez importer au moins un fichier de données (CSV ou XLSX).");
                 TempData.Keep("Step1Data");
                 return View(model);
             }
@@ -185,7 +186,7 @@ namespace Dataportal.Controllers
             var tableName = $"Donnees.{model.Libelle}-{model.Code}".Replace(" ", "_");
             try
             {
-                await CreateSqlTableFromCsvFilesAsync(tableName, model.UploadedFiles);
+                await _fileImporter.ImportAsync(tableName, model.UploadedFiles);
             }
             catch (InvalidOperationException ex)
             {
@@ -271,268 +272,7 @@ namespace Dataportal.Controllers
             return RedirectToAction("CreateStep3", new { id = metadonnee.Id });
         }
 
-        private async Task CreateSqlTableFromCsvFilesAsync(string tableName, IEnumerable<IFormFile> files)
-        {
-            if (files == null) throw new ArgumentNullException(nameof(files));
-
-            var fileList = files.Where(f => f != null).ToList();
-            if (fileList.Count == 0)
-            {
-                throw new InvalidOperationException("Les fichiers CSV fournis sont vides.");
-            }
-
-            await using var connection = new SqlConnection(_context.Database.GetConnectionString());
-            await connection.OpenAsync();
-
-            List<string>? headers = null;
-            SqlBulkCopy? bulkCopy = null;
-            DataTable? buffer = null;
-            var tableCreated = false;
-
-            try
-            {
-                foreach (var file in fileList)
-                {
-                    using var stream = file.OpenReadStream();
-                    using var reader = new StreamReader(stream);
-                    using var parser = CreateCsvParser(reader);
-
-                    var normalizedHeader = ReadNormalizedHeader(parser);
-                    if (normalizedHeader == null || normalizedHeader.Length == 0)
-                    {
-                        continue;
-                    }
-
-                    if (normalizedHeader.Any(string.IsNullOrWhiteSpace))
-                    {
-                        throw new InvalidOperationException("Les en-têtes de colonnes ne peuvent pas être vides.");
-                    }
-
-                    if (headers == null)
-                    {
-                        EnsureUniqueHeaders(normalizedHeader);
-                        headers = normalizedHeader.ToList();
-                        await CreateSqlTableAsync(connection, tableName, headers);
-                        bulkCopy = CreateBulkCopy(connection, tableName, headers);
-                        buffer = CreateBufferTable(headers);
-                        tableCreated = true;
-                    }
-                    else if (!HeadersMatch(headers, normalizedHeader))
-                    {
-                        throw new InvalidOperationException("Les fichiers CSV doivent avoir les mêmes colonnes.");
-                    }
-
-                    if (bulkCopy != null && buffer != null)
-                    {
-                        await BulkCopyParserRowsAsync(bulkCopy, buffer, headers!, parser);
-                    }
-                }
-            }
-            catch
-            {
-                if (tableCreated)
-                {
-                    await DropSqlTableIfExists(connection, tableName);
-                }
-                throw;
-            }
-            finally
-            {
-                if (bulkCopy != null)
-                {
-                    bulkCopy.Close();
-                    if (bulkCopy is System.IDisposable disposableBulkCopy)
-                    {
-                        disposableBulkCopy.Dispose();
-                    }
-                }
-
-                buffer?.Dispose();
-            }
-
-            if (!tableCreated)
-            {
-                throw new InvalidOperationException("Les fichiers CSV fournis sont vides.");
-            }
-        }
-
-        private static void EnsureUniqueHeaders(IEnumerable<string> headers)
-        {
-            var duplicates = headers
-                .GroupBy(h => h, StringComparer.OrdinalIgnoreCase)
-                .Where(g => g.Count() > 1)
-                .Select(g => g.Key)
-                .ToList();
-
-            if (duplicates.Count > 0)
-            {
-                throw new InvalidOperationException("Les en-têtes de colonnes doivent être uniques.");
-            }
-        }
-
-        private static bool HeadersMatch(IReadOnlyList<string> expected, IReadOnlyList<string> candidate)
-        {
-            if (expected.Count != candidate.Count)
-            {
-                return false;
-            }
-
-            for (var i = 0; i < expected.Count; i++)
-            {
-                if (!string.Equals(expected[i], candidate[i], StringComparison.OrdinalIgnoreCase))
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
-        private static DataTable CreateBufferTable(IReadOnlyList<string> headers)
-        {
-            var table = new DataTable();
-            foreach (var header in headers)
-            {
-                var column = table.Columns.Add(header, typeof(string));
-                column.AllowDBNull = true;
-            }
-
-            return table;
-        }
-
-
-        private static TextFieldParser CreateCsvParser(TextReader reader)
-        {
-            var parser = new TextFieldParser(reader)
-            {
-                TextFieldType = FieldType.Delimited,
-                TrimWhiteSpace = false,
-                HasFieldsEnclosedInQuotes = true
-            };
-            parser.SetDelimiters(",");
-            return parser;
-        }
-
-        private static string[]? ReadNormalizedHeader(TextFieldParser parser)
-        {
-            while (!parser.EndOfData)
-            {
-                var candidate = parser.ReadFields();
-                if (candidate == null)
-                {
-                    continue;
-                }
-
-                if (candidate.Length == 1 && string.IsNullOrWhiteSpace(candidate[0]))
-                {
-                    continue;
-                }
-
-                return candidate
-                    .Select(h => (h ?? string.Empty).Trim())
-                    .ToArray();
-            }
-
-            return null;
-        }
-
-        private static Task BulkCopyParserRowsAsync(SqlBulkCopy bulkCopy, DataTable buffer, IReadOnlyList<string> headers, TextFieldParser parser)
-        {
-            const int batchSize = 5000;
-
-            while (!parser.EndOfData)
-            {
-                var fields = parser.ReadFields();
-                if (fields == null)
-                {
-                    continue;
-                }
-
-                if (fields.Length == 1 && string.IsNullOrWhiteSpace(fields[0]))
-                {
-                    continue;
-                }
-
-                if (fields.Length != headers.Count)
-                {
-                    throw new InvalidOperationException("Une ligne du fichier CSV ne correspond pas au nombre de colonnes de l'en-tête.");
-                }
-
-                var rowValues = new object[headers.Count];
-                for (var i = 0; i < fields.Length; i++)
-                {
-                    rowValues[i] = fields[i] ?? (object)DBNull.Value;
-                }
-
-                buffer.Rows.Add(rowValues);
-
-                if (buffer.Rows.Count >= batchSize)
-                {
-                    bulkCopy.WriteToServer(buffer);
-                    buffer.Clear();
-                }
-            }
-
-            if (buffer.Rows.Count > 0)
-            {
-                bulkCopy.WriteToServer(buffer);
-                buffer.Clear();
-            }
-
-            return Task.CompletedTask;
-        }
-
-        private static SqlBulkCopy CreateBulkCopy(SqlConnection connection, string tableName, IReadOnlyList<string> headers)
-        {
-            var bulkCopy = new SqlBulkCopy(connection, SqlBulkCopyOptions.TableLock, null)
-            {
-                DestinationTableName = GetQualifiedTableName(tableName),
-                BulkCopyTimeout = 0,
-                BatchSize = 5000
-            };
-
-            foreach (var header in headers)
-            {
-                bulkCopy.ColumnMappings.Add(header, header);
-            }
-
-            return bulkCopy;
-        }
-
-        private static async Task CreateSqlTableAsync(SqlConnection connection, string tableName, IReadOnlyList<string> headers)
-        {
-            var columnDefs = string.Join(", ", headers.Select(h =>
-            {
-                var safeColumn = h.Replace("]", "]]");
-                return $"[{safeColumn}] NVARCHAR(MAX)";
-            }));
-            var hasIdColumn = headers.Any(h => string.Equals(h, "id", StringComparison.OrdinalIgnoreCase));
-
-            var createTableCommand = hasIdColumn
-                ? $"CREATE TABLE {GetQualifiedTableName(tableName)} ({columnDefs})"
-                : $"CREATE TABLE {GetQualifiedTableName(tableName)} (Id INT IDENTITY(1,1) PRIMARY KEY, {columnDefs})";
-
-            using var cmd = new SqlCommand(createTableCommand, connection);
-            await cmd.ExecuteNonQueryAsync();
-        }
-
-        private static string GetQualifiedTableName(string tableName)
-        {
-            var safeName = tableName.Replace("]", "]]");
-            return $"[DataPortal].[dbo].[{safeName}]";
-        }
-
-        private static async Task DropSqlTableIfExists(SqlConnection connection, string tableName)
-        {
-            var qualifiedName = GetQualifiedTableName(tableName);
-            var objectIdName = qualifiedName.Replace("'", "''");
-            var dropCommand = $"IF OBJECT_ID('{objectIdName}', 'U') IS NOT NULL DROP TABLE {qualifiedName};";
-
-            using var cmd = new SqlCommand(dropCommand, connection);
-            await cmd.ExecuteNonQueryAsync();
-        }
-
-            [HttpGet]
+        [HttpGet]
         [Authorize(Roles = "administrateur,editeur,utilisateur")]
         public IActionResult CreateStep3(int id)
         {
@@ -612,7 +352,7 @@ namespace Dataportal.Controllers
             var tableName = $"DonneesEventLogs.{model.Libelle}-{model.Code}".Replace(" ", "_");
             try
             {
-                await CreateSqlTableFromCsvFilesAsync(tableName, model.UploadedFiles);
+                await _fileImporter.ImportAsync(tableName, model.UploadedFiles);
             }
             catch (InvalidOperationException ex)
             {
@@ -739,7 +479,7 @@ namespace Dataportal.Controllers
             var tableName = $"DonneesContexteEnvironnemental.{model.Libelle}-{model.Code}".Replace(" ", "_");
             try
             {
-                await CreateSqlTableFromCsvFilesAsync(tableName, model.UploadedFiles);
+                await _fileImporter.ImportAsync(tableName, model.UploadedFiles);
             }
             catch (InvalidOperationException ex)
             {

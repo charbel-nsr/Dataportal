@@ -52,8 +52,9 @@
         </div>
 
         <div class="mb-3">
-            <label asp-for="UploadedFiles" class="form-label">Importer des fichiers CSV (optionnel)</label>
-            <input asp-for="UploadedFiles" class="form-control" type="file" multiple>
+            <label asp-for="UploadedFiles" class="form-label">Importer des fichiers CSV ou XLSX (optionnel)</label>
+            <input asp-for="UploadedFiles" class="form-control" type="file" multiple accept=".csv,.xlsx">
+            <small class="form-text text-muted">Tous les fichiers ajoutés doivent partager le même format.</small>
             <span asp-validation-for="UploadedFiles" class="text-danger"></span>
         </div>
 

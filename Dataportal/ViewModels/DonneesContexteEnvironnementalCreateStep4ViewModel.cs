@@ -31,7 +31,7 @@ namespace Dataportal.ViewModels
         [DataType(DataType.DateTime)]
         public DateTime EndTimestamp { get; set; }
 
-        [Display(Name = "Fichiers CSV")]
+        [Display(Name = "Fichiers (CSV ou XLSX)")]
         public List<IFormFile> UploadedFiles { get; set; }
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
