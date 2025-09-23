@@ -15,7 +15,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 //TODO: Add recaptcha for login and account request forms
-//TODO: Add SeSouvenirDeMoi functionality
 
 namespace Dataportal.Controllers
 {
@@ -113,9 +112,20 @@ namespace Dataportal.Controllers
                             };
 
                             var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+                            var authProperties = new AuthenticationProperties
+                            {
+                                IsPersistent = model.SeSouvenirDeMoi,
+                            };
+
+                            if (model.SeSouvenirDeMoi)
+                            {
+                                authProperties.ExpiresUtc = DateTimeOffset.UtcNow.AddDays(14);
+                            }
+
                             await HttpContext.SignInAsync(
                                 CookieAuthenticationDefaults.AuthenticationScheme,
-                                new ClaimsPrincipal(identity));
+                                new ClaimsPrincipal(identity),
+                                authProperties);
                             _logger.LogInformation("Utilisateur {Email} logged in successfully.", model.Email);
 
                             if (!string.IsNullOrEmpty(returnUrl))
