@@ -173,85 +173,85 @@
 <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editModalLabel">Détails de la demande</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="modal-demandeId" />
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <div class="form-floating">
-                            <input type="text" class="form-control" id="modal-Nom" placeholder="Nom" readonly>
-                            <label for="modal-Nom">Nom</label>
+            <form method="post" asp-action="ApprouverDemande" id="modal-action-form">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" id="modal-action-id" />
+                <input type="hidden" name="idEntreprise" id="modal-action-idEntreprise" />
+                <input type="hidden" name="emailVerifie" id="modal-action-emailVerifie" />
+                <input type="hidden" name="commentaire" id="modal-action-commentaire" />
+
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editModalLabel">Détails de la demande</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="modal-demandeId" />
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="form-floating">
+                                <input type="text" class="form-control" id="modal-Nom" placeholder="Nom" readonly>
+                                <label for="modal-Nom">Nom</label>
+                            </div>
                         </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="form-floating">
-                            <input type="text" class="form-control" id="modal-Prenom" placeholder="Prénom" readonly>
-                            <label for="modal-Prenom">Prénom</label>
+                        <div class="col-md-6">
+                            <div class="form-floating">
+                                <input type="text" class="form-control" id="modal-Prenom" placeholder="Prénom" readonly>
+                                <label for="modal-Prenom">Prénom</label>
+                            </div>
                         </div>
-                    </div>
-                    <div class="col-md-12">
-                        <div class="form-floating">
-                            <input type="email" class="form-control" id="modal-Email" placeholder="Email" readonly>
-                            <label for="modal-Email">Email</label>
+                        <div class="col-md-12">
+                            <div class="form-floating">
+                                <input type="email" class="form-control" id="modal-Email" placeholder="Email" readonly>
+                                <label for="modal-Email">Email</label>
+                            </div>
                         </div>
-                    </div>
-                    <div class="col-md-12">
-                        <div class="form-floating">
-                            <textarea class="form-control" id="modal-Commentaire" style="height: 100px" placeholder="Commentaire" readonly></textarea>
-                            <label for="modal-Commentaire">Commentaire</label>
+                        <div class="col-md-12">
+                            <div class="form-floating">
+                                <textarea class="form-control" id="modal-Commentaire" style="height: 100px" placeholder="Commentaire" readonly></textarea>
+                                <label for="modal-Commentaire">Commentaire</label>
+                            </div>
                         </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="form-floating">
-                            <select class="form-select" id="modal-Entreprise" disabled>
-                                @foreach (var entreprise in Model.Entreprises)
-                                {
-                                    <option value="@entreprise.Id">@entreprise.Nom</option>
-                                }
-                            </select>
-                            <label for="modal-Entreprise">Entreprise</label>
+                        <div class="col-md-6">
+                            <div class="form-floating">
+                                <select class="form-select" id="modal-Entreprise" disabled>
+                                    @foreach (var entreprise in Model.Entreprises)
+                                    {
+                                        <option value="@entreprise.Id">@entreprise.Nom</option>
+                                    }
+                                </select>
+                                <label for="modal-Entreprise">Entreprise</label>
+                            </div>
                         </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="form-floating">
-                            <input type="text" class="form-control" id="modal-DateCreation" placeholder="Date de création" readonly>
-                            <label for="modal-DateCreation">Date de création</label>
+                        <div class="col-md-6">
+                            <div class="form-floating">
+                                <input type="text" class="form-control" id="modal-DateCreation" placeholder="Date de création" readonly>
+                                <label for="modal-DateCreation">Date de création</label>
+                            </div>
                         </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="form-check mt-4">
-                            <input class="form-check-input" type="checkbox" id="modal-EmailVerifie" disabled>
-                            <label class="form-check-label" for="modal-EmailVerifie">
-                                Email vérifié
-                            </label>
+                        <div class="col-md-6">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" id="modal-EmailVerifie" disabled>
+                                <label class="form-check-label" for="modal-EmailVerifie">
+                                    Email vérifié
+                                </label>
+                            </div>
                         </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="form-floating">
-                            <select class="form-select" id="modal-action-roleId" name="idRole" required>
-                                <option value="">Choisir un rôle</option>
-                                @foreach (var role in Model.Roles.OrderBy(r => r.Id))
-                                {
-                                    <option value="@role.Id">@role.Libelle</option>
-                                }
-                            </select>
-                            <label for="modal-action-roleId">Rôle à attribuer (requis seulement si Valider)</label>
+                        <div class="col-md-6">
+                            <div class="form-floating">
+                                <select class="form-select" id="modal-action-roleId" name="idRole">
+                                    <option value="">Choisir un rôle</option>
+                                    @foreach (var role in Model.Roles.OrderBy(r => r.Id))
+                                    {
+                                        <option value="@role.Id">@role.Libelle</option>
+                                    }
+                                </select>
+                                <label for="modal-action-roleId">Rôle à attribuer (requis seulement si Valider)</label>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="px-3 pb-3">
-                <form method="post" asp-action="ApprouverDemande" id="modal-action-form" class="w-100">
-                    @Html.AntiForgeryToken()
-                    <input type="hidden" name="id" id="modal-action-id" />
-                    <input type="hidden" name="idEntreprise" id="modal-action-idEntreprise" />
-                    <input type="hidden" name="emailVerifie" id="modal-action-emailVerifie" />
-                    <input type="hidden" name="commentaire" id="modal-action-commentaire" />
-
-                    <div class="row g-2">
+                <div class="modal-footer">
+                    <div class="row g-2 w-100">
                         <div class="col-12 col-md">
                             <button type="submit" name="idStatut" value="2" class="btn btn-success w-100" id="btn-valider">
                                 Valider la demande
@@ -268,8 +268,8 @@
                             </button>
                         </div>
                     </div>
-                </form>
-            </div>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -277,9 +277,25 @@
 @section Scripts {
     <script>
         const modal = document.getElementById('editModal');
+        const roleSelect = document.getElementById('modal-action-roleId');
+        const btnValider = document.getElementById('btn-valider');
+        const btnRefuser = document.getElementById('btn-refuser');
+
+        btnValider.addEventListener('click', () => {
+            roleSelect.required = true;
+        });
+
+        btnRefuser.addEventListener('click', () => {
+            roleSelect.required = false;
+        });
+
         modal.addEventListener('show.bs.modal', event => {
             const button = event.relatedTarget;
             const demandeId = button.getAttribute('data-id');
+
+            roleSelect.value = '';
+            roleSelect.required = false;
+            roleSelect.disabled = true;
 
             fetch(`/Gestion/DemandeDeCompteDetails/${demandeId}`)
                 .then(response => response.json())
@@ -288,7 +304,7 @@
                     document.getElementById('modal-Nom').value = data.nom;
                     document.getElementById('modal-Prenom').value = data.prenom;
                     document.getElementById('modal-Email').value = data.email;
-                    document.getElementById('modal-Commentaire').value = data.commentaire;
+                    document.getElementById('modal-Commentaire').value = data.commentaire ?? '';
                     document.getElementById('modal-Entreprise').value = data.idEntreprise;
                     document.getElementById('modal-DateCreation').value = data.dateCreation;
                     document.getElementById('modal-EmailVerifie').checked = data.emailVerifie;
@@ -296,12 +312,17 @@
                     document.getElementById('modal-action-id').value = data.id;
                     document.getElementById('modal-action-idEntreprise').value = data.idEntreprise;
                     document.getElementById('modal-action-emailVerifie').value = data.emailVerifie;
-                    document.getElementById('modal-action-commentaire').value = data.commentaire;
+                    document.getElementById('modal-action-commentaire').value = data.commentaire ?? '';
 
-                    const btnValider = document.getElementById('btn-valider');
-                    const btnRefuser = document.getElementById('btn-refuser');
-                    btnValider.style.display = (data.idStatutDeLaDemande === 1 || data.idStatutDeLaDemande === 3) ? 'inline-block' : 'none';
+                    const canValidate = data.idStatutDeLaDemande === 1 || data.idStatutDeLaDemande === 3;
+                    btnValider.style.display = canValidate ? 'inline-block' : 'none';
                     btnRefuser.style.display = (data.idStatutDeLaDemande === 1) ? 'inline-block' : 'none';
+                    roleSelect.disabled = !canValidate;
+
+                    if (!canValidate) {
+                        roleSelect.value = '';
+                        roleSelect.required = false;
+                    }
                 });
         });
     </script>

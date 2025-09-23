@@ -11,7 +11,6 @@ using System.Linq;
 //TODO: only allow rquestes from users who have verified there emails to be accepted
 //TODO: send emails to user accepting or rejecting there request
 //TODO: send email asking users to rechange ther password if there requeast is accepted
-//TODO: check the delete function for requests
 
 namespace Dataportal.Controllers
 {
@@ -115,7 +114,7 @@ namespace Dataportal.Controllers
             if (!statutEnAttenteOuRefuse.Contains(demande.IdStatutDeLaDemande))
                 return Forbid();
 
-            if (idStatut == 2) // Approving
+            if (idStatut == StatutDeLaDemandeIds.Valider) // Approving
             {
                 // Ensure role was selected
                 if (!idRole.HasValue)
@@ -149,7 +148,9 @@ namespace Dataportal.Controllers
                     IdEntreprise = idEntreprise,
                     IdRole = idRole.Value,
                     CompteActif = true,
-                    DateApprobation = DateTime.Now
+                    DateApprobation = DateTime.Now,
+                    LienLinkedIn = string.Empty,
+                    DescriptionProfil = string.Empty
                 };
 
                 _context.Utilisateur.Add(nouvelUtilisateur);
@@ -178,7 +179,7 @@ namespace Dataportal.Controllers
                 return RedirectToAction("DemandeDeCompte");
             }
 
-            if (demande.StatutDeLaDemande?.Libelle?.ToLower() != "refuser")
+            if (demande.IdStatutDeLaDemande != StatutDeLaDemandeIds.Refuser)
             {
                 TempData["Error"] = "Seules les demandes refusées peuvent être supprimées.";
                 return RedirectToAction("DemandeDeCompte");
