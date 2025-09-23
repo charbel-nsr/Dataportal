@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Diagnostics;
 using System.Globalization;
+using Microsoft.AspNetCore.Http;
+using Dataportal.Classes;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,11 +23,21 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 builder.Services.AddScoped<ITabularFileImporter, TabularFileImportService>();
 
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromMinutes(30);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+    options.Cookie.Name = ".Dataportal.Session";
+});
+
 // Add cookie authentication
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
         options.LoginPath = "/Compte/SeConnecter"; // Redirects to your login page if not authenticated.
+        options.ReturnUrlParameter = "returnUrl";
     });
 
 // Register the password hasher for Utilisateur class
@@ -47,6 +59,32 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
+
+app.UseSession();
+
+app.Use(async (context, next) =>
+{
+    var resumeId = context.Session.GetInt32(SessionKeys.CreationMetadonneeId);
+
+    if (resumeId.HasValue && HttpMethods.IsGet(context.Request.Method))
+    {
+        var path = context.Request.Path;
+        var isCreationFlow = path.StartsWithSegments("/Donnees/CreateStep3")
+            || path.StartsWithSegments("/Donnees/CreateStep4")
+            || path.StartsWithSegments("/Donnees/Details")
+            || path.StartsWithSegments("/Donnees/Resume");
+        var isLoginPage = path.StartsWithSegments("/Compte/SeConnecter");
+
+        if (!isCreationFlow && !isLoginPage)
+        {
+            var resumeUrl = $"/Donnees/Details/{resumeId.Value}?creation=true";
+            context.Response.Redirect(resumeUrl);
+            return;
+        }
+    }
+
+    await next();
+});
 
 // IMPORTANT: Add the authentication middleware before authorization.
 app.UseAuthentication();

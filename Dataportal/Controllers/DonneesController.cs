@@ -9,6 +9,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using System.Globalization;
+using Microsoft.AspNetCore.Http;
 //TODO: allow user to create pivate data and edit the cmnt in the database of is role
 //TODO: create tabel for data quality silver, bronze, gold
 
@@ -265,6 +266,8 @@ namespace Dataportal.Controllers
 
             // Clear Step1Data from TempData
             TempData.Remove("Step1Data");
+
+            HttpContext.Session.SetInt32(SessionKeys.CreationMetadonneeId, metadonnee.Id);
 
             return RedirectToAction("CreateStep3", new { id = metadonnee.Id });
         }
@@ -542,7 +545,13 @@ namespace Dataportal.Controllers
                 return requiresAuthentication ? Challenge() : Forbid();
             }
 
-            // 2️⃣ Load Donnees / EventLogs / Contexte
+            var resumeId = HttpContext.Session.GetInt32(SessionKeys.CreationMetadonneeId);
+            if (creation == true && resumeId.HasValue && resumeId.Value == metadonnee.Id)
+            {
+                HttpContext.Session.Remove(SessionKeys.CreationMetadonneeId);
+            }
+
+            //Load Donnees / EventLogs / Contexte
             var donnees = await _context.Donnees.FirstOrDefaultAsync(d => d.Id == metadonnee.IdDonnees);
             var eventLogs = await _context.DonneesEventLogs.FirstOrDefaultAsync(e => e.Id == metadonnee.IdDonneesEventLogs);
             var contexte = await _context.DonneesContexteEnvironnemental.FirstOrDefaultAsync(c => c.Id == metadonnee.IdDonneesContexteEnvironnemental);
@@ -552,12 +561,12 @@ namespace Dataportal.Controllers
                 ViewData["CurrentStep"] = 5;
             }
 
-            // 3️⃣ Load preview data
+            //Load preview data
             var donneesPreview = donnees?.NomDeLaTable != null ? await GetTablePreviewRows(donnees.NomDeLaTable) : null;
             var eventLogsPreview = eventLogs?.NomDeLaTable != null ? await GetTablePreviewRows(eventLogs.NomDeLaTable) : null;
             var contextePreview = contexte?.NomDeLaTable != null ? await GetTablePreviewRows(contexte.NomDeLaTable) : null;
 
-            // 4️⃣ Build ViewModel
+            //Build ViewModel
             var vm = new MetadonneeDetailsViewModel
             {
                 Metadonnee = metadonnee,

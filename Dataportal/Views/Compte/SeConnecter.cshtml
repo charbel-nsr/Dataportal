@@ -21,6 +21,7 @@
                     }
                     <form asp-action="SeConnecter" method="post" novalidate>
                         @Html.AntiForgeryToken()
+                        <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
                         <div asp-validation-summary="All" class="text-danger mb-3"></div>
                         <div class="form-floating mb-3">
                             <input asp-for="Email" class="form-control" placeholder=" " />

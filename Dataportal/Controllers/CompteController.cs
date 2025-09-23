@@ -38,20 +38,34 @@ namespace Dataportal.Controllers
 
         // GET: /Compte/SeConnecter
         [HttpGet]
-        public IActionResult SeConnecter()
+        public IActionResult SeConnecter(string? returnUrl = null)
         {
             if (User.Identity.IsAuthenticated)
             {
+                if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+                {
+                    return Redirect(returnUrl);
+                }
+
                 return RedirectToAction("Profil", "Compte");
             }
+
+            ViewData["ReturnUrl"] = returnUrl;
             return View();
         }
 
         // POST: /Compte/SeConnecter
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> SeConnecter(SeConnecterViewModel model)
+        public async Task<IActionResult> SeConnecter(SeConnecterViewModel model, string? returnUrl = null)
         {
+            if (!string.IsNullOrEmpty(returnUrl) && !Url.IsLocalUrl(returnUrl))
+            {
+                returnUrl = null;
+            }
+
+            ViewData["ReturnUrl"] = returnUrl;
+
             if (ModelState.IsValid)
             {
                 _logger.LogInformation("Processing login for {Email}", model.Email);
@@ -103,6 +117,11 @@ namespace Dataportal.Controllers
                                 CookieAuthenticationDefaults.AuthenticationScheme,
                                 new ClaimsPrincipal(identity));
                             _logger.LogInformation("Utilisateur {Email} logged in successfully.", model.Email);
+
+                            if (!string.IsNullOrEmpty(returnUrl))
+                            {
+                                return Redirect(returnUrl);
+                            }
 
                             return RedirectToAction("Index", "Accueil");
                         }
