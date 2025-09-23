@@ -35,7 +35,7 @@ namespace Dataportal.ViewModels
         [Display(Name = "Nombre d'événements")]
         public int NombreDEvents { get; set; }
 
-        [Display(Name = "Fichiers (CSV ou XLSX)")]
+        [Display(Name = "Fichiers (CSV, XLSX, Parquet ou CSV.zip)")]
         public ICollection<IFormFile>? UploadedFiles { get; set; }
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)

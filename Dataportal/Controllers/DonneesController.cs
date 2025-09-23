@@ -9,12 +9,6 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using System.Globalization;
-//TODO: validate and limite file sizer in import step2, 3 amd 4
-//TODO: add a processing page between step2 and step3
-//TODO: add a processing page between step3 and step4
-//TODO: suport diffrent types of files, other then csv
-//TODO: add confirmation on each next button
-//TODO: control on the dates to be by default the curent date and not bigger then from not biger the the too
 //TODO: id metadone in step 2 is not being filled
 //TODO: allow user to create pivate data and edit the cmnt in the database of is role
 //TODO: create tabel for data quality silver, bronze, gold, dimanond
@@ -172,7 +166,7 @@ namespace Dataportal.Controllers
 
             if (model.UploadedFiles == null || !model.UploadedFiles.Any())
             {
-                ModelState.AddModelError("UploadedFiles", "Vous devez importer au moins un fichier de données (CSV ou XLSX).");
+                ModelState.AddModelError("UploadedFiles", "Vous devez importer au moins un fichier de données (CSV, XLSX, Parquet ou CSV.zip).");
                 TempData.Keep("Step1Data");
                 return View(model);
             }

@@ -4,9 +4,13 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.VisualBasic.FileIO;
+using Parquet;
+using Parquet.Data;
+using Parquet.Schema;
 using System.Data;
 using System.Globalization;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Text;
 
@@ -46,23 +50,23 @@ namespace Dataportal.Services
                 throw new InvalidOperationException("Les fichiers fournis sont vides.");
             }
 
-            var extension = Path.GetExtension(fileList[0].FileName);
+            var extension = NormalizeExtension(fileList[0].FileName);
             if (string.IsNullOrWhiteSpace(extension))
             {
                 throw new InvalidOperationException("Impossible de déterminer le type des fichiers importés.");
             }
 
-            extension = extension.ToLowerInvariant();
-
-            if (fileList.Any(f => !string.Equals(Path.GetExtension(f.FileName), extension, StringComparison.OrdinalIgnoreCase)))
+            if (fileList.Any(f => !string.Equals(NormalizeExtension(f.FileName), extension, StringComparison.OrdinalIgnoreCase)))
             {
-                throw new InvalidOperationException("Tous les fichiers importés pour cette étape doivent être du même type (CSV ou XLSX).");
+                throw new InvalidOperationException("Tous les fichiers importés pour cette étape doivent être du même type (CSV, XLSX, Parquet ou CSV.zip).");
             }
 
             var formatLabel = extension switch
             {
                 ".csv" => "CSV",
                 ".xlsx" => "XLSX",
+                ".parquet" => "Parquet",
+                ".csv.zip" => "CSV.zip",
                 _ => "importés"
             };
 
@@ -74,8 +78,14 @@ namespace Dataportal.Services
                 case ".xlsx":
                     await ImportExcelAsync(tableName, fileList, formatLabel);
                     break;
+                case ".parquet":
+                    await ImportParquetAsync(tableName, fileList, formatLabel);
+                    break;
+                case ".csv.zip":
+                    await ImportZippedCsvAsync(tableName, fileList, formatLabel);
+                    break;
                 default:
-                    throw new InvalidOperationException("Seuls les fichiers CSV ou XLSX sont pris en charge pour le moment.");
+                    throw new InvalidOperationException("Seuls les fichiers CSV, XLSX, Parquet ou CSV.zip sont pris en charge pour le moment.");
             }
         }
 
@@ -96,6 +106,24 @@ namespace Dataportal.Services
                 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
                 _encodingRegistered = true;
             }
+        }
+
+        private static string? NormalizeExtension(string fileName)
+        {
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                return null;
+            }
+
+            if (fileName.EndsWith(".csv.zip", StringComparison.OrdinalIgnoreCase))
+            {
+                return ".csv.zip";
+            }
+
+            var extension = Path.GetExtension(fileName);
+            return string.IsNullOrWhiteSpace(extension)
+                ? null
+                : extension.ToLowerInvariant();
         }
 
         private async Task ImportCsvAsync(string tableName, IReadOnlyList<IFormFile> files, string formatLabel)
@@ -144,6 +172,91 @@ namespace Dataportal.Services
                     if (bulkCopy != null && buffer != null)
                     {
                         await BulkCopyCsvRowsAsync(bulkCopy, buffer, headers, parser);
+                    }
+                }
+            }
+            catch
+            {
+                if (tableCreated)
+                {
+                    await DropSqlTableIfExists(connection, tableName);
+                }
+
+                throw;
+            }
+            finally
+            {
+                DisposeBulkCopy(bulkCopy);
+                buffer?.Dispose();
+            }
+
+            if (!tableCreated)
+            {
+                throw new InvalidOperationException($"Les fichiers {formatLabel} fournis sont vides.");
+            }
+        }
+
+        private async Task ImportZippedCsvAsync(string tableName, IReadOnlyList<IFormFile> files, string formatLabel)
+        {
+            await using var connection = new SqlConnection(_connectionString);
+            await connection.OpenAsync();
+
+            List<string>? headers = null;
+            SqlBulkCopy? bulkCopy = null;
+            DataTable? buffer = null;
+            var tableCreated = false;
+
+            try
+            {
+                foreach (var file in files)
+                {
+                    using var stream = file.OpenReadStream();
+                    using var archive = new ZipArchive(stream, ZipArchiveMode.Read, leaveOpen: false);
+
+                    var csvEntries = archive.Entries
+                        .Where(entry => !string.IsNullOrEmpty(entry.Name) && entry.Name.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+
+                    if (csvEntries.Count == 0)
+                    {
+                        throw new InvalidOperationException("Chaque fichier CSV.zip doit contenir au moins un fichier CSV.");
+                    }
+
+                    foreach (var entry in csvEntries)
+                    {
+                        using var entryStream = entry.Open();
+                        using var reader = new StreamReader(entryStream);
+                        using var parser = CreateCsvParser(reader);
+
+                        var normalizedHeader = ReadNormalizedCsvHeader(parser);
+                        if (normalizedHeader == null || normalizedHeader.Length == 0)
+                        {
+                            continue;
+                        }
+
+                        if (normalizedHeader.Any(string.IsNullOrWhiteSpace))
+                        {
+                            throw new InvalidOperationException("Les en-têtes de colonnes ne peuvent pas être vides.");
+                        }
+
+                        if (headers == null)
+                        {
+                            EnsureUniqueHeaders(normalizedHeader);
+                            headers = normalizedHeader.ToList();
+                            await CreateSqlTableAsync(connection, tableName, headers);
+                            bulkCopy = CreateBulkCopy(connection, tableName, headers);
+                            buffer = CreateBufferTable(headers);
+                            tableCreated = true;
+                        }
+                        else if (!HeadersMatch(headers, normalizedHeader))
+                        {
+                            throw new InvalidOperationException($"Les fichiers {formatLabel} doivent avoir les mêmes colonnes.");
+                        }
+
+                        if (bulkCopy != null && buffer != null)
+                        {
+                            await BulkCopyCsvRowsAsync(bulkCopy, buffer, headers, parser);
+                        }
                     }
                 }
             }
@@ -218,6 +331,77 @@ namespace Dataportal.Services
                         }
                     }
                     while (reader.NextResult());
+                }
+            }
+            catch
+            {
+                if (tableCreated)
+                {
+                    await DropSqlTableIfExists(connection, tableName);
+                }
+
+                throw;
+            }
+            finally
+            {
+                DisposeBulkCopy(bulkCopy);
+                buffer?.Dispose();
+            }
+
+            if (!tableCreated)
+            {
+                throw new InvalidOperationException($"Les fichiers {formatLabel} fournis sont vides.");
+            }
+        }
+
+        private async Task ImportParquetAsync(string tableName, IReadOnlyList<IFormFile> files, string formatLabel)
+        {
+            await using var connection = new SqlConnection(_connectionString);
+            await connection.OpenAsync();
+
+            List<string>? headers = null;
+            SqlBulkCopy? bulkCopy = null;
+            DataTable? buffer = null;
+            var tableCreated = false;
+
+            try
+            {
+                foreach (var file in files)
+                {
+                    using var stream = file.OpenReadStream();
+                    using var reader = await ParquetReader.CreateAsync(stream);
+
+                    var headerInfo = ReadNormalizedParquetHeader(reader);
+                    if (headerInfo == null || headerInfo.Value.Headers.Length == 0)
+                    {
+                        continue;
+                    }
+
+                    var normalizedHeader = headerInfo.Value.Headers;
+
+                    if (normalizedHeader.Any(string.IsNullOrWhiteSpace))
+                    {
+                        throw new InvalidOperationException("Les en-têtes de colonnes ne peuvent pas être vides.");
+                    }
+
+                    if (headers == null)
+                    {
+                        EnsureUniqueHeaders(normalizedHeader);
+                        headers = normalizedHeader.ToList();
+                        await CreateSqlTableAsync(connection, tableName, headers);
+                        bulkCopy = CreateBulkCopy(connection, tableName, headers);
+                        buffer = CreateBufferTable(headers);
+                        tableCreated = true;
+                    }
+                    else if (!HeadersMatch(headers, normalizedHeader))
+                    {
+                        throw new InvalidOperationException($"Les fichiers {formatLabel} doivent avoir les mêmes colonnes.");
+                    }
+
+                    if (bulkCopy != null && buffer != null)
+                    {
+                        await BulkCopyParquetRowsAsync(bulkCopy, buffer, headers, reader, headerInfo.Value.Fields);
+                    }
                 }
             }
             catch
@@ -321,6 +505,21 @@ namespace Dataportal.Services
             }
         }
 
+        private static (string[] Headers, DataField[] Fields)? ReadNormalizedParquetHeader(ParquetReader reader)
+        {
+            var dataFields = reader.Schema.GetDataFields();
+            if (dataFields == null || dataFields.Length == 0)
+            {
+                return null;
+            }
+
+            var headers = dataFields
+                .Select(f => (f?.Name ?? string.Empty).Trim())
+                .ToArray();
+
+            return (headers, dataFields);
+        }
+
         private static string[]? ReadNormalizedExcelHeader(IExcelDataReader reader)
         {
             while (reader.Read())
@@ -354,6 +553,89 @@ namespace Dataportal.Services
             }
 
             return null;
+        }
+
+        private static async Task BulkCopyParquetRowsAsync(SqlBulkCopy bulkCopy, DataTable buffer, IReadOnlyList<string> headers, ParquetReader reader, IReadOnlyList<DataField> fields)
+        {
+            const int batchSize = 5000;
+
+            for (var rowGroupIndex = 0; rowGroupIndex < reader.RowGroupCount; rowGroupIndex++)
+            {
+                using var rowGroupReader = reader.OpenRowGroupReader(rowGroupIndex);
+
+                var columns = new Parquet.Data.DataColumn[fields.Count];
+                for (var fieldIndex = 0; fieldIndex < fields.Count; fieldIndex++)
+                {
+                    columns[fieldIndex] = await rowGroupReader.ReadColumnAsync(fields[fieldIndex]);
+                }
+
+                if (columns.Length == 0)
+                {
+                    continue;
+                }
+
+                var rowCount = columns[0].Data.Length;
+
+                for (var rowIndex = 0; rowIndex < rowCount; rowIndex++)
+                {
+                    var rowValues = new object[headers.Count];
+                    var hasValue = false;
+
+                    for (var columnIndex = 0; columnIndex < headers.Count; columnIndex++)
+                    {
+                        var dataColumn = columns[columnIndex];
+                        var value = dataColumn.Data.GetValue(rowIndex);
+
+                        if (value == null)
+                        {
+                            rowValues[columnIndex] = DBNull.Value;
+                            continue;
+                        }
+
+                        if (value is byte[] bytes)
+                        {
+                            if (bytes.Length == 0)
+                            {
+                                rowValues[columnIndex] = DBNull.Value;
+                                continue;
+                            }
+
+                            hasValue = true;
+                            rowValues[columnIndex] = Convert.ToBase64String(bytes);
+                            continue;
+                        }
+
+                        var stringValue = Convert.ToString(value, CultureInfo.InvariantCulture);
+                        if (string.IsNullOrWhiteSpace(stringValue))
+                        {
+                            rowValues[columnIndex] = DBNull.Value;
+                            continue;
+                        }
+
+                        hasValue = true;
+                        rowValues[columnIndex] = stringValue;
+                    }
+
+                    if (!hasValue)
+                    {
+                        continue;
+                    }
+
+                    buffer.Rows.Add(rowValues);
+
+                    if (buffer.Rows.Count >= batchSize)
+                    {
+                        await bulkCopy.WriteToServerAsync(buffer);
+                        buffer.Clear();
+                    }
+                }
+            }
+
+            if (buffer.Rows.Count > 0)
+            {
+                await bulkCopy.WriteToServerAsync(buffer);
+                buffer.Clear();
+            }
         }
 
         private static async Task BulkCopyExcelRowsAsync(SqlBulkCopy bulkCopy, DataTable buffer, IReadOnlyList<string> headers, IExcelDataReader reader)

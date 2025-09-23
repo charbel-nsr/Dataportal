@@ -37,8 +37,8 @@ namespace Dataportal.ViewModels
         [DataType(DataType.DateTime)]
         public DateTime EndTimestamp { get; set; }
 
-        [Required(ErrorMessage = "Veuillez importer au moins un fichier de données (CSV ou XLSX).")]
-        [Display(Name = "Fichiers (CSV ou XLSX)")]
+        [Required(ErrorMessage = "Veuillez importer au moins un fichier de données (CSV, XLSX, Parquet ou CSV.zip).")]
+        [Display(Name = "Fichiers (CSV, XLSX, Parquet ou CSV.zip)")]
         public List<IFormFile> UploadedFiles { get; set; }
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
