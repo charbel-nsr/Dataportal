@@ -9,9 +9,8 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using System.Globalization;
-//TODO: id metadone in step 2 is not being filled
 //TODO: allow user to create pivate data and edit the cmnt in the database of is role
-//TODO: create tabel for data quality silver, bronze, gold, dimanond
+//TODO: create tabel for data quality silver, bronze, gold
 
 namespace Dataportal.Controllers
 {
@@ -244,6 +243,9 @@ namespace Dataportal.Controllers
             _context.Metadonnee.Add(metadonnee);
             await _context.SaveChangesAsync();
 
+            donnees.IdMetadonnee = metadonnee.Id;
+            _context.Donnees.Update(donnees);
+
             if (step1Data.AppareilInfos != null)
             {
                 foreach (var info in step1Data.AppareilInfos)
@@ -257,8 +259,9 @@ namespace Dataportal.Controllers
                     };
                     _context.Metadonnee_Appareil.Add(link);
                 }
-                await _context.SaveChangesAsync();
             }
+
+            await _context.SaveChangesAsync();
 
             // Clear Step1Data from TempData
             TempData.Remove("Step1Data");

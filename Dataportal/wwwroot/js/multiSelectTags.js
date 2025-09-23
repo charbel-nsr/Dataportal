@@ -94,7 +94,7 @@
             detail.append('<summary>' + name + '</summary>');
             var inner = $('<div class="mt-2"></div>');
             inner.append('<input type="hidden" name="AppareilInfos[' + index + '].IdAppareil" value="' + id + '" />');
-            inner.append('<div class="form-floating mb-2"><input type="text" class="form-control" name="AppareilInfos[' + index + '].IdAppareilDansDonnees" value="' + (data.ident || '') + '" placeholder="Id dans les données"/><label>Id dans les données</label></div>');
+            inner.append('<div class="form-floating mb-2"><input type="text" class="form-control" name="AppareilInfos[' + index + '].IdAppareilDansDonnees" value="' + (data.ident || '') + '" placeholder="Ids dans les données"/><label>Ids dans les données (séparés par des virgules)</label></div>');
             inner.append('<div class="form-floating mb-2"><input type="text" class="form-control" name="AppareilInfos[' + index + '].Commentaire" value="' + (data.com || '') + '" placeholder="Commentaire"/><label>Commentaire</label></div><hr>');
             detail.append(inner);
             detailsContainer.append(detail);
