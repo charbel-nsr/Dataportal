@@ -101,6 +101,23 @@ namespace Dataportal.Controllers
             return int.TryParse(claim, out var id) ? id : (int?)null;
         }
 
+        /// <summary>
+        /// Retrieves the dataset creation wizard state from the session.
+        /// <para>
+        /// <list type="bullet">
+        /// <item>The returned <c>metadonneeId</c> identifies the dataset that can be resumed.</item>
+        /// <item>The returned <c>nextStep</c> is the next stage the user should see; completed steps redirect to the résumé page.</item>
+        /// </list>
+        /// </para>
+        /// </summary>
+        private (int? metadonneeId, int? nextStep) GetCreationWizardState()
+        {
+            var metadonneeId = HttpContext.Session.GetInt32(SessionKeys.CreationMetadonneeId);
+            var nextStep = HttpContext.Session.GetInt32(SessionKeys.CreationNextStep);
+
+            return (metadonneeId, nextStep);
+        }
+
         private List<SelectListItem> BuildQualiteOptions()
         {
             var options = _context.QualiteDonnees
@@ -125,9 +142,21 @@ namespace Dataportal.Controllers
         [Authorize(Roles = "administrateur,editeur,utilisateur")]
         public IActionResult CreateStep2()
         {
+            var (resumeId, nextStep) = GetCreationWizardState();
+
+            if (resumeId.HasValue && nextStep.HasValue && nextStep.Value >= 3)
+            {
+                return RedirectToAction("Details", new { id = resumeId.Value, creation = true });
+            }
+
             var step1Json = TempData.Peek("Step1Data") as string;
             if (string.IsNullOrEmpty(step1Json))
             {
+                if (resumeId.HasValue)
+                {
+                    return RedirectToAction("Details", new { id = resumeId.Value, creation = true });
+                }
+
                 TempData["Error"] = "Vous devez d'abord remplir la première étape.";
                 return RedirectToAction("CreateStep1");
             }
@@ -295,6 +324,7 @@ namespace Dataportal.Controllers
             TempData.Remove("Step1Data");
 
             HttpContext.Session.SetInt32(SessionKeys.CreationMetadonneeId, metadonnee.Id);
+            HttpContext.Session.SetInt32(SessionKeys.CreationNextStep, 3);
 
             return RedirectToAction("CreateStep3", new { id = metadonnee.Id });
         }
@@ -303,6 +333,16 @@ namespace Dataportal.Controllers
         [Authorize(Roles = "administrateur,editeur,utilisateur")]
         public IActionResult CreateStep3(int id)
         {
+            var (resumeId, nextStep) = GetCreationWizardState();
+
+            if (resumeId.HasValue)
+            {
+                if (resumeId.Value != id || (nextStep.HasValue && nextStep.Value > 3))
+                {
+                    return RedirectToAction("Details", new { id = resumeId.Value, creation = true });
+                }
+            }
+
             // Validate Metadonnee exists
             var metadonnee = _context.Metadonnee.Find(id);
             if (metadonnee == null)
@@ -351,6 +391,7 @@ namespace Dataportal.Controllers
             // Handle skip: if no file uploaded, user wants to skip
             if (model.UploadedFiles == null || !model.UploadedFiles.Any())
             {
+                HttpContext.Session.SetInt32(SessionKeys.CreationNextStep, 4);
                 return RedirectToAction("CreateStep4", new { id = model.IdMetadonnee });
             }
 
@@ -429,6 +470,8 @@ namespace Dataportal.Controllers
 
             TempData[DataSizeTempDataKey] = totalDataSize.ToString(CultureInfo.InvariantCulture);
 
+            HttpContext.Session.SetInt32(SessionKeys.CreationNextStep, 4);
+
             return RedirectToAction("CreateStep4", new { id = model.IdMetadonnee });
         }
 
@@ -437,6 +480,29 @@ namespace Dataportal.Controllers
         [Authorize(Roles = "administrateur,editeur,utilisateur")]
         public IActionResult CreateStep4(int id)
         {
+            var (resumeId, nextStep) = GetCreationWizardState();
+
+            if (resumeId.HasValue)
+            {
+                if (resumeId.Value != id)
+                {
+                    return RedirectToAction("Details", new { id = resumeId.Value, creation = true });
+                }
+
+                if (nextStep.HasValue)
+                {
+                    if (nextStep.Value < 4)
+                    {
+                        return RedirectToAction("CreateStep3", new { id = resumeId.Value });
+                    }
+
+                    if (nextStep.Value > 4)
+                    {
+                        return RedirectToAction("Details", new { id = resumeId.Value, creation = true });
+                    }
+                }
+            }
+
             var metadonnee = _context.Metadonnee.Find(id);
             if (metadonnee == null)
             {
@@ -485,6 +551,8 @@ namespace Dataportal.Controllers
             if (model.UploadedFiles == null || !model.UploadedFiles.Any())
             {
                 // User skipped uploading: go straight to next step
+                HttpContext.Session.SetInt32(SessionKeys.CreationNextStep, 5);
+                TempData.Remove(DataSizeTempDataKey);
                 return RedirectToAction("Details", new { id = metadonnee.Id, creation = true });
             }
 
@@ -561,6 +629,8 @@ namespace Dataportal.Controllers
             await _context.SaveChangesAsync();
             TempData.Remove(DataSizeTempDataKey);
 
+            HttpContext.Session.SetInt32(SessionKeys.CreationNextStep, 5);
+
             // Proceed to next step
             return RedirectToAction("Details", new { id = metadonnee.Id, creation = true });
         }
@@ -589,7 +659,9 @@ namespace Dataportal.Controllers
             var resumeId = HttpContext.Session.GetInt32(SessionKeys.CreationMetadonneeId);
             if (creation == true && resumeId.HasValue && resumeId.Value == metadonnee.Id)
             {
+                // The résumé view has been reached for the tracked creation; clear the session markers.
                 HttpContext.Session.Remove(SessionKeys.CreationMetadonneeId);
+                HttpContext.Session.Remove(SessionKeys.CreationNextStep);
             }
 
             //Load Donnees / EventLogs / Contexte
