@@ -12,8 +12,9 @@
         @await Html.PartialAsync("_CreationProgress")
     }
     <div class="card mb-4 shadow-sm">
-        <div class="card-header bg-primary text-white">
-            Métadonnée
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <span>Métadonnée</span>
+            <button type="button" class="btn btn-sm btn-outline-light toggle-section" data-section-title="Métadonnée" data-expanded-symbol="−" data-collapsed-symbol="+" aria-expanded="true" aria-label="Réduire la section Métadonnée">−</button>
         </div>
         <div class="card-body">
             <p><strong>Description:</strong> @Model.Metadonnee.Description</p>
@@ -47,8 +48,9 @@
     @if (Model.Donnees != null)
     {
         <div class="card mb-4 shadow-sm">
-            <div class="card-header bg-success text-white">
-                Données
+            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                <span>Données</span>
+                <button type="button" class="btn btn-sm btn-outline-light toggle-section" data-section-title="Données" data-expanded-symbol="−" data-collapsed-symbol="+" aria-expanded="true" aria-label="Réduire la section Données">−</button>
             </div>
             <div class="card-body">
                 <p><strong>Libellé:</strong> @Model.Donnees.Libelle</p>
@@ -99,8 +101,9 @@
     @if (Model.DonneesEventLogs != null)
     {
         <div class="card mb-4 shadow-sm">
-            <div class="card-header bg-warning text-white">
-                Event Logs
+            <div class="card-header bg-warning text-white d-flex justify-content-between align-items-center">
+                <span>Event Logs</span>
+                <button type="button" class="btn btn-sm btn-outline-light toggle-section" data-section-title="Event Logs" data-expanded-symbol="−" data-collapsed-symbol="+" aria-expanded="true" aria-label="Réduire la section Event Logs">−</button>
             </div>
             <div class="card-body">
                 <p><strong>Libellé:</strong> @Model.DonneesEventLogs.Libelle</p>
@@ -150,8 +153,9 @@
     @if (Model.DonneesContexteEnvironnemental != null)
     {
         <div class="card mb-4 shadow-sm">
-            <div class="card-header bg-info text-white">
-                Contexte Environnemental
+            <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                <span>Contexte Environnemental</span>
+                <button type="button" class="btn btn-sm btn-outline-light toggle-section" data-section-title="Contexte Environnemental" data-expanded-symbol="−" data-collapsed-symbol="+" aria-expanded="true" aria-label="Réduire la section Contexte Environnemental">−</button>
             </div>
             <div class="card-body">
                 <p><strong>Libellé:</strong> @Model.DonneesContexteEnvironnemental.Libelle</p>
@@ -203,3 +207,37 @@
         </a>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.card-header .toggle-section').forEach((button) => {
+                const expandedSymbol = button.dataset.expandedSymbol || '−';
+                button.textContent = expandedSymbol;
+
+                button.addEventListener('click', () => {
+                    const cardHeader = button.closest('.card-header');
+                    if (!cardHeader) {
+                        return;
+                    }
+
+                    const cardBody = cardHeader.nextElementSibling;
+                    if (!cardBody) {
+                        return;
+                    }
+
+                    const isCollapsed = cardBody.classList.toggle('d-none');
+                    const collapsedSymbol = button.dataset.collapsedSymbol || '+';
+                    const sectionTitle = button.dataset.sectionTitle || '';
+                    const actionLabel = isCollapsed ? 'Agrandir' : 'Réduire';
+
+                    button.textContent = isCollapsed ? collapsedSymbol : expandedSymbol;
+                    button.setAttribute('aria-expanded', (!isCollapsed).toString());
+                    button.setAttribute('aria-label', sectionTitle
+                        ? `${actionLabel} la section ${sectionTitle}`
+                        : `${actionLabel} la section`);
+                });
+            });
+        });
+    </script>
+}
