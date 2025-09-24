@@ -4,6 +4,7 @@ using Dataportal.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Dataportal.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250924005801_AddQualiteDonnees")]
+    partial class AddQualiteDonnees
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -175,9 +178,6 @@ namespace Dataportal.Migrations
                     b.Property<int>("IdMetadonnee")
                         .HasColumnType("int");
 
-                    b.Property<int>("IdQualiteDonnees")
-                        .HasColumnType("int");
-
                     b.Property<string>("Libelle")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
@@ -189,6 +189,9 @@ namespace Dataportal.Migrations
                     b.Property<int>("NombreDeCapteurs")
                         .HasColumnType("int");
 
+                    b.Property<int?>("QualiteDonneesId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("StartTimestamp")
                         .HasColumnType("datetime2");
 
@@ -197,13 +200,13 @@ namespace Dataportal.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
-                    b.HasIndex("IdQualiteDonnees");
-
                     b.HasIndex("Libelle")
                         .IsUnique();
 
                     b.HasIndex("NomDeLaTable")
                         .IsUnique();
+
+                    b.HasIndex("QualiteDonneesId");
 
                     b.ToTable("Donnees");
                 });
@@ -235,9 +238,6 @@ namespace Dataportal.Migrations
                     b.Property<int>("IdMetadonnee")
                         .HasColumnType("int");
 
-                    b.Property<int>("IdQualiteDonnees")
-                        .HasColumnType("int");
-
                     b.Property<string>("Libelle")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
@@ -245,6 +245,9 @@ namespace Dataportal.Migrations
                     b.Property<string>("NomDeLaTable")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
+
+                    b.Property<int?>("QualiteDonneesId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("StartTimestamp")
                         .HasColumnType("datetime2");
@@ -254,13 +257,13 @@ namespace Dataportal.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
-                    b.HasIndex("IdQualiteDonnees");
-
                     b.HasIndex("Libelle")
                         .IsUnique();
 
                     b.HasIndex("NomDeLaTable")
                         .IsUnique();
+
+                    b.HasIndex("QualiteDonneesId");
 
                     b.ToTable("DonneesContexteEnvironnemental");
                 });
@@ -293,9 +296,6 @@ namespace Dataportal.Migrations
                     b.Property<int>("IdMetadonnee")
                         .HasColumnType("int");
 
-                    b.Property<int>("IdQualiteDonnees")
-                        .HasColumnType("int");
-
                     b.Property<string>("Libelle")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
@@ -307,6 +307,9 @@ namespace Dataportal.Migrations
                     b.Property<int>("NombreDEvents")
                         .HasColumnType("int");
 
+                    b.Property<int?>("QualiteDonneesId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("StartTimestamp")
                         .HasColumnType("datetime2");
 
@@ -315,13 +318,13 @@ namespace Dataportal.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
-                    b.HasIndex("IdQualiteDonnees");
-
                     b.HasIndex("Libelle")
                         .IsUnique();
 
                     b.HasIndex("NomDeLaTable")
                         .IsUnique();
+
+                    b.HasIndex("QualiteDonneesId");
 
                     b.ToTable("DonneesEventLogs");
                 });
@@ -740,35 +743,23 @@ namespace Dataportal.Migrations
 
             modelBuilder.Entity("Dataportal.Models.Donnees", b =>
                 {
-                    b.HasOne("Dataportal.Models.QualiteDonnees", "QualiteDonnees")
+                    b.HasOne("Dataportal.Models.QualiteDonnees", null)
                         .WithMany("Donnees")
-                        .HasForeignKey("IdQualiteDonnees")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("QualiteDonnees");
+                        .HasForeignKey("QualiteDonneesId");
                 });
 
             modelBuilder.Entity("Dataportal.Models.DonneesContexteEnvironnemental", b =>
                 {
-                    b.HasOne("Dataportal.Models.QualiteDonnees", "QualiteDonnees")
+                    b.HasOne("Dataportal.Models.QualiteDonnees", null)
                         .WithMany("DonneesContexteEnvironnemental")
-                        .HasForeignKey("IdQualiteDonnees")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("QualiteDonnees");
+                        .HasForeignKey("QualiteDonneesId");
                 });
 
             modelBuilder.Entity("Dataportal.Models.DonneesEventLogs", b =>
                 {
-                    b.HasOne("Dataportal.Models.QualiteDonnees", "QualiteDonnees")
+                    b.HasOne("Dataportal.Models.QualiteDonnees", null)
                         .WithMany("DonneesEventLogs")
-                        .HasForeignKey("IdQualiteDonnees")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("QualiteDonnees");
+                        .HasForeignKey("QualiteDonneesId");
                 });
 
             modelBuilder.Entity("Dataportal.Models.Metadonnee", b =>

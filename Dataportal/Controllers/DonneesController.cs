@@ -10,7 +10,6 @@ using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using System.Globalization;
 using Microsoft.AspNetCore.Http;
-//TODO: allow user to create pivate data and edit the cmnt in the database of is role
 //TODO: create tabel for data quality silver, bronze, gold
 
 namespace Dataportal.Controllers

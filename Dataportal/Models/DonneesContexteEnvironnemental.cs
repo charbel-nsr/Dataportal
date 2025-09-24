@@ -24,5 +24,9 @@ namespace Dataportal.Models
         public int IdMetadonnee { get; set; }
 
         public Metadonnee Metadonnee { get; set; }
+
+        public int IdQualiteDonnees { get; set; }
+
+        public QualiteDonnees QualiteDonnees { get; set; }
     }
 }

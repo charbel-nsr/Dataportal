@@ -31,10 +31,23 @@ namespace Dataportal.Context
         public DbSet<StatutDeLaDemande> StatutDeLaDemande { get; set; }
         public DbSet<Utilisateur> Utilisateur { get; set; }
         public DbSet<Visibilite> Visibilite { get; set; }
+        public DbSet<QualiteDonnees> QualiteDonnees { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<QualiteDonnees>(entity =>
+            {
+                entity.HasKey(q => q.Id);
+                entity.Property(q => q.Libelle)
+                      .IsRequired()
+                      .HasMaxLength(50);
+                entity.Property(q => q.Description)
+                      .HasMaxLength(500);
+                entity.HasIndex(q => q.Libelle)
+                      .IsUnique();
+            });
 
             modelBuilder.Entity<Appareil>(entity =>
             {
@@ -107,6 +120,10 @@ namespace Dataportal.Context
                       .IsUnique();
                 entity.HasIndex(e => e.NomDeLaTable)
                       .IsUnique();
+                entity.HasOne(d => d.QualiteDonnees)
+                      .WithMany(q => q.Donnees)
+                      .HasForeignKey(d => d.IdQualiteDonnees)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
             modelBuilder.Entity<DonneesContexteEnvironnemental>(entity =>
             {
@@ -128,6 +145,10 @@ namespace Dataportal.Context
                       .IsUnique();
                 entity.HasIndex(e => e.NomDeLaTable)
                       .IsUnique();
+                entity.HasOne(d => d.QualiteDonnees)
+                      .WithMany(q => q.DonneesContexteEnvironnemental)
+                      .HasForeignKey(d => d.IdQualiteDonnees)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
             modelBuilder.Entity<DonneesEventLogs>(entity =>
             {
@@ -150,6 +171,10 @@ namespace Dataportal.Context
                       .IsUnique();
                 entity.HasIndex(e => e.NomDeLaTable)
                       .IsUnique();
+                entity.HasOne(e => e.QualiteDonnees)
+                      .WithMany(q => q.DonneesEventLogs)
+                      .HasForeignKey(e => e.IdQualiteDonnees)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
             modelBuilder.Entity<Entreprise>(entity =>
             {
