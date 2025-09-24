@@ -114,9 +114,7 @@ namespace Dataportal.Context
                       .HasDefaultValueSql("GETUTCDATE()");
                 entity.Property(d => d.StartTimestamp);
                 entity.Property(d => d.EndTimestamp);
-                entity.HasIndex(e => e.Libelle)
-                      .IsUnique();
-                entity.HasIndex(e => e.Code)
+                entity.HasIndex(e => new { e.Libelle, e.Code })
                       .IsUnique();
                 entity.HasIndex(e => e.NomDeLaTable)
                       .IsUnique();
@@ -139,9 +137,7 @@ namespace Dataportal.Context
                       .HasDefaultValueSql("GETUTCDATE()");
                 entity.Property(d => d.StartTimestamp);
                 entity.Property(d => d.EndTimestamp);
-                entity.HasIndex(e => e.Libelle)
-                      .IsUnique();
-                entity.HasIndex(e => e.Code)
+                entity.HasIndex(e => new { e.Libelle, e.Code })
                       .IsUnique();
                 entity.HasIndex(e => e.NomDeLaTable)
                       .IsUnique();
@@ -165,9 +161,7 @@ namespace Dataportal.Context
                       .HasDefaultValueSql("GETUTCDATE()");
                 entity.Property(e => e.StartTimestamp);
                 entity.Property(e => e.EndTimestamp);
-                entity.HasIndex(e => e.Libelle)
-                      .IsUnique();
-                entity.HasIndex(e => e.Code)
+                entity.HasIndex(e => new { e.Libelle, e.Code })
                       .IsUnique();
                 entity.HasIndex(e => e.NomDeLaTable)
                       .IsUnique();

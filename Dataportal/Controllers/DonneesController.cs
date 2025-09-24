@@ -198,17 +198,18 @@ namespace Dataportal.Controllers
                 return View(model);
             }
 
+            var normalizedLibelle = model.Libelle.Trim().ToLower();
+            var normalizedCode = model.Code.Trim().ToLower();
+
             var duplicate = await _context.Donnees
                 .FirstOrDefaultAsync(d =>
-                    d.Libelle.ToLower() == model.Libelle.Trim().ToLower() ||
-                    d.Code.ToLower() == model.Code.Trim().ToLower());
+                    d.Libelle.ToLower() == normalizedLibelle &&
+                    d.Code.ToLower() == normalizedCode);
 
             if (duplicate != null)
             {
-                if (duplicate.Libelle.Equals(model.Libelle.Trim(), StringComparison.OrdinalIgnoreCase))
-                    ModelState.AddModelError("Libelle", "Ce libellé existe déjà.");
-                if (duplicate.Code.Equals(model.Code.Trim(), StringComparison.OrdinalIgnoreCase))
-                    ModelState.AddModelError("Code", "Ce code existe déjà.");
+                ModelState.AddModelError("Libelle", "Ce couple libellé/code existe déjà.");
+                ModelState.AddModelError("Code", "Ce couple libellé/code existe déjà.");
 
                 TempData.Keep("Step1Data");
                 model.QualiteOptions = BuildQualiteOptions();

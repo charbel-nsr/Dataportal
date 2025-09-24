@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 //TODO: add API
+//TODO: java translate FR/EN
 
 namespace Dataportal.Controllers
 {
