@@ -5,12 +5,12 @@ using Dataportal.Classes;
 using Dataportal.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using System.Globalization;
 using Microsoft.AspNetCore.Http;
-//TODO: create tabel for data quality silver, bronze, gold
 
 namespace Dataportal.Controllers
 {
@@ -101,6 +101,26 @@ namespace Dataportal.Controllers
             return int.TryParse(claim, out var id) ? id : (int?)null;
         }
 
+        private List<SelectListItem> BuildQualiteOptions()
+        {
+            var options = _context.QualiteDonnees
+                .OrderBy(q => q.Libelle)
+                .Select(q => new SelectListItem
+                {
+                    Value = q.Id.ToString(),
+                    Text = q.Libelle
+                })
+                .ToList();
+
+            options.Insert(0, new SelectListItem
+            {
+                Value = string.Empty,
+                Text = "Sélectionnez une qualité"
+            });
+
+            return options;
+        }
+
         [HttpGet]
         [Authorize(Roles = "administrateur,editeur,utilisateur")]
         public IActionResult CreateStep2()
@@ -116,7 +136,8 @@ namespace Dataportal.Controllers
             var vm = new DonneesCreateStep2ViewModel
             {
                 StartTimestamp = DateTime.Now,
-                EndTimestamp = DateTime.Now
+                EndTimestamp = DateTime.Now,
+                QualiteOptions = BuildQualiteOptions()
             };
             return View(vm);
         }
@@ -144,6 +165,7 @@ namespace Dataportal.Controllers
             if (!ModelState.IsValid)
             {
                 TempData.Keep("Step1Data");
+                model.QualiteOptions = BuildQualiteOptions();
                 return View(model);
             }
 
@@ -160,6 +182,7 @@ namespace Dataportal.Controllers
                     ModelState.AddModelError("Code", "Ce code existe déjà.");
 
                 TempData.Keep("Step1Data");
+                model.QualiteOptions = BuildQualiteOptions();
                 return View(model);
             }
 
@@ -167,6 +190,7 @@ namespace Dataportal.Controllers
             {
                 ModelState.AddModelError("UploadedFiles", "Vous devez importer au moins un fichier de données (CSV, XLSX, Parquet ou CSV.zip).");
                 TempData.Keep("Step1Data");
+                model.QualiteOptions = BuildQualiteOptions();
                 return View(model);
             }
 
@@ -185,18 +209,21 @@ namespace Dataportal.Controllers
             {
                 ModelState.AddModelError(nameof(model.UploadedFiles), ex.Message);
                 TempData.Keep("Step1Data");
+                model.QualiteOptions = BuildQualiteOptions();
                 return View(model);
             }
             catch (SqlException)
             {
                 ModelState.AddModelError(nameof(model.UploadedFiles), "Une erreur est survenue lors de l'import des données.");
                 TempData.Keep("Step1Data");
+                model.QualiteOptions = BuildQualiteOptions();
                 return View(model);
             }
             catch (Exception)
             {
                 ModelState.AddModelError(nameof(model.UploadedFiles), "Une erreur inattendue est survenue lors de l'import des données.");
                 TempData.Keep("Step1Data");
+                model.QualiteOptions = BuildQualiteOptions();
                 return View(model);
             }
 
@@ -213,7 +240,8 @@ namespace Dataportal.Controllers
                 FrequenceDeCollect = model.FrequenceDeCollect,
                 DateAjouter = DateTime.Now,
                 StartTimestamp = model.StartTimestamp,
-                EndTimestamp = model.EndTimestamp
+                EndTimestamp = model.EndTimestamp,
+                IdQualiteDonnees = model.IdQualiteDonnees!.Value
             };
 
             _context.Donnees.Add(donnees);
@@ -291,7 +319,8 @@ namespace Dataportal.Controllers
             {
                 IdMetadonnee = id,
                 StartTimestamp = DateTime.Now,
-                EndTimestamp = DateTime.Now
+                EndTimestamp = DateTime.Now,
+                QualiteOptions = BuildQualiteOptions()
             };
             return View(vm);
         }
@@ -303,6 +332,7 @@ namespace Dataportal.Controllers
         {
             if (!ModelState.IsValid)
             {
+                model.QualiteOptions = BuildQualiteOptions();
                 return View(model);
             }
 
@@ -335,6 +365,7 @@ namespace Dataportal.Controllers
                 if (duplicate.Code.Equals(model.Code.Trim(), StringComparison.OrdinalIgnoreCase))
                     ModelState.AddModelError("Code", "Ce code existe déjà.");
 
+                model.QualiteOptions = BuildQualiteOptions();
                 return View(model);
             }
 
@@ -356,16 +387,19 @@ namespace Dataportal.Controllers
             catch (InvalidOperationException ex)
             {
                 ModelState.AddModelError(nameof(model.UploadedFiles), ex.Message);
+                model.QualiteOptions = BuildQualiteOptions();
                 return View(model);
             }
             catch (SqlException)
             {
                 ModelState.AddModelError(nameof(model.UploadedFiles), "Une erreur est survenue lors de l'import des données.");
+                model.QualiteOptions = BuildQualiteOptions();
                 return View(model);
             }
             catch (Exception)
             {
                 ModelState.AddModelError(nameof(model.UploadedFiles), "Une erreur inattendue est survenue lors de l'import des données.");
+                model.QualiteOptions = BuildQualiteOptions();
                 return View(model);
             }
 
@@ -380,7 +414,8 @@ namespace Dataportal.Controllers
                 StartTimestamp = model.StartTimestamp,
                 EndTimestamp = model.EndTimestamp,
                 NombreDEvents = model.NombreDEvents,
-                IdMetadonnee = model.IdMetadonnee
+                IdMetadonnee = model.IdMetadonnee,
+                IdQualiteDonnees = model.IdQualiteDonnees!.Value
             };
 
             _context.DonneesEventLogs.Add(eventLogs);
@@ -417,7 +452,8 @@ namespace Dataportal.Controllers
             {
                 IdMetadonnee = id,
                 StartTimestamp = DateTime.Now,
-                EndTimestamp = DateTime.Now
+                EndTimestamp = DateTime.Now,
+                QualiteOptions = BuildQualiteOptions()
             };
             return View(vm);
         }
@@ -430,6 +466,7 @@ namespace Dataportal.Controllers
         {
             if (!ModelState.IsValid)
             {
+                model.QualiteOptions = BuildQualiteOptions();
                 return View(model);
             }
 
@@ -462,6 +499,7 @@ namespace Dataportal.Controllers
                 if (duplicate.Code.Equals(model.Code.Trim(), StringComparison.OrdinalIgnoreCase))
                     ModelState.AddModelError("Code", "Ce code existe déjà.");
 
+                model.QualiteOptions = BuildQualiteOptions();
                 return View(model);
             }
 
@@ -483,16 +521,19 @@ namespace Dataportal.Controllers
             catch (InvalidOperationException ex)
             {
                 ModelState.AddModelError(nameof(model.UploadedFiles), ex.Message);
+                model.QualiteOptions = BuildQualiteOptions();
                 return View(model);
             }
             catch (SqlException)
             {
                 ModelState.AddModelError(nameof(model.UploadedFiles), "Une erreur est survenue lors de l'import des données.");
+                model.QualiteOptions = BuildQualiteOptions();
                 return View(model);
             }
             catch (Exception)
             {
                 ModelState.AddModelError(nameof(model.UploadedFiles), "Une erreur inattendue est survenue lors de l'import des données.");
+                model.QualiteOptions = BuildQualiteOptions();
                 return View(model);
             }
 
@@ -506,7 +547,8 @@ namespace Dataportal.Controllers
                 DateAjouter = DateTime.Now,
                 StartTimestamp = model.StartTimestamp,
                 EndTimestamp = model.EndTimestamp,
-                IdMetadonnee = metadonnee.Id
+                IdMetadonnee = metadonnee.Id,
+                IdQualiteDonnees = model.IdQualiteDonnees!.Value
             };
 
             _context.DonneesContexteEnvironnemental.Add(donneesContext);
@@ -551,9 +593,15 @@ namespace Dataportal.Controllers
             }
 
             //Load Donnees / EventLogs / Contexte
-            var donnees = await _context.Donnees.FirstOrDefaultAsync(d => d.Id == metadonnee.IdDonnees);
-            var eventLogs = await _context.DonneesEventLogs.FirstOrDefaultAsync(e => e.Id == metadonnee.IdDonneesEventLogs);
-            var contexte = await _context.DonneesContexteEnvironnemental.FirstOrDefaultAsync(c => c.Id == metadonnee.IdDonneesContexteEnvironnemental);
+            var donnees = await _context.Donnees
+                .Include(d => d.QualiteDonnees)
+                .FirstOrDefaultAsync(d => d.Id == metadonnee.IdDonnees);
+            var eventLogs = await _context.DonneesEventLogs
+                .Include(e => e.QualiteDonnees)
+                .FirstOrDefaultAsync(e => e.Id == metadonnee.IdDonneesEventLogs);
+            var contexte = await _context.DonneesContexteEnvironnemental
+                .Include(c => c.QualiteDonnees)
+                .FirstOrDefaultAsync(c => c.Id == metadonnee.IdDonneesContexteEnvironnemental);
 
             if (creation == true)
             {

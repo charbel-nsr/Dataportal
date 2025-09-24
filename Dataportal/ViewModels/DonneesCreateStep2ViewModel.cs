@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using System.Collections.Generic;
 
 namespace Dataportal.ViewModels
@@ -40,6 +41,12 @@ namespace Dataportal.ViewModels
         [Required(ErrorMessage = "Veuillez importer au moins un fichier de données (CSV, XLSX, Parquet ou CSV.zip).")]
         [Display(Name = "Fichiers (CSV, XLSX, Parquet ou CSV.zip)")]
         public List<IFormFile> UploadedFiles { get; set; }
+
+        [Required(ErrorMessage = "La qualité des données est requise.")]
+        [Display(Name = "Qualité des données")]
+        public int? IdQualiteDonnees { get; set; }
+
+        public IEnumerable<SelectListItem> QualiteOptions { get; set; } = new List<SelectListItem>();
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {

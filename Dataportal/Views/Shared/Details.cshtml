@@ -55,6 +55,11 @@
                 <p><strong>Code:</strong> @Model.Donnees.Code</p>
                 <p><strong>Nom de la table:</strong> @Model.Donnees.NomDeLaTable</p>
                 <p><strong>Description:</strong> @Model.Donnees.Description</p>
+                <p><strong>Qualité des données:</strong> @(Model.Donnees.QualiteDonnees?.Libelle ?? "—")</p>
+                @if (!string.IsNullOrWhiteSpace(Model.Donnees.QualiteDonnees?.Description))
+                {
+                    <p class="text-muted">@Model.Donnees.QualiteDonnees.Description</p>
+                }
                 <p><strong>Nombre de capteurs:</strong> @Model.Donnees.NombreDeCapteurs</p>
                 <p><strong>Fréquence de collecte:</strong> @Model.Donnees.FrequenceDeCollect</p>
                 <p><strong>Dates:</strong> @Model.Donnees.StartTimestamp.ToShortDateString() - @Model.Donnees.EndTimestamp.ToShortDateString()</p>
@@ -102,6 +107,11 @@
                 <p><strong>Code:</strong> @Model.DonneesEventLogs.Code</p>
                 <p><strong>Nom de la table:</strong> @Model.DonneesEventLogs.NomDeLaTable</p>
                 <p><strong>Description:</strong> @Model.DonneesEventLogs.Description</p>
+                <p><strong>Qualité des données:</strong> @(Model.DonneesEventLogs.QualiteDonnees?.Libelle ?? "—")</p>
+                @if (!string.IsNullOrWhiteSpace(Model.DonneesEventLogs.QualiteDonnees?.Description))
+                {
+                    <p class="text-muted">@Model.DonneesEventLogs.QualiteDonnees.Description</p>
+                }
                 <p><strong>Nombre d'événements:</strong> @Model.DonneesEventLogs.NombreDEvents</p>
                 <p><strong>Dates:</strong> @Model.DonneesEventLogs.StartTimestamp.ToShortDateString() - @Model.DonneesEventLogs.EndTimestamp.ToShortDateString()</p>
 
@@ -148,6 +158,11 @@
                 <p><strong>Code:</strong> @Model.DonneesContexteEnvironnemental.Code</p>
                 <p><strong>Nom de la table:</strong> @Model.DonneesContexteEnvironnemental.NomDeLaTable</p>
                 <p><strong>Description:</strong> @Model.DonneesContexteEnvironnemental.Description</p>
+                <p><strong>Qualité des données:</strong> @(Model.DonneesContexteEnvironnemental.QualiteDonnees?.Libelle ?? "—")</p>
+                @if (!string.IsNullOrWhiteSpace(Model.DonneesContexteEnvironnemental.QualiteDonnees?.Description))
+                {
+                    <p class="text-muted">@Model.DonneesContexteEnvironnemental.QualiteDonnees.Description</p>
+                }
                 <p><strong>Dates:</strong> @Model.DonneesContexteEnvironnemental.StartTimestamp.ToShortDateString() - @Model.DonneesContexteEnvironnemental.EndTimestamp.ToShortDateString()</p>
 
                 @if (Model.ContextePreviewRows?.Any() == true)
