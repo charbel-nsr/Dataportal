@@ -1,18 +1,18 @@
 ﻿@model Dataportal.ViewModels.MetadonneeCreateViewModel
 
 @{
-    ViewData["Title"] = "Créer un ensemble de données - Étape 1";
+    ViewData["Title"] = "Create a dataset - Step 1";
     ViewData["CurrentStep"] = 1;
 }
 
 <div class="container">
-    <h2 class="mb-4">Créer une métadonnée (Étape 1/5)</h2>
+    <h2 class="mb-4">Create metadata (Step 1/5)</h2>
     @await Html.PartialAsync("_CreationProgress")
     <form method="post" class="bg-light p-4 rounded shadow-sm">
         @Html.AntiForgeryToken()
 
         <div class="form-floating mb-3">
-            <input asp-for="Nom" class="form-control" placeholder="Nom" required>
+            <input asp-for="Nom" class="form-control" placeholder="Name" required>
             <label asp-for="Nom"></label>
             <span asp-validation-for="Nom" class="text-danger"></span>
         </div>
@@ -25,7 +25,7 @@
 
         <div class="form-floating mb-3">
             <select asp-for="IdLicence" class="form-select" asp-items="@(new SelectList(Model.Licences, "Id", "Libelle"))" required>
-                <option value="">Sélectionnez une licence</option>
+                <option value="">Select a license</option>
             </select>
             <label asp-for="IdLicence"></label>
             <span asp-validation-for="IdLicence" class="text-danger"></span>
@@ -33,7 +33,7 @@
 
         <div class="form-floating mb-3">
             <select asp-for="IdSite" class="form-select" asp-items="@(new SelectList(Model.Sites, "Id", "Nom"))" required>
-                <option value="">Sélectionnez un site</option>
+                <option value="">Select a site</option>
             </select>
             <label asp-for="IdSite"></label>
             <span asp-validation-for="IdSite" class="text-danger"></span>
@@ -42,7 +42,7 @@
         <div class="form-floating mb-3 position-relative" id="appareilsMultiSelectWrapper">
             <select asp-for="SelectedAppareils" asp-items="@(new MultiSelectList(Model.Appareils, "Id", "Nom"))" class="d-none" multiple></select>
             <div id="appareilsSelectDisplay" class="form-control multi-select-container">
-                <input type="text" id="appareilsFilterInput" class="multi-select-input" placeholder="Rechercher..." />
+                <input type="text" id="appareilsFilterInput" class="multi-select-input" placeholder="Search..." />
             </div>
             <div id="appareilsSelectOptions" class="multi-select-dropdown"></div>
             <label asp-for="SelectedAppareils"></label>
@@ -52,7 +52,7 @@
 
         <div class="form-floating mb-3">
             <select asp-for="IdVisibilite" class="form-select" asp-items="@(new SelectList(Model.Visibilites, "Id", "Libelle"))" required>
-                <option value="">Sélectionnez une visibilité</option>
+                <option value="">Select a visibility</option>
             </select>
             <label asp-for="IdVisibilite"></label>
             <span asp-validation-for="IdVisibilite" class="text-danger"></span>
@@ -78,7 +78,7 @@
             <label class="form-check-label" asp-for="AutoriserLeTelechargement"></label>
         </div>
 
-        <button type="submit" class="btn btn-primary w-100">Suivant</button>
+        <button type="submit" class="btn btn-primary w-100">Next</button>
     </form>
 </div>
 

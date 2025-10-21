@@ -27,7 +27,7 @@ namespace Dataportal.Services
             ArgumentNullException.ThrowIfNull(context);
 
             _connectionString = context.Database.GetConnectionString()
-                ?? throw new InvalidOperationException("La chaîne de connexion de la base de données est introuvable.");
+                ?? throw new InvalidOperationException("The database connection string could not be found.");
 
             EnsureEncodingProviderRegistered();
         }
@@ -53,12 +53,12 @@ namespace Dataportal.Services
             var extension = NormalizeExtension(fileList[0].FileName);
             if (string.IsNullOrWhiteSpace(extension))
             {
-                throw new InvalidOperationException("Impossible de déterminer le type des fichiers importés.");
+                throw new InvalidOperationException("Unable to determine the type of the imported files.");
             }
 
             if (fileList.Any(f => !string.Equals(NormalizeExtension(f.FileName), extension, StringComparison.OrdinalIgnoreCase)))
             {
-                throw new InvalidOperationException("Tous les fichiers importés pour cette étape doivent être du même type (CSV, XLSX, Parquet ou CSV.zip).");
+                throw new InvalidOperationException("All files imported for this step must be of the same type (CSV, XLSX, Parquet, or CSV.zip).");
             }
 
             var formatLabel = extension switch
@@ -67,7 +67,7 @@ namespace Dataportal.Services
                 ".xlsx" => "XLSX",
                 ".parquet" => "Parquet",
                 ".csv.zip" => "CSV.zip",
-                _ => "importés"
+                _ => "imported"
             };
 
             switch (extension)
@@ -85,7 +85,7 @@ namespace Dataportal.Services
                     await ImportZippedCsvAsync(tableName, fileList, formatLabel);
                     break;
                 default:
-                    throw new InvalidOperationException("Seuls les fichiers CSV, XLSX, Parquet ou CSV.zip sont pris en charge pour le moment.");
+                    throw new InvalidOperationException("Only CSV, XLSX, Parquet, or CSV.zip files are supported at this time.");
             }
         }
 
@@ -152,7 +152,7 @@ namespace Dataportal.Services
 
                     if (normalizedHeader.Any(string.IsNullOrWhiteSpace))
                     {
-                        throw new InvalidOperationException("Les en-têtes de colonnes ne peuvent pas être vides.");
+                        throw new InvalidOperationException("Column headers cannot be empty.");
                     }
 
                     if (headers == null)
@@ -166,7 +166,7 @@ namespace Dataportal.Services
                     }
                     else if (!HeadersMatch(headers, normalizedHeader))
                     {
-                        throw new InvalidOperationException($"Les fichiers {formatLabel} doivent avoir les mêmes colonnes.");
+                        throw new InvalidOperationException($"The {formatLabel} files must share the same columns.");
                     }
 
                     if (bulkCopy != null && buffer != null)
@@ -236,7 +236,7 @@ namespace Dataportal.Services
 
                         if (normalizedHeader.Any(string.IsNullOrWhiteSpace))
                         {
-                            throw new InvalidOperationException("Les en-têtes de colonnes ne peuvent pas être vides.");
+                            throw new InvalidOperationException("Column headers cannot be empty.");
                         }
 
                         if (headers == null)
@@ -250,7 +250,7 @@ namespace Dataportal.Services
                         }
                         else if (!HeadersMatch(headers, normalizedHeader))
                         {
-                            throw new InvalidOperationException($"Les fichiers {formatLabel} doivent avoir les mêmes colonnes.");
+                            throw new InvalidOperationException($"The {formatLabel} files must share the same columns.");
                         }
 
                         if (bulkCopy != null && buffer != null)
@@ -308,7 +308,7 @@ namespace Dataportal.Services
 
                         if (normalizedHeader.Any(string.IsNullOrWhiteSpace))
                         {
-                            throw new InvalidOperationException("Les en-têtes de colonnes ne peuvent pas être vides.");
+                            throw new InvalidOperationException("Column headers cannot be empty.");
                         }
 
                         if (headers == null)
@@ -322,7 +322,7 @@ namespace Dataportal.Services
                         }
                         else if (!HeadersMatch(headers, normalizedHeader))
                         {
-                            throw new InvalidOperationException($"Les fichiers {formatLabel} doivent avoir les mêmes colonnes.");
+                            throw new InvalidOperationException($"The {formatLabel} files must share the same columns.");
                         }
 
                         if (bulkCopy != null && buffer != null)
@@ -381,7 +381,7 @@ namespace Dataportal.Services
 
                     if (normalizedHeader.Any(string.IsNullOrWhiteSpace))
                     {
-                        throw new InvalidOperationException("Les en-têtes de colonnes ne peuvent pas être vides.");
+                        throw new InvalidOperationException("Column headers cannot be empty.");
                     }
 
                     if (headers == null)
@@ -395,7 +395,7 @@ namespace Dataportal.Services
                     }
                     else if (!HeadersMatch(headers, normalizedHeader))
                     {
-                        throw new InvalidOperationException($"Les fichiers {formatLabel} doivent avoir les mêmes colonnes.");
+                        throw new InvalidOperationException($"The {formatLabel} files must share the same columns.");
                     }
 
                     if (bulkCopy != null && buffer != null)
@@ -480,7 +480,7 @@ namespace Dataportal.Services
 
                 if (fields.Length != headers.Count)
                 {
-                    throw new InvalidOperationException("Une ligne du fichier CSV ne correspond pas au nombre de colonnes de l'en-tête.");
+                    throw new InvalidOperationException("A row in the CSV file does not match the number of header columns.");
                 }
 
                 var rowValues = new object[headers.Count];
@@ -706,7 +706,7 @@ namespace Dataportal.Services
                 var extra = reader.GetValue(i);
                 if (extra != null && !string.IsNullOrWhiteSpace(Convert.ToString(extra, CultureInfo.InvariantCulture)))
                 {
-                    throw new InvalidOperationException("Une ligne du fichier XLSX contient plus de colonnes que l'en-tête.");
+                    throw new InvalidOperationException("A row in the XLSX file contains more columns than the header.");
                 }
             }
         }
@@ -721,7 +721,7 @@ namespace Dataportal.Services
 
             if (duplicates.Count > 0)
             {
-                throw new InvalidOperationException("Les en-têtes de colonnes doivent être uniques.");
+                throw new InvalidOperationException("Column headers must be unique.");
             }
         }
 

@@ -7,10 +7,10 @@ namespace Dataportal.ViewModels
         [Required]
         public int IdAppareil { get; set; }
 
-        [Display(Name = "Id de l'appareil dans les données")]
+        [Display(Name = "Device ID in the data")]
         public string? IdAppareilDansDonnees { get; set; }
 
-        [Display(Name = "Commentaire")]
+        [Display(Name = "Comment")]
         public string? Commentaire { get; set; }
     }
 }

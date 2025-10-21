@@ -9,7 +9,7 @@
     const LOTTIE_SCRIPT_ID = 'upload-overlay-lottie-script';
     const LOTTIE_SCRIPT_URL = 'https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.10.2/lottie.min.js';
     const DEFAULT_JSON_URL = '/json/wired-outline-1331-repository-hover-pinch.json';
-    const DEFAULT_CONFIRM_MESSAGE = "Une fois cette étape validée, les données seront créées temporairement. Souhaitez-vous continuer ?";
+    const DEFAULT_CONFIRM_MESSAGE = "Once this step is confirmed, the data will be created temporarily. Do you want to continue?";
     const SUBMIT_DELAY_MS = 800;
 
     let lottieLoaderPromise = null;
@@ -141,10 +141,10 @@
                     if (window.lottie && typeof window.lottie.loadAnimation === 'function') {
                         resolve(window.lottie);
                     } else {
-                        reject(new Error('La librairie Lottie n\'a pas initialisé l\'animation.'));
+                        reject(new Error('The Lottie library did not initialize the animation.'));
                     }
                 }, { once: true });
-                existingScript.addEventListener('error', () => reject(new Error('Impossible de charger la librairie Lottie.')), { once: true });
+                existingScript.addEventListener('error', () => reject(new Error('Unable to load the Lottie library.')), { once: true });
                 return;
             }
 
@@ -159,11 +159,11 @@
                 if (window.lottie && typeof window.lottie.loadAnimation === 'function') {
                     resolve(window.lottie);
                 } else {
-                    reject(new Error('La librairie Lottie n\'a pas initialisé l\'animation.'));
+                    reject(new Error('The Lottie library did not initialize the animation.'));
                 }
             }, { once: true });
 
-            script.addEventListener('error', () => reject(new Error('Impossible de charger la librairie Lottie.')), { once: true });
+            script.addEventListener('error', () => reject(new Error('Unable to load the Lottie library.')), { once: true });
 
             document.head.appendChild(script);
         }).catch(error => {
@@ -195,11 +195,11 @@
                 });
 
                 markAnimationReady();
-                setStatus('Téléversement en cours…');
+                setStatus('Uploading…');
             })
             .catch(() => {
                 destroyAnimation();
-                setStatus('Prévisualisation de l\'animation indisponible, le transfert continue…');
+                setStatus('Animation preview unavailable, transfer continues…');
             });
     }
 
@@ -300,7 +300,7 @@
                 }
 
                 hasConfirmed = true;
-                setStatus('Préparation du téléversement…');
+                setStatus('Preparing upload…');
                 toggleOverlay(true);
                 playAnimation(settings.jsonUrl);
 

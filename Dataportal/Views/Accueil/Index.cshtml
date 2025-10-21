@@ -1,13 +1,13 @@
 ﻿@{
-    ViewData["Title"] = "Accueil";
+    ViewData["Title"] = "Home";
 }
 
 <div class="hero" style="background-image: url(' /background/hero-background.jpg');">
     <div class="container h-100">
         <div class="row h-100 align-items-center justify-content-center">
             <div class="col-md-6 order-2 order-md-1 text-center text-md-start">
-                <h1>Portail des données SCADA de l'ÉTS</h1>
-                <p>Accédez, explorez et partagez les données de vos équipes actives dans le secteur de l’énergie renouvelable</p>
+                <h1>ÉTS SCADA Data Portal</h1>
+                <p>Access, explore, and share the data from your teams active in the renewable energy sector</p>
                 <div class="d-flex flex-column flex-md-row align-items-center mt-3 gap-3 justify-content-center justify-content-md-start">
                     <a href="https://www.powerfactors.com/" target="_blank">
                         <img src="~/logo/pf-footer-logo.png" alt="Power Factors Logo" class="collaboration-logo" />
@@ -24,11 +24,11 @@
                     <div class="d-none d-md-block flex-grow-1"></div>
                     @if (!User.Identity.IsAuthenticated)
                     {
-                        <a href="/Compte/SeConnecter" class="btn btn-primary mt-4">Se connecter</a>
+                        <a href="/Compte/SeConnecter" class="btn btn-primary mt-4">Sign in</a>
                     }
                     else
                     {
-                        <a href="/AccesDonnees/RechercheDonnees" class="btn btn-primary mt-4">Données</a>
+                        <a href="/AccesDonnees/RechercheDonnees" class="btn btn-primary mt-4">Data</a>
                     }
                 </div>
             </div>

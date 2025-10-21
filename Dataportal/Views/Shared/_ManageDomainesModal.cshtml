@@ -1,8 +1,8 @@
 ﻿@model Dataportal.ViewModels.EntrepriseDomainesViewModel
 
 <div class="modal-header">
-    <h5 class="modal-title">Domaines de @Model.EntrepriseNom</h5>
-    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+    <h5 class="modal-title">Domains for @Model.EntrepriseNom</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 </div>
 <div class="modal-body">
     <input type="hidden" id="entrepriseId" value="@Model.EntrepriseId" />
@@ -10,8 +10,8 @@
         <table class="table table-hover align-middle">
             <thead class="table-light">
                 <tr>
-                    <th>Domaine</th>
-                    <th>Actif</th>
+                    <th>Domain</th>
+                    <th>Active</th>
                     @if (User.IsInRole("administrateur"))
                     {
                         <th>Action</th>
@@ -26,11 +26,11 @@
                         <td>
                             @if (d.DomaineActif)
                             {
-                                <span class="badge bg-success">Actif</span>
+                                <span class="badge bg-success">Active</span>
                             }
                             else
                             {
-                                <span class="badge bg-secondary">Inactif</span>
+                                <span class="badge bg-secondary">Inactive</span>
                             }
                         </td>
                         @if (User.IsInRole("administrateur"))
@@ -39,14 +39,14 @@
                                 <form method="post" asp-action="ToggleDomaineActif" class="d-inline">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="id" value="@d.Id" />
-                                    <button type="submit" class="btn btn-sm @(d.DomaineActif ? "btn-outline-warning" : "btn-outline-success")" title="@(d.DomaineActif ? "Désactiver" : "Activer")">
+                                    <button type="submit" class="btn btn-sm @(d.DomaineActif ? "btn-outline-warning" : "btn-outline-success")" title="@(d.DomaineActif ? "Deactivate" : "Activate")">
                                         <i class="bi @(d.DomaineActif ? "bi-x-circle" : "bi-check-circle")"></i>
                                     </button>
                                 </form>
                                 <form method="post" asp-action="DeleteDomaine" class="d-inline">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="id" value="@d.Id" />
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </form>
@@ -59,11 +59,11 @@
     </div>
 </div>
 <div class="modal-footer">
-    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
     @if (User.IsInRole("administrateur"))
     {
         <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addDomainModal">
-            Ajouter un domaine
+            Add a domain
         </button>
     }
 </div>
@@ -78,25 +78,25 @@
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="entrepriseId" value="@Model.EntrepriseId" />
                     <div class="modal-header">
-                        <h5 class="modal-title" id="addDomainModalLabel">Ajouter un nouveau domaine</h5>
+                        <h5 class="modal-title" id="addDomainModalLabel">Add a new domain</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
                         <div class="form-floating mb-3">
-                            <input type="text" class="form-control" id="newDomaine" name="newDomaine" placeholder="exemple.com" required>
-                            <label for="newDomaine">Nom du domaine (exemple.com)</label>
+                            <input type="text" class="form-control" id="newDomaine" name="newDomaine" placeholder="example.com" required>
+                            <label for="newDomaine">Domain name (example.com)</label>
                         </div>
                         <div class="form-floating">
                             <select class="form-select" id="Actif" name="Actif" required>
-                                <option value="true">Actif</option>
-                                <option value="false">Inactif</option>
+                                <option value="true">Active</option>
+                                <option value="false">Inactive</option>
                             </select>
-                            <label for="Actif">Statut du domaine</label>
+                            <label for="Actif">Domain status</label>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                        <button type="submit" class="btn btn-success">Ajouter</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success">Add</button>
                     </div>
                 </form>
             </div>

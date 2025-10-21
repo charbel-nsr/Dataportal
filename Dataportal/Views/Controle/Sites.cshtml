@@ -1,6 +1,6 @@
 ﻿@model Dataportal.ViewModels.SiteViewModel
 @{
-    ViewData["Title"] = "Gestion des sites";
+    ViewData["Title"] = "Site management";
 }
 
 <div class="container">
@@ -23,26 +23,26 @@
         <form method="get" class="row gx-3 gy-2 align-items-center">
             <div class="col-md-6">
                 <div class="form-floating">
-                    <input type="text" class="form-control" id="search" name="search" placeholder="Recherche" value="@Model.Search">
-                    <label for="search">Nom, description ou emplacement</label>
+                    <input type="text" class="form-control" id="search" name="search" placeholder="Search" value="@Model.Search">
+                    <label for="search">Name, description or location</label>
                 </div>
             </div>
             <div class="col-md-6">
                 <div class="form-floating">
                     <select class="form-select" name="actif" id="actif">
-                        <option value="">Tous</option>
-                        <option value="true" selected="@(Model.Actif == true ? "selected" : null)">Actifs</option>
-                        <option value="false" selected="@(Model.Actif == false ? "selected" : null)">Inactifs</option>
+                        <option value="">All</option>
+                        <option value="true" selected="@(Model.Actif == true ? "selected" : null)">Active</option>
+                        <option value="false" selected="@(Model.Actif == false ? "selected" : null)">Inactive</option>
                     </select>
-                    <label for="actif">Statut actif</label>
+                    <label for="actif">Active status</label>
                 </div>
             </div>
             <div class="col-md-6 offset-md-6 mt-2 d-flex flex-column flex-md-row">
                 <button type="submit" class="btn btn-primary flex-grow-1 w-100 mb-2 mb-md-0 me-md-2">
-                    Filtrer
+                    Filter
                 </button>
                 <a href="@Url.Action("Sites", "Controle")" class="btn btn-outline-primary flex-grow-1 w-100">
-                    Réinitialiser
+                    Reset
                 </a>
             </div>
         </form>
@@ -50,7 +50,7 @@
 
     <div class="col-12 col-md-auto mb-3">
         <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createModal">
-            <i class="bi bi-plus-circle"></i> Créer un site
+            <i class="bi bi-plus-circle"></i> Create a site
         </button>
     </div>
 
@@ -60,9 +60,9 @@
                 <table class="table table-hover align-middle shadow-sm">
                     <thead class="table-light">
                         <tr>
-                            <th>Nom</th>
-                            <th>Emplacement</th>
-                            <th>Actif</th>
+                            <th>Name</th>
+                            <th>Location</th>
+                            <th>Active</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -75,11 +75,11 @@
                                 <td>
                                     @if (site.Actif)
                                     {
-                                        <span class="badge bg-success">Actif</span>
+                                        <span class="badge bg-success">Active</span>
                                     }
                                     else
                                     {
-                                        <span class="badge bg-secondary">Inactif</span>
+                                        <span class="badge bg-secondary">Inactive</span>
                                     }
                                 </td>
                                 <td>
@@ -88,7 +88,7 @@
                                         <form method="post" asp-action="ActivateSite" class="d-inline">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="id" value="@site.Id" />
-                                            <button class="btn btn-sm btn-outline-success" title="Activer">
+                                            <button class="btn btn-sm btn-outline-success" title="Activate">
                                                 <i class="bi bi-check-circle"></i>
                                             </button>
                                         </form>
@@ -98,7 +98,7 @@
                                         <form method="post" asp-action="DeactivateSite" class="d-inline">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="id" value="@site.Id" />
-                                            <button class="btn btn-sm btn-outline-warning" title="Désactiver">
+                                            <button class="btn btn-sm btn-outline-warning" title="Deactivate">
                                                 <i class="bi bi-x-circle"></i>
                                             </button>
                                         </form>
@@ -135,8 +135,8 @@
     else
     {
         <div class="text-center">
-            <img src="/illustration/empty-search.svg" alt="Aucune donnée trouvée" class="img-fluid" style="max-height:200px;" />
-            <p class="text-muted mt-2">Aucune donnée trouvée.</p>
+            <img src="/illustration/empty-search.svg" alt="No data found" class="img-fluid" style="max-height:200px;" />
+            <p class="text-muted mt-2">No data found.</p>
         </div>
     }
 </div>
@@ -148,17 +148,17 @@
             <form method="post" asp-action="CreateSite">
                 @Html.AntiForgeryToken()
                 <div class="modal-header">
-                    <h5 class="modal-title" id="createModalLabel">Créer un site</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                    <h5 class="modal-title" id="createModalLabel">Create a site</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="form-floating mb-3">
-                        <input type="text" class="form-control" id="Nom" name="Nom" placeholder="Nom" required>
-                        <label for="Nom">Nom du site</label>
+                        <input type="text" class="form-control" id="Nom" name="Nom" placeholder="Name" required>
+                        <label for="Nom">Site name</label>
                     </div>
                     <div class="form-floating mb-3">
-                        <input type="text" class="form-control" id="Emplacement" name="Emplacement" placeholder="Emplacement">
-                        <label for="Emplacement">Emplacement</label>
+                        <input type="text" class="form-control" id="Emplacement" name="Emplacement" placeholder="Location">
+                        <label for="Emplacement">Location</label>
                     </div>
                     <div class="form-floating mb-3">
                         <textarea class="form-control" id="Description" name="Description" placeholder="Description" style="height: 100px;"></textarea>
@@ -166,15 +166,15 @@
                     </div>
                     <div class="form-floating mb-3">
                         <select class="form-select" id="Actif" name="Actif" required>
-                            <option value="true">Actif</option>
-                            <option value="false">Inactif</option>
+                            <option value="true">Active</option>
+                            <option value="false">Inactive</option>
                         </select>
-                        <label for="Actif">Statut du site</label>
+                        <label for="Actif">Site status</label>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-success">Créer</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Create</button>
                 </div>
             </form>
         </div>
@@ -186,17 +186,17 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="detailsModalLabel">Détails du site</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                <h5 class="modal-title" id="detailsModalLabel">Site details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p><strong>Nom:</strong> <span id="detailNom"></span></p>
-                <p><strong>Emplacement:</strong> <span id="detailEmplacement"></span></p>
+                <p><strong>Name:</strong> <span id="detailNom"></span></p>
+                <p><strong>Location:</strong> <span id="detailEmplacement"></span></p>
                 <p><strong>Description:</strong> <span id="detailDescription"></span></p>
-                <p><strong>Statut:</strong> <span id="detailActif"></span></p>
+                <p><strong>Status:</strong> <span id="detailActif"></span></p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -211,14 +211,14 @@
                 <input type="hidden" id="editId" name="Id" />
 
                 <div class="modal-header">
-                    <h5 class="modal-title" id="editModalLabel">Modifier le site</h5>
+                    <h5 class="modal-title" id="editModalLabel">Edit site</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
 
                 <div class="modal-body">
                     <div class="form-floating mb-3">
-                        <input type="text" class="form-control" id="editNom" name="Nom" placeholder="Nom" required>
-                        <label for="editNom">Nom du site</label>
+                        <input type="text" class="form-control" id="editNom" name="Nom" placeholder="Name" required>
+                        <label for="editNom">Site name</label>
                     </div>
 
                     <div class="form-floating mb-3">
@@ -227,22 +227,22 @@
                     </div>
 
                     <div class="form-floating mb-3">
-                        <input type="text" class="form-control" id="editEmplacement" name="Emplacement" placeholder="Emplacement">
-                        <label for="editEmplacement">Emplacement</label>
+                        <input type="text" class="form-control" id="editEmplacement" name="Emplacement" placeholder="Location">
+                        <label for="editEmplacement">Location</label>
                     </div>
 
                     <div class="form-floating mb-3">
                         <select class="form-select" id="editActif" name="Actif" required>
-                            <option value="true">Actif</option>
-                            <option value="false">Inactif</option>
+                            <option value="true">Active</option>
+                            <option value="false">Inactive</option>
                         </select>
-                        <label for="editActif">Statut du site</label>
+                        <label for="editActif">Site status</label>
                     </div>
                 </div>
 
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
                 </div>
             </form>
         </div>
@@ -257,7 +257,7 @@
             document.getElementById('detailNom').textContent = button.getAttribute('data-nom') || '—';
             document.getElementById('detailEmplacement').textContent = button.getAttribute('data-emplacement') || '—';
             document.getElementById('detailDescription').textContent = button.getAttribute('data-description') || '—';
-            document.getElementById('detailActif').textContent = button.getAttribute('data-actif') === 'True' ? 'Actif' : 'Inactif';
+            document.getElementById('detailActif').textContent = button.getAttribute('data-actif') === 'True' ? 'Active' : 'Inactive';
         });
         const editModal = document.getElementById('editModal');
         editModal.addEventListener('show.bs.modal', event => {

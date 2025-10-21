@@ -1,7 +1,7 @@
 ﻿@model Dataportal.ViewModels.SeConnecterViewModel
 
 @{
-    ViewData["Title"] = "Se connecter";
+    ViewData["Title"] = "Sign in";
     ViewData["HideFooter"] = true;
     ViewData["DisableScroll"] = true;
 }
@@ -43,13 +43,13 @@
                                 <input asp-for="SeSouvenirDeMoi" class="form-check-input"/>
                                 <label asp-for="SeSouvenirDeMoi" class="form-check-label"></label>
                             </div>
-                            <a asp-area="" asp-controller="Compte" asp-action="MotDePasseOublie" class="text-decoration-none">Mot de passe oublié?</a>
+                            <a asp-area="" asp-controller="Compte" asp-action="MotDePasseOublie" class="text-decoration-none">Forgot password?</a>
                         </div>
                         <button type="submit" class="btn btn-primary w-100 mt-3">
-                            Se connecter
+                            Sign in
                         </button>
                     </form>
-                    <a href="/Compte/DemanderUnCompte" class="btn btn-outline-primary mt-2 w-100">Demander un compte</a>
+                    <a href="/Compte/DemanderUnCompte" class="btn btn-outline-primary mt-2 w-100">Request an account</a>
                 </div>
             </div>
             <div class="col-md-6 d-flex flex-column justify-content-center align-items-center p-4 logo-fade">

@@ -11,12 +11,12 @@ namespace Dataportal.ViewModels
         [Required]
         public int IdMetadonnee { get; set; }
 
-        [Required(ErrorMessage = "Le libellé est requis.")]
+        [Required(ErrorMessage = "Label is required.")]
         [MaxLength(100)]
-        [Display(Name = "Libellé")]
+        [Display(Name = "Label")]
         public string Libelle { get; set; }
 
-        [Required(ErrorMessage = "Le code est requis.")]
+        [Required(ErrorMessage = "Code is required.")]
         [MaxLength(100)]
         [Display(Name = "Code")]
         public string Code { get; set; }
@@ -25,22 +25,22 @@ namespace Dataportal.ViewModels
         [Display(Name = "Description")]
         public string Description { get; set; }
 
-        [Required(ErrorMessage = "Le timestamp de début est requis.")]
-        [Display(Name = "Timestamp début")]
+        [Required(ErrorMessage = "Start timestamp is required.")]
+        [Display(Name = "Start timestamp")]
         public DateTime StartTimestamp { get; set; }
 
-        [Required(ErrorMessage = "Le timestamp de fin est requis.")]
-        [Display(Name = "Timestamp fin")]
+        [Required(ErrorMessage = "End timestamp is required.")]
+        [Display(Name = "End timestamp")]
         public DateTime EndTimestamp { get; set; }
 
-        [Display(Name = "Nombre d'événements")]
+        [Display(Name = "Number of events")]
         public int NombreDEvents { get; set; }
 
-        [Display(Name = "Fichiers (CSV, XLSX, Parquet ou CSV.zip)")]
+        [Display(Name = "Files (CSV, XLSX, Parquet, or CSV.zip)")]
         public ICollection<IFormFile>? UploadedFiles { get; set; }
 
-        [Required(ErrorMessage = "La qualité des données est requise.")]
-        [Display(Name = "Qualité des données")]
+        [Required(ErrorMessage = "Data quality is required.")]
+        [Display(Name = "Data quality")]
         public int? IdQualiteDonnees { get; set; }
 
         public IEnumerable<SelectListItem> QualiteOptions { get; set; } = new List<SelectListItem>();
@@ -50,7 +50,7 @@ namespace Dataportal.ViewModels
             if (StartTimestamp > EndTimestamp)
             {
                 yield return new ValidationResult(
-                    "Le timestamp de début doit précéder le timestamp de fin.",
+                    "The start timestamp must be before the end timestamp.",
                     new[] { nameof(StartTimestamp), nameof(EndTimestamp) });
             }
         }

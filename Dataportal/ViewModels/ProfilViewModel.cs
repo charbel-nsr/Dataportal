@@ -7,33 +7,33 @@ namespace Dataportal.ViewModels
     public class ProfilViewModel
     {
 
-        [Required(ErrorMessage = "Votre Nom est requis.")]
+        [Required(ErrorMessage = "Your last name is required.")]
         [StringLength(100)]
-        [Display(Name = "Nom")]
+        [Display(Name = "Last name")]
         public string Nom { get; set; }
 
-        [Required(ErrorMessage = "Votre Prénom est requis.")]
+        [Required(ErrorMessage = "Your first name is required.")]
         [StringLength(100)]
-        [Display(Name = "Prénom")]
+        [Display(Name = "First name")]
         public string Prenom { get; set; }
 
-        [Required(ErrorMessage = "L'Email est requis.")]
+        [Required(ErrorMessage = "Email is required.")]
         [EmailAddress]
         [Display(Name = "Email")]
         public string Email { get; set; }
 
-        [Display(Name = "Établissement")]
+        [Display(Name = "Organization")]
         public string Entreprise { get; set; }
 
         [Display(Name = "Role")]
         public string Role { get; set; }
 
         [StringLength(300)]
-        [Display(Name = "Lien LinkedIn")]
+        [Display(Name = "LinkedIn link")]
         public string? LienLinkedIn { get; set; }
 
         [StringLength(1000)]
-        [Display(Name = "Biographie")]
+        [Display(Name = "Biography")]
         public string? DescriptionProfil { get; set; }
     }
 }

@@ -1,7 +1,7 @@
 ﻿@model Dataportal.ViewModels.DemandeDeCompteViewModel
 @using Dataportal.Models
 @{
-    ViewData["Title"] = "Les demandes de compte";
+    ViewData["Title"] = "Account requests";
 }
 
 <div class="container">
@@ -20,34 +20,34 @@
                     @{
                         var search = Context.Request.Query["search"];
                     }
-                    <input type="text" class="form-control" id="search" name="search" placeholder="Recherche" value="@(string.IsNullOrEmpty(search)? "" : search)">
-                    <label for="searchInput">Nom, Prénom, Email, Commentaire</label>
+                    <input type="text" class="form-control" id="search" name="search" placeholder="Search" value="@(string.IsNullOrEmpty(search)? "" : search)">
+                    <label for="searchInput">Last name, First name, Email, Comment</label>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="form-floating">
                     <select class="form-select" name="selectedEntrepriseId" id="entrepriseSelect">
-                        <option selected value="">Toutes les entreprises</option>
+                        <option selected value="">All companies</option>
                         @foreach (var entreprise in Model.Entreprises)
                         {
                             var isSelected = entreprise.Id.ToString() == Context.Request.Query["selectedEntrepriseId"];
                             <option value="@entreprise.Id" selected="@(isSelected? "selected" :null)">@entreprise.Nom</option>
                         }
                     </select>
-                    <label for="entrepriseSelect">Entreprise</label>
+                    <label for="entrepriseSelect">Company</label>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="form-floating">
                     <select class="form-select" name="selectedStatutId" id="statutSelect">
-                        <option selected value="">Tous les statuts</option>
+                        <option selected value="">All statuses</option>
                         @foreach (var statut in Model.Statuts)
                         {
                             var isSelected = statut.Id.ToString() == Context.Request.Query["selectedStatutId"];
                             <option value="@statut.Id" selected="@(isSelected ? "selected" : null)">@statut.Libelle</option>
                         }
                     </select>
-                    <label for="statutSelect">Statut</label>
+                    <label for="statutSelect">Status</label>
                 </div>
             </div>
             <div class="col-md-4 mt-2">
@@ -65,7 +65,7 @@
                             <input type="date" class="form-control" name="dateMin" id="dateMin">
                         }
                     }
-                    <label for="dateMin">Date début</label>
+                    <label for="dateMin">Start date</label>
                 </div>
             </div>
             <div class="col-md-4 mt-2">
@@ -83,16 +83,16 @@
                             <input type="date" class="form-control" name="dateMax" id="dateMax">
                         }
                     }
-                    <label for="dateMax">Date fin</label>
+                    <label for="dateMax">End date</label>
                 </div>
             </div>
             <div class="col-md-4 mt-2">
                 <div class="row g-2">
                     <div class="col-6">
-                        <button type="submit" class="btn btn-primary w-100">Filtrer</button>
+                        <button type="submit" class="btn btn-primary w-100">Filter</button>
                     </div>
                     <div class="col-6">
-                        <a href="@Url.Action("DemandeDeCompte", "Gestion")" class="btn btn-outline-primary w-100">Réinitialiser</a>
+                        <a href="@Url.Action("DemandeDeCompte", "Gestion")" class="btn btn-outline-primary w-100">Reset</a>
                     </div>
                 </div>
             </div>
@@ -105,11 +105,11 @@
                 <table class="table table-hover align-middle shadow-sm">
                     <thead class="table-light">
                         <tr>
-                            <th>Nom</th>
-                            <th>Prénom</th>
+                            <th>Last name</th>
+                            <th>First name</th>
                             <th>Email</th>
-                            <th>Entreprise</th>
-                            <th>Statut</th>
+                            <th>Company</th>
+                            <th>Status</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -125,16 +125,16 @@
                                     @switch (demande.StatutDeLaDemande?.Libelle?.ToLower())
                                     {
                                         case "attente":
-                                            <i class="bi bi-hourglass-split text-warning" title="En attente">En attente</i>
+                                            <i class="bi bi-hourglass-split text-warning" title="Pending">Pending</i>
                                             break;
                                         case "valider":
-                                            <i class="bi bi-check-circle-fill text-success" title="Validé">Validé</i>
+                                            <i class="bi bi-check-circle-fill text-success" title="Approved">Approved</i>
                                             break;
                                         case "refuser":
-                                            <i class="bi bi-x-circle-fill text-danger" title="Refusé">Refusé</i>
+                                            <i class="bi bi-x-circle-fill text-danger" title="Rejected">Rejected</i>
                                             break;
                                         default:
-                                            <i class="bi bi-question-circle text-secondary" title="Inconnu">Inconnu</i>
+                                            <i class="bi bi-question-circle text-secondary" title="Unknown">Unknown</i>
                                             break;
                                     }
                                 </td>
@@ -147,7 +147,7 @@
                                         <form method="post" asp-action="DeleteDemande" class="d-inline">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="id" value="@demande.Id" />
-                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
                                                 <i class="bi bi-trash"></i>
                                             </button>
                                         </form>
@@ -163,8 +163,8 @@
     else
     {
         <div class="text-center">
-            <img src="/illustration/empty-search.svg" alt="Aucune donnée trouvée" class="img-fluid" style="max-height:200px;" />
-            <p class="text-muted mt-2">Aucune donnée trouvée.</p>
+            <img src="/illustration/empty-search.svg" alt="No data found" class="img-fluid" style="max-height:200px;" />
+            <p class="text-muted mt-2">No data found.</p>
         </div>
     }
 </div>
@@ -181,22 +181,22 @@
                 <input type="hidden" name="commentaire" id="modal-action-commentaire" />
 
                 <div class="modal-header">
-                    <h5 class="modal-title" id="editModalLabel">Détails de la demande</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                    <h5 class="modal-title" id="editModalLabel">Request details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <input type="hidden" id="modal-demandeId" />
                     <div class="row g-3">
                         <div class="col-md-6">
                             <div class="form-floating">
-                                <input type="text" class="form-control" id="modal-Nom" placeholder="Nom" readonly>
-                                <label for="modal-Nom">Nom</label>
+                                <input type="text" class="form-control" id="modal-Nom" placeholder="Last name" readonly>
+                                <label for="modal-Nom">Last name</label>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-floating">
-                                <input type="text" class="form-control" id="modal-Prenom" placeholder="Prénom" readonly>
-                                <label for="modal-Prenom">Prénom</label>
+                                <input type="text" class="form-control" id="modal-Prenom" placeholder="First name" readonly>
+                                <label for="modal-Prenom">First name</label>
                             </div>
                         </div>
                         <div class="col-md-12">
@@ -207,8 +207,8 @@
                         </div>
                         <div class="col-md-12">
                             <div class="form-floating">
-                                <textarea class="form-control" id="modal-Commentaire" style="height: 100px" placeholder="Commentaire" readonly></textarea>
-                                <label for="modal-Commentaire">Commentaire</label>
+                                <textarea class="form-control" id="modal-Commentaire" style="height: 100px" placeholder="Comment" readonly></textarea>
+                                <label for="modal-Commentaire">Comment</label>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -219,33 +219,33 @@
                                         <option value="@entreprise.Id">@entreprise.Nom</option>
                                     }
                                 </select>
-                                <label for="modal-Entreprise">Entreprise</label>
+                                <label for="modal-Entreprise">Company</label>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-floating">
-                                <input type="text" class="form-control" id="modal-DateCreation" placeholder="Date de création" readonly>
-                                <label for="modal-DateCreation">Date de création</label>
+                                <input type="text" class="form-control" id="modal-DateCreation" placeholder="Created on" readonly>
+                                <label for="modal-DateCreation">Created on</label>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-check mt-4">
                                 <input class="form-check-input" type="checkbox" id="modal-EmailVerifie" disabled>
                                 <label class="form-check-label" for="modal-EmailVerifie">
-                                    Email vérifié
+                                    Email verified
                                 </label>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-floating">
                                 <select class="form-select" id="modal-action-roleId" name="idRole">
-                                    <option value="">Choisir un rôle</option>
+                                    <option value="">Select a role</option>
                                     @foreach (var role in Model.Roles.OrderBy(r => r.Id))
                                     {
                                         <option value="@role.Id">@role.Libelle</option>
                                     }
                                 </select>
-                                <label for="modal-action-roleId">Rôle à attribuer (requis seulement si Valider)</label>
+                                <label for="modal-action-roleId">Role to assign (required only when approving)</label>
                             </div>
                         </div>
                     </div>
@@ -254,17 +254,17 @@
                     <div class="row g-2 w-100">
                         <div class="col-12 col-md">
                             <button type="submit" name="idStatut" value="2" class="btn btn-success w-100" id="btn-valider">
-                                Valider la demande
+                                Approve request
                             </button>
                         </div>
                         <div class="col-12 col-md">
                             <button type="submit" name="idStatut" value="3" class="btn btn-danger w-100" id="btn-refuser">
-                                Refuser la demande
+                                Reject request
                             </button>
                         </div>
                         <div class="col-12 col-md">
                             <button type="button" class="btn btn-secondary w-100" data-bs-dismiss="modal">
-                                Fermer
+                                Close
                             </button>
                         </div>
                     </div>

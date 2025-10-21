@@ -70,7 +70,7 @@ namespace Dataportal.Controllers
 
             if (User.IsInRole("utilisateur") && model.IdVisibilite != VisibiliteIds.Personnelle)
             {
-                ModelState.AddModelError("IdVisibilite", "Les utilisateurs standards ne peuvent créer que des données personnelles.");
+                ModelState.AddModelError("IdVisibilite", "Standard users can only create personal data.");
                 // Reload choices
                 var visibilites = _context.Visibilite.Where(v => v.Id == VisibiliteIds.Personnelle).ToList();
                 model.Licences = _context.Licence.Where(l => l.Actif).ToList();
@@ -106,7 +106,7 @@ namespace Dataportal.Controllers
         /// <para>
         /// <list type="bullet">
         /// <item>The returned <c>metadonneeId</c> identifies the dataset that can be resumed.</item>
-        /// <item>The returned <c>nextStep</c> is the next stage the user should see; completed steps redirect to the résumé page.</item>
+        /// <item>The returned <c>nextStep</c> is the next stage the user should see; completed steps redirect to the summary page.</item>
         /// </list>
         /// </para>
         /// </summary>
@@ -132,7 +132,7 @@ namespace Dataportal.Controllers
             options.Insert(0, new SelectListItem
             {
                 Value = string.Empty,
-                Text = "Sélectionnez une qualité"
+                Text = "Select a quality"
             });
 
             return options;
@@ -157,7 +157,7 @@ namespace Dataportal.Controllers
                     return RedirectToAction("Details", new { id = resumeId.Value, creation = true });
                 }
 
-                TempData["Error"] = "Vous devez d'abord remplir la première étape.";
+                TempData["Error"] = "You must complete the first step first.";
                 return RedirectToAction("CreateStep1");
             }
 
@@ -179,7 +179,7 @@ namespace Dataportal.Controllers
             var step1Json = TempData["Step1Data"] as string;
             if (string.IsNullOrEmpty(step1Json))
             {
-                TempData["Error"] = "Les informations de la première étape sont manquantes.";
+                TempData["Error"] = "The information from the first step is missing.";
                 return RedirectToAction("CreateStep1");
             }
 
@@ -208,8 +208,8 @@ namespace Dataportal.Controllers
 
             if (duplicate != null)
             {
-                ModelState.AddModelError("Libelle", "Ce couple libellé/code existe déjà.");
-                ModelState.AddModelError("Code", "Ce couple libellé/code existe déjà.");
+                ModelState.AddModelError("Libelle", "This label/code combination already exists.");
+                ModelState.AddModelError("Code", "This label/code combination already exists.");
 
                 TempData.Keep("Step1Data");
                 model.QualiteOptions = BuildQualiteOptions();
@@ -218,7 +218,7 @@ namespace Dataportal.Controllers
 
             if (model.UploadedFiles == null || !model.UploadedFiles.Any())
             {
-                ModelState.AddModelError("UploadedFiles", "Vous devez importer au moins un fichier de données (CSV, XLSX, Parquet ou CSV.zip).");
+                ModelState.AddModelError("UploadedFiles", "You must upload at least one data file (CSV, XLSX, Parquet, or CSV.zip).");
                 TempData.Keep("Step1Data");
                 model.QualiteOptions = BuildQualiteOptions();
                 return View(model);
@@ -244,14 +244,14 @@ namespace Dataportal.Controllers
             }
             catch (SqlException)
             {
-                ModelState.AddModelError(nameof(model.UploadedFiles), "Une erreur est survenue lors de l'import des données.");
+                ModelState.AddModelError(nameof(model.UploadedFiles), "An error occurred while importing the data.");
                 TempData.Keep("Step1Data");
                 model.QualiteOptions = BuildQualiteOptions();
                 return View(model);
             }
             catch (Exception)
             {
-                ModelState.AddModelError(nameof(model.UploadedFiles), "Une erreur inattendue est survenue lors de l'import des données.");
+                ModelState.AddModelError(nameof(model.UploadedFiles), "An unexpected error occurred while importing the data.");
                 TempData.Keep("Step1Data");
                 model.QualiteOptions = BuildQualiteOptions();
                 return View(model);
@@ -380,7 +380,7 @@ namespace Dataportal.Controllers
             var metadonnee = await _context.Metadonnee.FindAsync(model.IdMetadonnee);
             if (metadonnee == null)
             {
-                TempData["Error"] = "Métadonnée introuvable.";
+                TempData["Error"] = "Metadata not found.";
                 return RedirectToAction("CreateStep1");
             }
 
@@ -403,9 +403,9 @@ namespace Dataportal.Controllers
             if (duplicate != null)
             {
                 if (duplicate.Libelle.Equals(model.Libelle.Trim(), StringComparison.OrdinalIgnoreCase))
-                    ModelState.AddModelError("Libelle", "Ce libellé existe déjà.");
+                    ModelState.AddModelError("Libelle", "This label already exists.");
                 if (duplicate.Code.Equals(model.Code.Trim(), StringComparison.OrdinalIgnoreCase))
-                    ModelState.AddModelError("Code", "Ce code existe déjà.");
+                    ModelState.AddModelError("Code", "This code already exists.");
 
                 model.QualiteOptions = BuildQualiteOptions();
                 return View(model);
@@ -434,13 +434,13 @@ namespace Dataportal.Controllers
             }
             catch (SqlException)
             {
-                ModelState.AddModelError(nameof(model.UploadedFiles), "Une erreur est survenue lors de l'import des données.");
+                ModelState.AddModelError(nameof(model.UploadedFiles), "An error occurred while importing the data.");
                 model.QualiteOptions = BuildQualiteOptions();
                 return View(model);
             }
             catch (Exception)
             {
-                ModelState.AddModelError(nameof(model.UploadedFiles), "Une erreur inattendue est survenue lors de l'import des données.");
+                ModelState.AddModelError(nameof(model.UploadedFiles), "An unexpected error occurred while importing the data.");
                 model.QualiteOptions = BuildQualiteOptions();
                 return View(model);
             }
@@ -540,7 +540,7 @@ namespace Dataportal.Controllers
             var metadonnee = await _context.Metadonnee.FindAsync(model.IdMetadonnee);
             if (metadonnee == null)
             {
-                TempData["Error"] = "Métadonnée introuvable.";
+                TempData["Error"] = "Metadata not found.";
                 return RedirectToAction("CreateStep1");
             }
 
@@ -564,9 +564,9 @@ namespace Dataportal.Controllers
             if (duplicate != null)
             {
                 if (duplicate.Libelle.Equals(model.Libelle.Trim(), StringComparison.OrdinalIgnoreCase))
-                    ModelState.AddModelError("Libelle", "Ce libellé existe déjà.");
+                    ModelState.AddModelError("Libelle", "This label already exists.");
                 if (duplicate.Code.Equals(model.Code.Trim(), StringComparison.OrdinalIgnoreCase))
-                    ModelState.AddModelError("Code", "Ce code existe déjà.");
+                    ModelState.AddModelError("Code", "This code already exists.");
 
                 model.QualiteOptions = BuildQualiteOptions();
                 return View(model);
@@ -595,13 +595,13 @@ namespace Dataportal.Controllers
             }
             catch (SqlException)
             {
-                ModelState.AddModelError(nameof(model.UploadedFiles), "Une erreur est survenue lors de l'import des données.");
+                ModelState.AddModelError(nameof(model.UploadedFiles), "An error occurred while importing the data.");
                 model.QualiteOptions = BuildQualiteOptions();
                 return View(model);
             }
             catch (Exception)
             {
-                ModelState.AddModelError(nameof(model.UploadedFiles), "Une erreur inattendue est survenue lors de l'import des données.");
+                ModelState.AddModelError(nameof(model.UploadedFiles), "An unexpected error occurred while importing the data.");
                 model.QualiteOptions = BuildQualiteOptions();
                 return View(model);
             }
@@ -660,7 +660,7 @@ namespace Dataportal.Controllers
             var resumeId = HttpContext.Session.GetInt32(SessionKeys.CreationMetadonneeId);
             if (creation == true && resumeId.HasValue && resumeId.Value == metadonnee.Id)
             {
-                // The résumé view has been reached for the tracked creation; clear the session markers.
+                // The summary view has been reached for the tracked creation; clear the session markers.
                 HttpContext.Session.Remove(SessionKeys.CreationMetadonneeId);
                 HttpContext.Session.Remove(SessionKeys.CreationNextStep);
             }
@@ -945,7 +945,7 @@ namespace Dataportal.Controllers
             _context.Metadonnee.Remove(metadonnee);
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = "Données supprimées avec succès.";
+            TempData["Success"] = "Data deleted successfully.";
             return RedirectToAction("RechercheDonnees", "AccesDonnees");
         }
     }
