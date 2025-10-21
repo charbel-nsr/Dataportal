@@ -2,7 +2,7 @@
 @using Dataportal.Classes
 
 @{
-    ViewData["Title"] = "Recherche de données";
+    ViewData["Title"] = "Search data";
 }
 
 <div class="container">
@@ -28,23 +28,23 @@
                     <div class="col-lg-12 d-flex flex-wrap">
                         <div class="form-check me-3 mb-2">
                             <input class="form-check-input" type="checkbox" value="true" name="seriesTemporelles" id="seriesTemporelles" @(Model.SeriesTemporelles == true ? "checked" : "")>
-                            <label class="form-check-label" for="seriesTemporelles">Séries temporelles</label>
+                            <label class="form-check-label" for="seriesTemporelles">Time series</label>
                         </div>
                         <div class="form-check me-3 mb-2">
                             <input class="form-check-input" type="checkbox" value="true" name="anonymiser" id="anonymiser" @(Model.Anonymiser == true ? "checked" : "")>
-                            <label class="form-check-label" for="anonymiser">Anonymiser</label>
+                            <label class="form-check-label" for="anonymiser">Anonymize</label>
                         </div>
                         <div class="form-check me-3 mb-2">
                             <input class="form-check-input" type="checkbox" value="true" name="autoriserLeTelechargement" id="autoriserLeTelechargement" @(Model.AutoriserLeTelechargement == true ? "checked" : "")>
-                            <label class="form-check-label" for="autoriserLeTelechargement">Autoriser le téléchargement</label>
+                            <label class="form-check-label" for="autoriserLeTelechargement">Allow downloads</label>
                         </div>
                         <div class="form-check me-3 mb-2">
                             <input class="form-check-input" type="checkbox" value="true" name="hasEventLogs" id="hasEventLogs" @(Model.HasEventLogs == true ? "checked" : "")>
-                            <label class="form-check-label" for="hasEventLogs">Avec Event Logs</label>
+                            <label class="form-check-label" for="hasEventLogs">With event logs</label>
                         </div>
                         <div class="form-check mb-2">
                             <input class="form-check-input" type="checkbox" value="true" name="hasContextEnv" id="hasContextEnv" @(Model.HasContextEnv == true ? "checked" : "")>
-                            <label class="form-check-label" for="hasContextEnv">Avec Contexte Environnemental</label>
+                            <label class="form-check-label" for="hasContextEnv">With environmental context</label>
                         </div>
                     </div>
                 </div>
@@ -52,8 +52,8 @@
 
             <div class="col-md-6 mt-3">
                 <div class="form-floating">
-                    <input type="text" class="form-control" id="search" name="search" placeholder="Recherche" value="@Model.Search">
-                    <label for="search">Nom ou Description</label>
+                    <input type="text" class="form-control" id="search" name="search" placeholder="Search" value="@Model.Search">
+                    <label for="search">Name or description</label>
                 </div>
             </div>
 
@@ -62,19 +62,19 @@
                     <div class="col-12 col-lg-6 mb-3 mb-lg-0">
                         <div class="form-floating">
                             <select class="form-select" name="idLicence" id="idLicence">
-                                <option value="">Toutes les licences</option>
+                                <option value="">All licenses</option>
                                 @foreach (var licence in Model.Licences ?? new List<Dataportal.Models.Licence>())
                                 {
                                     <option value="@licence.Id" selected="@(licence.Id == Model.IdLicence ? "selected" : null)">@licence.Libelle</option>
                                 }
                             </select>
-                            <label for="idLicence">Licence</label>
+                            <label for="idLicence">License</label>
                         </div>
                     </div>
                     <div class="col-12 col-lg-6">
                         <div class="form-floating">
                             <select class="form-select" name="idSite" id="idSite">
-                                <option value="">Tous les sites</option>
+                                <option value="">All sites</option>
                                 @foreach (var site in Model.Sites ?? new List<Dataportal.Models.Site>())
                                 {
                                     <option value="@site.Id" selected="@(site.Id == Model.IdSite ? "selected" : null)">@site.Nom</option>
@@ -89,10 +89,10 @@
 
             <div class="col-md-6 offset-md-6 mt-3 d-flex flex-column flex-md-row">
                 <button type="submit" class="btn btn-primary flex-grow-1 w-100 mb-2 mb-md-0 me-md-2">
-                    Filtrer
+                    Filter
                 </button>
                 <a href="@Url.Action("RechercheDonnees", "AccesDonnees")" class="btn btn-outline-primary flex-grow-1 w-100">
-                    Réinitialiser
+                    Reset
                 </a>
             </div>
         </form>
@@ -102,7 +102,7 @@
     {
         <div class="col-12 col-md-auto mb-3">
             <a class="btn btn-success" href="@Url.Action("CreateStep1", "Donnees")">
-                <i class="bi bi-plus-circle"></i> Créer des données
+                <i class="bi bi-plus-circle"></i> Create data
             </a>
         </div>
     }
@@ -115,13 +115,13 @@
                 <table class="table table-hover align-middle shadow-sm">
                     <thead class="table-light">
                         <tr>
-                            <th>Nom</th>
-                            <th>Taille</th>
-                            <th>Téléchargements</th>
-                            <th>Dernière mise à jour</th>
-                            <th>Séries temporelles</th>
-                            <th>Visibilité</th>
-                            <th>Créateur</th>
+                            <th>Name</th>
+                            <th>Size</th>
+                            <th>Downloads</th>
+                            <th>Last updated</th>
+                            <th>Time series</th>
+                            <th>Visibility</th>
+                            <th>Creator</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -136,11 +136,11 @@
                                     <td>
                                         @if (m.SeriesTemporelles)
                                         {
-                                            <span class="badge bg-success">Oui</span>
+                                            <span class="badge bg-success">Yes</span>
                                         }
                                         else
                                         {
-                                            <span class="badge bg-secondary">Non</span>
+                                            <span class="badge bg-secondary">No</span>
                                         }
                                     </td>
                                     <td>
@@ -159,12 +159,12 @@
                                     </td>
                                     <td>@($"{m.Utilisateur?.Prenom} {m.Utilisateur?.Nom}")</td>
                                     <td>
-                                        <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("Details", "Donnees", new { id = m.Id })" title="Voir les détails">
+                                        <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("Details", "Donnees", new { id = m.Id })" title="View details">
                                             <i class="bi bi-exclamation-circle"></i>
                                         </a>
                                         @if (User.IsInRole("administrateur") || (User.Identity.IsAuthenticated && User.FindFirst("UserId")?.Value == m.IdUtilisateur.ToString()))
                                         {
-                                            <button type="button" class="btn btn-sm btn-outline-danger ms-1" data-bs-toggle="modal" data-bs-target="#deleteModal" data-id="@m.Id" title="Supprimer">
+                                            <button type="button" class="btn btn-sm btn-outline-danger ms-1" data-bs-toggle="modal" data-bs-target="#deleteModal" data-id="@m.Id" title="Delete">
                                                 <i class="bi bi-trash"></i>
                                             </button>
                                         }
@@ -179,8 +179,8 @@
     else
     {
         <div class="text-center">
-                <img src="/illustration/empty-search.svg" alt="Aucune donnée trouvée" class="img-fluid" style="max-height:200px;" />
-                <p class="text-muted mt-2">Aucune donnée trouvée.</p>
+                <img src="/illustration/empty-search.svg" alt="No data found" class="img-fluid" style="max-height:200px;" />
+                <p class="text-muted mt-2">No data found.</p>
         </div>
     }
 </div>
@@ -193,15 +193,15 @@
                 @Html.AntiForgeryToken()
                 <input type="hidden" id="delete-id" name="id" />
                 <div class="modal-header">
-                    <h5 class="modal-title" id="deleteModalLabel">Confirmer la suppression</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                    <h5 class="modal-title" id="deleteModalLabel">Confirm deletion</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="text-danger">Toutes les données liées à ce sujet seront définitivement perdues. Êtes-vous sûr de vouloir continuer ?</p>
+                    <p class="text-danger">All data related to this subject will be permanently lost. Are you sure you want to continue?</p>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-danger">Supprimer</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Delete</button>
                 </div>
             </form>
         </div>

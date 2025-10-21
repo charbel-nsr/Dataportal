@@ -1,7 +1,7 @@
 ﻿@model Dataportal.ViewModels.MetadonneeDetailsViewModel
 
 @{
-    ViewData["Title"] = "Détails de l'ensemble de données";
+    ViewData["Title"] = "Dataset details";
     var currentStep = ViewData["CurrentStep"] as int?;
 }
 
@@ -11,28 +11,28 @@
     {
         @await Html.PartialAsync("_CreationProgress")
     }
-    <div class="card mb-4 shadow-sm">
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-            <span>Métadonnée</span>
-            <button type="button" class="btn btn-sm btn-outline-light toggle-section" data-section-title="Métadonnée" data-expanded-symbol="−" data-collapsed-symbol="+" aria-expanded="true" aria-label="Réduire la section Métadonnée">−</button>
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <span>Metadata</span>
+            <button type="button" class="btn btn-sm btn-outline-light toggle-section" data-section-title="Metadata" data-expanded-symbol="−" data-collapsed-symbol="+" aria-expanded="true" aria-label="Collapse the Metadata section">−</button>
         </div>
         <div class="card-body">
             <p><strong>Description:</strong> @Model.Metadonnee.Description</p>
-            <p><strong>Licence:</strong> @Model.Licence?.Libelle</p>
+            <p><strong>License:</strong> @Model.Licence?.Libelle</p>
             <p><strong>Site:</strong> @Model.Site?.Nom</p>
-            <p><strong>Visibilité:</strong> @Model.Visibilite?.Libelle</p>
-            <p><strong>Créateur:</strong> @Model.Utilisateur?.Nom @Model.Utilisateur?.Prenom (@Model.Utilisateur?.Email)</p>
-            <p><strong>Taille des données:</strong> @(Model.Metadonnee?.TailleDesDonnees ?? "—")</p>
-            <p><strong>Séries temporelles:</strong> @(Model.Metadonnee.SeriesTemporelles ? "Oui" : "Non")</p>
-            <p><strong>API Autorisée:</strong> @(Model.Metadonnee.AutoriserApi ? "Oui" : "Non")</p>
-            <p><strong>Anonymisation:</strong> @(Model.Metadonnee.Anonymiser ? "Oui" : "Non")</p>
-            <p><strong>Téléchargement autorisé:</strong> @(Model.Metadonnee.AutoriserLeTelechargement ? "Oui" : "Non")</p>
-            <p><strong>Dernière mise à jour:</strong> @Model.Metadonnee.DernierMiseAJour?.ToString("g")</p>
+            <p><strong>Visibility:</strong> @Model.Visibilite?.Libelle</p>
+            <p><strong>Creator:</strong> @Model.Utilisateur?.Nom @Model.Utilisateur?.Prenom (@Model.Utilisateur?.Email)</p>
+            <p><strong>Data size:</strong> @(Model.Metadonnee?.TailleDesDonnees ?? "—")</p>
+            <p><strong>Time series:</strong> @(Model.Metadonnee.SeriesTemporelles ? "Yes" : "No")</p>
+            <p><strong>API allowed:</strong> @(Model.Metadonnee.AutoriserApi ? "Yes" : "No")</p>
+            <p><strong>Anonymization:</strong> @(Model.Metadonnee.Anonymiser ? "Yes" : "No")</p>
+            <p><strong>Downloads allowed:</strong> @(Model.Metadonnee.AutoriserLeTelechargement ? "Yes" : "No")</p>
+            <p><strong>Last updated:</strong> @Model.Metadonnee.DernierMiseAJour?.ToString("g")</p>
 
             @if (Model.AppareilsLies != null && Model.AppareilsLies.Any())
             {
                 <hr />
-                <h5>Appareils associés</h5>
+                <h5>Associated devices</h5>
                 <ul>
                     @foreach (var app in Model.AppareilsLies)
                     {
@@ -49,27 +49,27 @@
     {
         <div class="card mb-4 shadow-sm">
             <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-                <span>Données</span>
-                <button type="button" class="btn btn-sm btn-outline-light toggle-section" data-section-title="Données" data-expanded-symbol="−" data-collapsed-symbol="+" aria-expanded="true" aria-label="Réduire la section Données">−</button>
+                <span>Data</span>
+                <button type="button" class="btn btn-sm btn-outline-light toggle-section" data-section-title="Data" data-expanded-symbol="−" data-collapsed-symbol="+" aria-expanded="true" aria-label="Collapse the Data section">−</button>
             </div>
             <div class="card-body">
-                <p><strong>Libellé:</strong> @Model.Donnees.Libelle</p>
+                <p><strong>Label:</strong> @Model.Donnees.Libelle</p>
                 <p><strong>Code:</strong> @Model.Donnees.Code</p>
-                <p><strong>Nom de la table:</strong> @Model.Donnees.NomDeLaTable</p>
+                <p><strong>Table name:</strong> @Model.Donnees.NomDeLaTable</p>
                 <p><strong>Description:</strong> @Model.Donnees.Description</p>
-                <p><strong>Qualité des données:</strong> @(Model.Donnees.QualiteDonnees?.Libelle ?? "—")</p>
+                <p><strong>Data quality:</strong> @(Model.Donnees.QualiteDonnees?.Libelle ?? "—")</p>
                 @if (!string.IsNullOrWhiteSpace(Model.Donnees.QualiteDonnees?.Description))
                 {
                     <p class="text-muted">@Model.Donnees.QualiteDonnees.Description</p>
                 }
-                <p><strong>Nombre de capteurs:</strong> @Model.Donnees.NombreDeCapteurs</p>
-                <p><strong>Fréquence de collecte:</strong> @Model.Donnees.FrequenceDeCollect</p>
+                <p><strong>Number of sensors:</strong> @Model.Donnees.NombreDeCapteurs</p>
+                <p><strong>Collection frequency:</strong> @Model.Donnees.FrequenceDeCollect</p>
                 <p><strong>Dates:</strong> @Model.Donnees.StartTimestamp.ToShortDateString() - @Model.Donnees.EndTimestamp.ToShortDateString()</p>
 
                 @if (Model.DonneesPreviewRows?.Any() == true)
                 {
                     <hr />
-                    <h6>Aperçu des données</h6>
+                    <h6>Data preview</h6>
                     <div class="table-responsive">
                         <table class="table table-striped table-sm">
                             <thead>
@@ -102,26 +102,26 @@
     {
         <div class="card mb-4 shadow-sm">
             <div class="card-header bg-warning text-white d-flex justify-content-between align-items-center">
-                <span>Event Logs</span>
-                <button type="button" class="btn btn-sm btn-outline-light toggle-section" data-section-title="Event Logs" data-expanded-symbol="−" data-collapsed-symbol="+" aria-expanded="true" aria-label="Réduire la section Event Logs">−</button>
+                <span>Event logs</span>
+                <button type="button" class="btn btn-sm btn-outline-light toggle-section" data-section-title="Event logs" data-expanded-symbol="−" data-collapsed-symbol="+" aria-expanded="true" aria-label="Collapse the event logs section">−</button>
             </div>
             <div class="card-body">
-                <p><strong>Libellé:</strong> @Model.DonneesEventLogs.Libelle</p>
+                <p><strong>Label:</strong> @Model.DonneesEventLogs.Libelle</p>
                 <p><strong>Code:</strong> @Model.DonneesEventLogs.Code</p>
-                <p><strong>Nom de la table:</strong> @Model.DonneesEventLogs.NomDeLaTable</p>
+                <p><strong>Table name:</strong> @Model.DonneesEventLogs.NomDeLaTable</p>
                 <p><strong>Description:</strong> @Model.DonneesEventLogs.Description</p>
-                <p><strong>Qualité des données:</strong> @(Model.DonneesEventLogs.QualiteDonnees?.Libelle ?? "—")</p>
+                <p><strong>Data quality:</strong> @(Model.DonneesEventLogs.QualiteDonnees?.Libelle ?? "—")</p>
                 @if (!string.IsNullOrWhiteSpace(Model.DonneesEventLogs.QualiteDonnees?.Description))
                 {
                     <p class="text-muted">@Model.DonneesEventLogs.QualiteDonnees.Description</p>
                 }
-                <p><strong>Nombre d'événements:</strong> @Model.DonneesEventLogs.NombreDEvents</p>
+                <p><strong>Number of events:</strong> @Model.DonneesEventLogs.NombreDEvents</p>
                 <p><strong>Dates:</strong> @Model.DonneesEventLogs.StartTimestamp.ToShortDateString() - @Model.DonneesEventLogs.EndTimestamp.ToShortDateString()</p>
 
                 @if (Model.EventLogsPreviewRows?.Any() == true)
                 {
                     <hr />
-                    <h6>Aperçu des Event Logs</h6>
+                    <h6>Event log preview</h6>
                     <div class="table-responsive">
                         <table class="table table-striped table-sm">
                             <thead>
@@ -154,15 +154,15 @@
     {
         <div class="card mb-4 shadow-sm">
             <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
-                <span>Contexte Environnemental</span>
-                <button type="button" class="btn btn-sm btn-outline-light toggle-section" data-section-title="Contexte Environnemental" data-expanded-symbol="−" data-collapsed-symbol="+" aria-expanded="true" aria-label="Réduire la section Contexte Environnemental">−</button>
+                <span>Environmental context</span>
+                <button type="button" class="btn btn-sm btn-outline-light toggle-section" data-section-title="Environmental context" data-expanded-symbol="−" data-collapsed-symbol="+" aria-expanded="true" aria-label="Collapse the environmental context section">−</button>
             </div>
             <div class="card-body">
-                <p><strong>Libellé:</strong> @Model.DonneesContexteEnvironnemental.Libelle</p>
+                <p><strong>Label:</strong> @Model.DonneesContexteEnvironnemental.Libelle</p>
                 <p><strong>Code:</strong> @Model.DonneesContexteEnvironnemental.Code</p>
-                <p><strong>Nom de la table:</strong> @Model.DonneesContexteEnvironnemental.NomDeLaTable</p>
+                <p><strong>Table name:</strong> @Model.DonneesContexteEnvironnemental.NomDeLaTable</p>
                 <p><strong>Description:</strong> @Model.DonneesContexteEnvironnemental.Description</p>
-                <p><strong>Qualité des données:</strong> @(Model.DonneesContexteEnvironnemental.QualiteDonnees?.Libelle ?? "—")</p>
+                <p><strong>Data quality:</strong> @(Model.DonneesContexteEnvironnemental.QualiteDonnees?.Libelle ?? "—")</p>
                 @if (!string.IsNullOrWhiteSpace(Model.DonneesContexteEnvironnemental.QualiteDonnees?.Description))
                 {
                     <p class="text-muted">@Model.DonneesContexteEnvironnemental.QualiteDonnees.Description</p>
@@ -172,7 +172,7 @@
                 @if (Model.ContextePreviewRows?.Any() == true)
                 {
                     <hr />
-                    <h6>Aperçu du contexte environnemental</h6>
+                    <h6>Environmental context preview</h6>
                     <div class="table-responsive">
                         <table class="table table-striped table-sm">
                             <thead>
@@ -203,7 +203,7 @@
 
     <div class="text-center mt-4">
         <a href="@Url.Action("RechercheDonnees", "AccesDonnees")" class="btn btn-outline-primary">
-            Toutes les données
+            All data
         </a>
     </div>
 </div>
@@ -229,13 +229,13 @@
                     const isCollapsed = cardBody.classList.toggle('d-none');
                     const collapsedSymbol = button.dataset.collapsedSymbol || '+';
                     const sectionTitle = button.dataset.sectionTitle || '';
-                    const actionLabel = isCollapsed ? 'Agrandir' : 'Réduire';
+                    const actionLabel = isCollapsed ? 'Expand' : 'Collapse';
 
                     button.textContent = isCollapsed ? collapsedSymbol : expandedSymbol;
                     button.setAttribute('aria-expanded', (!isCollapsed).toString());
                     button.setAttribute('aria-label', sectionTitle
-                        ? `${actionLabel} la section ${sectionTitle}`
-                        : `${actionLabel} la section`);
+                        ? `${actionLabel} the ${sectionTitle} section`
+                        : `${actionLabel} the section`);
                 });
             });
         });

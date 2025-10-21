@@ -1,11 +1,11 @@
 ﻿@model Dataportal.ViewModels.DonneesCreateStep2ViewModel
 @{
-    ViewData["Title"] = "Créer un ensemble de données - Étape 2";
+    ViewData["Title"] = "Create a dataset - Step 2";
     ViewData["CurrentStep"] = 2;
 }
 
 <div class="container">
-    <h2 class="mb-4">Ajouter Données (Étape 2/5)</h2>
+    <h2 class="mb-4">Add data (Step 2/5)</h2>
     @await Html.PartialAsync("_CreationProgress")
     <form method="post" enctype="multipart/form-data" class="bg-light p-4 rounded shadow-sm upload-overlay-form">
         @Html.AntiForgeryToken()
@@ -13,7 +13,7 @@
         <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
 
         <div class="form-floating mb-3">
-            <input asp-for="Libelle" class="form-control" placeholder="Libellé" required />
+            <input asp-for="Libelle" class="form-control" placeholder="Label" required />
             <label asp-for="Libelle"></label>
             <span asp-validation-for="Libelle" class="text-danger"></span>
         </div>
@@ -37,13 +37,13 @@
         </div>
 
         <div class="form-floating mb-3">
-            <input asp-for="NombreDeCapteurs" type="number" class="form-control" placeholder="Nombre de capteurs" required />
+            <input asp-for="NombreDeCapteurs" type="number" class="form-control" placeholder="Number of sensors" required />
             <label asp-for="NombreDeCapteurs"></label>
             <span asp-validation-for="NombreDeCapteurs" class="text-danger"></span>
         </div>
 
         <div class="form-floating mb-3">
-            <input asp-for="FrequenceDeCollect" class="form-control" placeholder="Fréquence de collecte" />
+            <input asp-for="FrequenceDeCollect" class="form-control" placeholder="Collection frequency" />
             <label asp-for="FrequenceDeCollect"></label>
             <span asp-validation-for="FrequenceDeCollect" class="text-danger"></span>
         </div>
@@ -62,15 +62,15 @@
         </div>
 
         <div class="mb-4">
-            <label asp-for="UploadedFiles" class="form-label">Importer les fichiers CSV, XLSX, Parquet ou CSV.zip</label>
+            <label asp-for="UploadedFiles" class="form-label">Upload CSV, XLSX, Parquet, or CSV.zip files</label>
             <input asp-for="UploadedFiles" type="file" multiple class="form-control" accept=".csv,.xlsx,.parquet,.zip" required />
-            <small class="form-text text-muted">Tous les fichiers importés pour cette étape doivent être du même type.</small>
+            <small class="form-text text-muted">All files uploaded in this step must share the same format.</small>
             <span asp-validation-for="UploadedFiles" class="text-danger"></span>
         </div>
 
         <div id="fileList" class="mb-3"></div>
 
-        <button type="submit" class="btn btn-primary w-100">Suivant</button>
+        <button type="submit" class="btn btn-primary w-100">Next</button>
     </form>
 </div>
 
@@ -87,7 +87,7 @@
             const form = document.querySelector('form.upload-overlay-form');
 
             initUploadOverlay(form, {
-                confirmMessage: 'Une fois cette étape validée, les données seront créées temporairement. Souhaitez-vous continuer ?'
+                confirmMessage: 'Once this step is confirmed, the data will be created temporarily. Do you want to continue?'
             });
 
             if (fileInput && fileListDiv) {
@@ -97,7 +97,7 @@
                         const table = document.createElement('table');
                         table.className = 'table table-sm table-bordered';
                         const thead = document.createElement('thead');
-                        thead.innerHTML = '<tr><th>Nom</th><th>Taille</th><th>Type</th></tr>';
+                        thead.innerHTML = '<tr><th>Name</th><th>Size</th><th>Type</th></tr>';
                         table.appendChild(thead);
 
                         const tbody = document.createElement('tbody');

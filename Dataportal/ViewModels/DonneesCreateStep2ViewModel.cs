@@ -9,7 +9,7 @@ namespace Dataportal.ViewModels
     {
         [Required]
         [MaxLength(100)]
-        [Display(Name = "Libellé")]
+        [Display(Name = "Label")]
         public string Libelle { get; set; }
 
         [Required]
@@ -22,28 +22,28 @@ namespace Dataportal.ViewModels
         public string Description { get; set; }
 
         [Required]
-        [Display(Name = "Nombre de capteurs")]
+        [Display(Name = "Number of sensors")]
         public int NombreDeCapteurs { get; set; }
 
-        [Display(Name = "Fréquence de collecte")]
+        [Display(Name = "Collection frequency")]
         public string FrequenceDeCollect { get; set; }
 
         [Required]
-        [Display(Name = "Timestamp de début")]
+        [Display(Name = "Start timestamp")]
         [DataType(DataType.DateTime)]
         public DateTime StartTimestamp { get; set; }
 
         [Required]
-        [Display(Name = "Timestamp de fin")]
+        [Display(Name = "End timestamp")]
         [DataType(DataType.DateTime)]
         public DateTime EndTimestamp { get; set; }
 
-        [Required(ErrorMessage = "Veuillez importer au moins un fichier de données (CSV, XLSX, Parquet ou CSV.zip).")]
-        [Display(Name = "Fichiers (CSV, XLSX, Parquet ou CSV.zip)")]
+        [Required(ErrorMessage = "Please upload at least one data file (CSV, XLSX, Parquet, or CSV.zip).")]
+        [Display(Name = "Files (CSV, XLSX, Parquet, or CSV.zip)")]
         public List<IFormFile> UploadedFiles { get; set; }
 
-        [Required(ErrorMessage = "La qualité des données est requise.")]
-        [Display(Name = "Qualité des données")]
+        [Required(ErrorMessage = "Data quality is required.")]
+        [Display(Name = "Data quality")]
         public int? IdQualiteDonnees { get; set; }
 
         public IEnumerable<SelectListItem> QualiteOptions { get; set; } = new List<SelectListItem>();
@@ -53,7 +53,7 @@ namespace Dataportal.ViewModels
             if (StartTimestamp > EndTimestamp)
             {
                 yield return new ValidationResult(
-                    "Le timestamp de début doit précéder le timestamp de fin.",
+                    "The start timestamp must be before the end timestamp.",
                     new[] { nameof(StartTimestamp), nameof(EndTimestamp) });
             }
         }

@@ -119,7 +119,7 @@ namespace Dataportal.Controllers
                 // Ensure role was selected
                 if (!idRole.HasValue)
                 {
-                    TempData["Error"] = "Vous devez sélectionner un rôle pour valider la demande.";
+                    TempData["Error"] = "You must select a role to approve the request.";
                     return RedirectToAction("DemandeDeCompte");
                 }
 
@@ -127,14 +127,14 @@ namespace Dataportal.Controllers
                 var role = _context.Role.FirstOrDefault(r => r.Id == idRole.Value);
                 if (role == null)
                 {
-                    TempData["Error"] = "Rôle invalide.";
+                    TempData["Error"] = "Invalid role.";
                     return RedirectToAction("DemandeDeCompte");
                 }
 
                 // Check email doesn't exist
                 if (_context.Utilisateur.Any(u => u.Email == demande.Email))
                 {
-                    TempData["Error"] = "Un utilisateur avec cet email existe déjà.";
+                    TempData["Error"] = "A user with this email already exists.";
                     return RedirectToAction("DemandeDeCompte");
                 }
 
@@ -175,20 +175,20 @@ namespace Dataportal.Controllers
             var demande = _context.DemandeDeCompte.FirstOrDefault(d => d.Id == id);
             if (demande == null)
             {
-                TempData["Error"] = "Demande introuvable.";
+                TempData["Error"] = "Request not found.";
                 return RedirectToAction("DemandeDeCompte");
             }
 
             if (demande.IdStatutDeLaDemande != StatutDeLaDemandeIds.Refuser)
             {
-                TempData["Error"] = "Seules les demandes refusées peuvent être supprimées.";
+                TempData["Error"] = "Only rejected requests can be deleted.";
                 return RedirectToAction("DemandeDeCompte");
             }
 
             _context.DemandeDeCompte.Remove(demande);
             _context.SaveChanges();
 
-            TempData["Success"] = "Demande supprimée avec succès.";
+            TempData["Success"] = "Request deleted successfully.";
             return RedirectToAction("DemandeDeCompte");
         }
 
@@ -223,7 +223,7 @@ namespace Dataportal.Controllers
         {
             if (string.IsNullOrWhiteSpace(Nom))
             {
-                TempData["Error"] = "Le nom de l'entreprise est requis.";
+                TempData["Error"] = "Organization name is required.";
                 return RedirectToAction("Entreprises");
             }
 
@@ -234,7 +234,7 @@ namespace Dataportal.Controllers
 
             if (exists)
             {
-                TempData["Error"] = "Une entreprise avec ce nom existe déjà.";
+                TempData["Error"] = "An organization with this name already exists.";
                 return RedirectToAction("Entreprises");
             }
 
@@ -247,7 +247,7 @@ namespace Dataportal.Controllers
             _context.Entreprise.Add(entreprise);
             _context.SaveChanges();
 
-            TempData["Success"] = "Entreprise créée avec succès.";
+            TempData["Success"] = "Organization created successfully.";
             return RedirectToAction("Entreprises");
         }
 
@@ -260,14 +260,14 @@ namespace Dataportal.Controllers
             var entreprise = _context.Entreprise.FirstOrDefault(e => e.Id == id);
             if (entreprise == null)
             {
-                TempData["Error"] = "Entreprise introuvable.";
+                TempData["Error"] = "Organization not found.";
                 return RedirectToAction("Entreprises");
             }
 
             entreprise.Actif = true;
             _context.SaveChanges();
 
-            TempData["Success"] = "Entreprise activée avec succès.";
+            TempData["Success"] = "Organization activated successfully.";
             return RedirectToAction("Entreprises");
         }
 
@@ -280,14 +280,14 @@ namespace Dataportal.Controllers
             var entreprise = _context.Entreprise.FirstOrDefault(e => e.Id == id);
             if (entreprise == null)
             {
-                TempData["Error"] = "Entreprise introuvable.";
+                TempData["Error"] = "Organization not found.";
                 return RedirectToAction("Entreprises");
             }
 
             entreprise.Actif = false;
             _context.SaveChanges();
 
-            TempData["Success"] = "Entreprise désactivée avec succès.";
+            TempData["Success"] = "Organization deactivated successfully.";
             return RedirectToAction("Entreprises");
         }
 
@@ -304,20 +304,20 @@ namespace Dataportal.Controllers
 
             if (entreprise == null)
             {
-                TempData["Error"] = "Entreprise introuvable.";
+                TempData["Error"] = "Organization not found.";
                 return RedirectToAction("Entreprises");
             }
 
             if (entreprise.Utilisateurs.Any() || entreprise.DemandeDeComptes.Any())
             {
-                TempData["Error"] = "Impossible de supprimer cette entreprise car elle possède des utilisateurs ou des demandes de compte.";
+                TempData["Error"] = "Unable to delete this organization because it has users or account requests.";
                 return RedirectToAction("Entreprises");
             }
 
             _context.Entreprise.Remove(entreprise);
             _context.SaveChanges();
 
-            TempData["Success"] = "Entreprise supprimée avec succès.";
+            TempData["Success"] = "Organization deleted successfully.";
             return RedirectToAction("Entreprises");
         }
 
@@ -328,14 +328,14 @@ namespace Dataportal.Controllers
         {
             if (string.IsNullOrWhiteSpace(Nom))
             {
-                TempData["Error"] = "Le nom de l'entreprise est requis.";
+                TempData["Error"] = "Organization name is required.";
                 return RedirectToAction("Entreprises");
             }
 
             var entreprise = _context.Entreprise.FirstOrDefault(e => e.Id == id);
             if (entreprise == null)
             {
-                TempData["Error"] = "Entreprise introuvable.";
+                TempData["Error"] = "Organization not found.";
                 return RedirectToAction("Entreprises");
             }
 
@@ -344,7 +344,7 @@ namespace Dataportal.Controllers
 
             if (exists)
             {
-                TempData["Error"] = "Une entreprise avec ce nom existe déjà.";
+                TempData["Error"] = "An organization with this name already exists.";
                 return RedirectToAction("Entreprises");
             }
 
@@ -352,7 +352,7 @@ namespace Dataportal.Controllers
             entreprise.Actif = Actif;
             _context.SaveChanges();
 
-            TempData["Success"] = "Entreprise mise à jour avec succès.";
+            TempData["Success"] = "Organization updated successfully.";
             return RedirectToAction("Entreprises");
         }
 
@@ -390,7 +390,7 @@ namespace Dataportal.Controllers
         {
             if (string.IsNullOrWhiteSpace(newDomaine))
             {
-                TempData["Error"] = "Le domaine est requis.";
+                TempData["Error"] = "Domain is required.";
                 return RedirectToAction("Entreprises");
             }
 
@@ -399,7 +399,7 @@ namespace Dataportal.Controllers
             // Validate structure (very simple check)
             if (!cleaned.Contains(".") || cleaned.StartsWith(".") || cleaned.EndsWith("."))
             {
-                TempData["Error"] = "Format du domaine invalide.";
+                TempData["Error"] = "Invalid domain format.";
                 return RedirectToAction("Entreprises");
             }
 
@@ -408,7 +408,7 @@ namespace Dataportal.Controllers
 
             if (exists)
             {
-                TempData["Error"] = "Ce domaine existe déjà pour cette entreprise.";
+                TempData["Error"] = "This domain already exists for this organization.";
                 return RedirectToAction("Entreprises");
             }
 
@@ -422,7 +422,7 @@ namespace Dataportal.Controllers
             _context.DomaineEmail.Add(domaine);
             _context.SaveChanges();
 
-            TempData["Success"] = "Domaine ajouté avec succès.";
+            TempData["Success"] = "Domain added successfully.";
             return RedirectToAction("Entreprises");
         }
 
@@ -434,14 +434,14 @@ namespace Dataportal.Controllers
             var domaine = _context.DomaineEmail.FirstOrDefault(d => d.Id == id);
             if (domaine == null)
             {
-                TempData["Error"] = "Domaine introuvable.";
+                TempData["Error"] = "Domain not found.";
                 return RedirectToAction("Entreprises");
             }
 
             domaine.DomaineActif = !domaine.DomaineActif;
             _context.SaveChanges();
 
-            TempData["Success"] = "Statut du domaine mis à jour.";
+            TempData["Success"] = "Domain status updated.";
             return RedirectToAction("Entreprises");
         }
 
@@ -456,7 +456,7 @@ namespace Dataportal.Controllers
 
             if (domaine == null)
             {
-                TempData["Error"] = "Domaine introuvable.";
+                TempData["Error"] = "Domain not found.";
                 return RedirectToAction("Entreprises");
             }
 
@@ -466,14 +466,14 @@ namespace Dataportal.Controllers
 
             if (hasUsers || hasRequests)
             {
-                TempData["Error"] = "Impossible de supprimer ce domaine car il est utilisé par des utilisateurs ou des demandes.";
+                TempData["Error"] = "Unable to delete this domain because it is used by users or account requests.";
                 return RedirectToAction("Entreprises");
             }
 
             _context.DomaineEmail.Remove(domaine);
             _context.SaveChanges();
 
-            TempData["Success"] = "Domaine supprimé avec succès.";
+            TempData["Success"] = "Domain deleted successfully.";
             return RedirectToAction("Entreprises");
         }
 
@@ -535,14 +535,14 @@ namespace Dataportal.Controllers
 
             if (utilisateur == null)
             {
-                TempData["Error"] = "Utilisateur introuvable.";
+                TempData["Error"] = "User not found.";
                 return RedirectToAction("Utilisateurs");
             }
 
             // Prevent administrators from deactivating another administrator
             if (utilisateur.IdRole == RoleIds.Administrateur && utilisateur.CompteActif)
             {
-                TempData["Error"] = "Impossible de désactiver un compte administrateur.";
+                TempData["Error"] = "Cannot deactivate an administrator account.";
                 return RedirectToAction("Utilisateurs");
             }
 
@@ -557,7 +557,7 @@ namespace Dataportal.Controllers
             utilisateur.DateModification = DateTime.Now;
             _context.SaveChanges();
 
-            TempData["Success"] = "Statut du compte mis à jour.";
+            TempData["Success"] = "Account status updated.";
             return RedirectToAction("Utilisateurs");
         }
 
@@ -569,21 +569,21 @@ namespace Dataportal.Controllers
             var utilisateur = _context.Utilisateur.FirstOrDefault(u => u.Id == id);
             if (utilisateur == null)
             {
-                TempData["Error"] = "Utilisateur introuvable.";
+                TempData["Error"] = "User not found.";
                 return RedirectToAction("Utilisateurs");
             }
 
             var role = _context.Role.FirstOrDefault(r => r.Id == newRoleId);
             if (role == null)
             {
-                TempData["Error"] = "Rôle invalide.";
+                TempData["Error"] = "Invalid role.";
                 return RedirectToAction("Utilisateurs");
             }
 
             utilisateur.IdRole = newRoleId;
             _context.SaveChanges();
 
-            TempData["Success"] = "Rôle de l'utilisateur mis à jour.";
+            TempData["Success"] = "User role updated.";
             return RedirectToAction("Utilisateurs");
         }
     }

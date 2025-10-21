@@ -1,7 +1,7 @@
 ﻿@model Dataportal.ViewModels.ProfilViewModel
 
 @{
-    ViewData["Title"] = "Profil";
+    ViewData["Title"] = "Profile";
 }
 
 <div class="container mt-4">
@@ -29,14 +29,14 @@
                 <div class="row">
                     <div class="col-md-6">
                         <div class="form-floating mb-3">
-                            <input asp-for="Nom" class="form-control" placeholder="Nom" />
+                            <input asp-for="Nom" class="form-control" placeholder="Last name" />
                             <label asp-for="Nom"></label>
                             <span asp-validation-for="Nom" class="text-danger"></span>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="form-floating mb-3">
-                            <input asp-for="Prenom" class="form-control" placeholder="Prénom" />
+                            <input asp-for="Prenom" class="form-control" placeholder="First name" />
                             <label asp-for="Prenom"></label>
                             <span asp-validation-for="Prenom" class="text-danger"></span>
                         </div>
@@ -45,13 +45,13 @@
                 <div class="row">
                     <div class="col-md-6">
                         <div class="form-floating mb-3">
-                            <input asp-for="Entreprise" class="form-control" placeholder="Entreprise" readonly />
+                            <input asp-for="Entreprise" class="form-control" placeholder="Organization" readonly />
                             <label asp-for="Entreprise"></label>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="form-floating mb-3">
-                            <input asp-for="Role" class="form-control" placeholder="Rôle" readonly />
+                            <input asp-for="Role" class="form-control" placeholder="Role" readonly />
                             <label asp-for="Role"></label>
                         </div>
                     </div>
@@ -65,7 +65,7 @@
                     </div>
                     <div class="col-md-6">
                         <div class="form-floating mb-3">
-                            <input asp-for="LienLinkedIn" class="form-control" placeholder="Lien LinkedIn" />
+                            <input asp-for="LienLinkedIn" class="form-control" placeholder="LinkedIn link" />
                             <label asp-for="LienLinkedIn"></label>
                             <span asp-validation-for="LienLinkedIn" class="text-danger"></span>
                         </div>
@@ -74,8 +74,8 @@
                 <div class="row">
                     <div class="col">
                         <div class="form-floating mb-3">
-                            <textarea asp-for="DescriptionProfil" class="form-control" placeholder="Votre biographie" style="height: 150px;"></textarea>
-                            <label asp-for="DescriptionProfil">Biographie</label>
+                            <textarea asp-for="DescriptionProfil" class="form-control" placeholder="Your biography" style="height: 150px;"></textarea>
+                            <label asp-for="DescriptionProfil">Biography</label>
                             <span asp-validation-for="DescriptionProfil" class="text-danger"></span>
                         </div>
                     </div>
@@ -83,11 +83,11 @@
                 <div class="row">
                     <div class="col-12 col-sm-6 order-2 order-sm-1 mb-2">
                         <a class="btn btn-outline-primary w-100" asp-controller="Compte" asp-action="ChangerMotDePasse">
-                            Changer le mot de passe
+                            Change password
                         </a>
                     </div>
                     <div class="col-12 col-sm-6 order-1 order-sm-2 mb-2 text-end text-sm-end">
-                        <button type="submit" class="btn btn-primary w-100">Enregistrer</button>
+                        <button type="submit" class="btn btn-primary w-100">Save</button>
                     </div>
                 </div>
             </form>

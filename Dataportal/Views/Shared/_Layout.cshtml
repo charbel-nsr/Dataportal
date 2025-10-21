@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Portail Données</title>
+    <title>@ViewData["Title"] - Data Portal</title>
     <link rel="icon" type="image/x-icon" href="~/logo/ets-header-logo.png" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/customBootstrap.css" />
@@ -16,8 +16,8 @@
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light sticky-top">
             <div class="container ml-3">
                 <a class="navbar-brand" asp-area="" asp-controller="Accueil" asp-action="Index">
-                    <img src="~/logo/ets-header-logo.png" alt="Dataportal" style="height: 50px;" />
-                    <span style="color: #e72b37; font-weight: bold; margin-left: 10px;">Portail Données</span>
+                    <img src="~/logo/ets-header-logo.png" alt="Data Portal" style="height: 50px;" />
+                    <span style="color: #e72b37; font-weight: bold; margin-left: 10px;">Data Portal</span>
                 </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
                 aria-expanded="false" aria-label="Toggle navigation">
@@ -26,17 +26,17 @@
                 <div class="navbar-collapse collapse d-sm-inline-flex">
                     <ul class="navbar-nav ms-auto">
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Accueil" asp-action="Index">Accueil</a>
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Accueil" asp-action="Index">Home</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="AccesDonnees" asp-action="RechercheDonnees">Données</a>
+                            <a class="nav-link text-dark" asp-area="" asp-controller="AccesDonnees" asp-action="RechercheDonnees">Data</a>
                         </li>
                         @if (User.Identity.IsAuthenticated)
                         {
                             @if (User.IsInRole("administrateur") || User.IsInRole("editeur"))
                             {
                                 <li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle text-dark" href="#" id="controleDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Contrôle</a>
+                                    <a class="nav-link dropdown-toggle text-dark" href="#" id="controleDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Control</a>
                                     <ul class="dropdown-menu" aria-labelledby="controleDropdown">
                                         <li>
                                             <a class="dropdown-item" asp-area="" asp-controller="Controle" asp-action="Sites">
@@ -45,12 +45,12 @@
                                         </li>
                                         <li>
                                             <a class="dropdown-item" asp-area="" asp-controller="Controle" asp-action="Appareils">
-                                                Appareils
+                                                Devices
                                             </a>
                                         </li>
                                         <li>
                                             <a class="dropdown-item" asp-area="" asp-controller="Controle" asp-action="Licences">
-                                                Licences
+                                                Licenses
                                             </a>
                                         </li>
                                     </ul>
@@ -59,24 +59,24 @@
                             @if (User.IsInRole("administrateur") || User.IsInRole("editeur"))
                             {
                                 <li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle text-dark" href="#" id="gestionDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Gestion</a>
+                                    <a class="nav-link dropdown-toggle text-dark" href="#" id="gestionDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Management</a>
                                     <ul class="dropdown-menu" aria-labelledby="gestionDropdown">
                                         @if (User.IsInRole("administrateur"))
                                         {
                                             <li>
-                                                <a class="dropdown-item" asp-area="" asp-controller="Gestion" asp-action="DemandeDeCompte">
-                                                    Demandes de compte
+                                            <a class="dropdown-item" asp-area="" asp-controller="Gestion" asp-action="DemandeDeCompte">
+                                                Account Requests
                                                 </a>
                                             </li>
                                         }
                                         <li>
                                             <a class="dropdown-item" asp-area="" asp-controller="Gestion" asp-action="Utilisateurs">
-                                                Utilisateurs
+                                                Users
                                             </a>
                                         </li>
                                         <li>
                                             <a class="dropdown-item" asp-area="" asp-controller="Gestion" asp-action="Entreprises">
-                                                Entreprises
+                                                Organizations
                                             </a>
                                         </li>
                                     </ul>
@@ -84,23 +84,23 @@
                             }
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle text-dark" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class="bi bi-person me-1"></i>Profil
+                                    <i class="bi bi-person me-1"></i>Profile
                                 </a>
                                 <ul class="dropdown-menu" aria-labelledby="profileDropdown">
                                     <li>
                                         <a class="dropdown-item" asp-area="" asp-controller="Compte" asp-action="Profil">
-                                            Paramètres
+                                            Settings
                                         </a>
                                     </li>
                                     <li>
                                         <a class="dropdown-item" asp-area="" asp-controller="Compte" asp-action="ChangerMotDePasse">
-                                            Changer le mot de passe
+                                            Change password
                                         </a>
                                     </li>
                                     <li>
                                         <form asp-area="" asp-controller="Compte" asp-action="SeDeconnecter" method="post" id="logoutForm">
                                             @Html.AntiForgeryToken()
-                                            <button type="submit" class="dropdown-item">Se déconnecter</button>
+                                            <button type="submit" class="dropdown-item">Sign out</button>
                                         </form>
                                     </li>
                                 </ul>
@@ -109,7 +109,7 @@
                         else
                         {
                             <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-controller="Compte" asp-action="SeConnecter">Se connecter</a>
+                                <a class="nav-link text-dark" asp-area="" asp-controller="Compte" asp-action="SeConnecter">Sign in</a>
                             </li>
                         }
                     </ul>
@@ -154,24 +154,24 @@
                     <div class="col-md-1 mb-3">
                     </div>
                     <div class="col-md-2 mb-3">
-                        <nav aria-label="Navigation principale">
+                        <nav aria-label="Main navigation">
                             <ul class="list-unstyled">
-                                <li><a class="footer-links" asp-area="" asp-controller="Accueil" asp-action="Index">Accueil</a></li>
-                                <li><a class="footer-links" asp-area="" asp-controller="Accueil" asp-action="Index">Données</a></li>
+                                <li><a class="footer-links" asp-area="" asp-controller="Accueil" asp-action="Index">Home</a></li>
+                                <li><a class="footer-links" asp-area="" asp-controller="Accueil" asp-action="Index">Data</a></li>
                                 <li><a class="footer-links" asp-area="" asp-controller="Accueil" asp-action="Index">Cookies</a></li>
-                                <li><a class="footer-links" asp-area="" asp-controller="Accueil" asp-action="Politiques">Politiques</a></li>
+                                <li><a class="footer-links" asp-area="" asp-controller="Accueil" asp-action="Politiques">Policies</a></li>
                             </ul>
                         </nav>
                     </div>
                     <div class="col-md-1 mb-3 text-end">
-                        <a class="footer-links" asp-area="" asp-controller="Accueil" asp-action="Index">🌐EN</a>
+                        <a class="footer-links" asp-area="" asp-controller="Accueil" asp-action="Index">🌐English</a>
                     </div>
                 </div>
             </div>
             <div class="container-fluid bg-light">
                 <div class="row">
                     <div class="col text-end py-2 text-muted">
-                        &copy; 2025 - Tous droits réservés.
+                        &copy; 2025 - All rights reserved.
                     </div>
                 </div>
             </div>

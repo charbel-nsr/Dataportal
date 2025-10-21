@@ -1,18 +1,18 @@
 ﻿@model Dataportal.ViewModels.ChangerMotDePasseViewModel
 
 @{
-    ViewData["Title"] = "Changer le mot de passe";
+    ViewData["Title"] = "Change password";
 }
 
 <div class="container mt-4 pb-5">
     <div class="row d-md-none mt-3">
         <div class="col text-center">
-            <img src="/illustration/nouveauMotDePasse-hero.svg" alt="Changer le mot de passe" class="img-fluid" />
+            <img src="/illustration/nouveauMotDePasse-hero.svg" alt="Change password" class="img-fluid" />
         </div>
     </div>
     <div class="row">
         <div class="col-md-6 d-none d-md-block">
-            <img src="/illustration/nouveauMotDePasse-hero.svg" alt="Changer le mot de passe" class="img-fluid" />
+            <img src="/illustration/nouveauMotDePasse-hero.svg" alt="Change password" class="img-fluid" />
         </div>
         <div class="col-md-6 mt-5">
             <form asp-action="ChangerMotDePasse" method="post">
@@ -24,7 +24,7 @@
                     <span asp-validation-for="Email" class="text-danger"></span>
                 </div>
                 <div class="form-floating mb-3">
-                    <input asp-for="MotDePasseActuel" class="form-control" type="password" value="" placeholder="Mot de passe actuel" id="motDePasseActuel" />
+                    <input asp-for="MotDePasseActuel" class="form-control" type="password" value="" placeholder="Current password" id="motDePasseActuel" />
                     <label asp-for="MotDePasseActuel"></label>
                     <span asp-validation-for="MotDePasseActuel" class="text-danger"></span>
                     <button type="button" class="bg-white border-0 position-absolute"
@@ -34,7 +34,7 @@
                     </button>
                 </div>
                 <div class="form-floating mb-3">
-                    <input asp-for="NouveauMotDePasse" class="form-control" type="password" placeholder="Nouveau mot de passe" id="nouveauMotDePasse"/>
+                    <input asp-for="NouveauMotDePasse" class="form-control" type="password" placeholder="New password" id="nouveauMotDePasse"/>
                     <label asp-for="NouveauMotDePasse"></label>
                     <button type="button" class="bg-white border-0 position-absolute"
                             style="top: 50%; right: 10px; transform: translateY(-50%);"
@@ -43,7 +43,7 @@
                     </button>
                 </div>
                 <div class="form-floating mb-3">
-                    <input asp-for="ConfirmNouveauMotDePasse" class="form-control" type="password" placeholder="Confirmer le mot de passe" id="confirmerNouveauMotDePasse"/>
+                    <input asp-for="ConfirmNouveauMotDePasse" class="form-control" type="password" placeholder="Confirm password" id="confirmerNouveauMotDePasse"/>
                     <label asp-for="ConfirmNouveauMotDePasse"></label>
                     <button type="button" class="bg-white border-0 position-absolute"
                             style="top: 50%; right: 10px; transform: translateY(-50%);"
@@ -51,7 +51,7 @@
                         <i class="bi bi-eye" id="toggleIcon3"></i>
                     </button>
                 </div>
-                <button type="submit" class="btn btn-primary w-100">Enregistrer</button>
+                <button type="submit" class="btn btn-primary w-100">Save</button>
             </form>
         </div>
     </div>

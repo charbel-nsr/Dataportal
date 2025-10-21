@@ -6,8 +6,8 @@ namespace Dataportal.ViewModels
 {
     public class MotDePasseOublieViewModel
     {
-        [Required(ErrorMessage = "L'Email est requis.")]
-        [EmailAddress(ErrorMessage = "L'email doit être une adresse valide.")]
+        [Required(ErrorMessage = "Email is required.")]
+        [EmailAddress(ErrorMessage = "Email must be a valid address.")]
         [Display(Name = "Email")]
         public string Email { get; set; }
     }

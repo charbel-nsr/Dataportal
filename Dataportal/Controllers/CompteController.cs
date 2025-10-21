@@ -75,8 +75,8 @@ namespace Dataportal.Controllers
                     // Vérifier si le compte est déjà verrouillé
                     if (utilisateur.FinLockout.HasValue && utilisateur.FinLockout.Value > DateTime.UtcNow)
                     {
-                        ModelState.AddModelError(string.Empty, $"Votre compte est verrouillé jusqu'à {utilisateur.FinLockout.Value.ToLocalTime()}.");
-                        _logger.LogWarning("Tentative de connexion sur un compte verrouillé: {Email}", model.Email);
+                        ModelState.AddModelError(string.Empty, $"Your account is locked until {utilisateur.FinLockout.Value.ToLocalTime()}.");
+                        _logger.LogWarning("Login attempt on a locked account: {Email}", model.Email);
                         return View(model);
                     }
 
@@ -139,14 +139,14 @@ namespace Dataportal.Controllers
                         {
                             // Incrémenter le compteur d'échecs de connexion
                             utilisateur.NbrEchecsAcces++;
-                            _logger.LogWarning("Tentative de connexion échouée pour {Email}. Nombre d'échecs: {Count}", model.Email, utilisateur.NbrEchecsAcces);
+                            _logger.LogWarning("Failed login attempt for {Email}. Number of failures: {Count}", model.Email, utilisateur.NbrEchecsAcces);
 
                             // Si le nombre d'échecs dépasse le seuil, verrouiller le compte
                             if (utilisateur.NbrEchecsAcces >= MaxFailedAccessAttempts)
                             {
                                 utilisateur.FinLockout = DateTime.UtcNow.Add(LockoutTimeSpan);
-                                _logger.LogWarning("Compte verrouillé pour {Email} jusqu'à {LockoutEnd}", model.Email, utilisateur.FinLockout.Value);
-                                ModelState.AddModelError(string.Empty, $"Votre compte a été verrouillé en raison de trop nombreuses tentatives infructueuses. Veuillez réessayer après {utilisateur.FinLockout.Value.ToLocalTime()}.");
+                                _logger.LogWarning("Account locked for {Email} until {LockoutEnd}", model.Email, utilisateur.FinLockout.Value);
+                                ModelState.AddModelError(string.Empty, $"Your account has been locked because of too many unsuccessful attempts. Please try again after {utilisateur.FinLockout.Value.ToLocalTime()}.");
                             }
 
                             await _context.SaveChangesAsync();
@@ -154,14 +154,14 @@ namespace Dataportal.Controllers
                     }
                     else
                     {
-                        ModelState.AddModelError(string.Empty, "Le compte n'est pas actif.");
-                        _logger.LogWarning("Tentative de connexion sur un compte inactif: {Email}", model.Email);
+                        ModelState.AddModelError(string.Empty, "The account is not active.");
+                        _logger.LogWarning("Login attempt on an inactive account: {Email}", model.Email);
                     }
                 }
                 else
                 {
                     ModelState.AddModelError(string.Empty, "Tentative de connexion invalide.");
-                    _logger.LogWarning("Tentative de connexion pour un email non existant: {Email}", model.Email);
+                    _logger.LogWarning("Login attempt for a non-existent email: {Email}", model.Email);
                 }
             }
             return View(model);
@@ -211,7 +211,7 @@ namespace Dataportal.Controllers
                 // Validate password strength
                 if (!IsPasswordSecure(model.MotDePasse))
                 {
-                    ModelState.AddModelError("MotDePasse", "Le mot de passe doit contenir au moins 8 caractères, dont une majuscule, une minuscule, un chiffre et un caractère spécial.");
+                    ModelState.AddModelError("MotDePasse", "Password must contain at least 8 characters, including an uppercase letter, a lowercase letter, a digit, and a special character.");
                     _logger.LogWarning("Weak password provided for account request: {Email}", model.Email);
                 }
 
@@ -222,7 +222,7 @@ namespace Dataportal.Controllers
 
                 if (entreprise == null)
                 {
-                    ModelState.AddModelError("", "L'Établissement est requis.");
+                    ModelState.AddModelError("", "Organization is required.");
                 }
                 else
                 {
@@ -236,7 +236,7 @@ namespace Dataportal.Controllers
 
                     if (!domainValid)
                     {
-                        ModelState.AddModelError("Email", "Le domaine de l'email ne correspond pas à celui de l'établissement sélectionnée.");
+                        ModelState.AddModelError("Email", "The email domain does not match the selected organization.");
                     }
                 }
 
@@ -288,7 +288,7 @@ namespace Dataportal.Controllers
 
                 //TODO: Send email befor adding to tabel to user mail verification then page of mail verification then succes message
                 // For now, assume you will send a verification email next.
-                TempData["Success"] = "Votre demande de compte a été reçue. Veuillez vérifier votre email pour confirmation.";
+                TempData["Success"] = "Your account request has been received. Please check your email for confirmation.";
                 return RedirectToAction("SeConnecter");
 
                 //TODO: Send email to admin for approval
@@ -389,7 +389,7 @@ namespace Dataportal.Controllers
                 _context.Update(utilisateur);
                 await _context.SaveChangesAsync();
 
-                TempData["SuccessMessage"] = "Votre profil a été mis à jour avec succès!";
+                TempData["SuccessMessage"] = "Your profile has been updated successfully!";
                 return RedirectToAction("Profil");
             }
 
@@ -445,14 +445,14 @@ namespace Dataportal.Controllers
                 var result = _passwordHasher.VerifyHashedPassword(utilisateur, utilisateur.MotDePasseHash, model.MotDePasseActuel);
                 if (result != PasswordVerificationResult.Success)
                 {
-                    ModelState.AddModelError("MotDePasseActuel", "Le mot de passe actuel est incorrect.");
+                    ModelState.AddModelError("MotDePasseActuel", "The current password is incorrect.");
                     _logger.LogWarning("Incorrect current password provided by user {Email} during change password.", userEmail);
                     return View(model);
                 }
 
                 if (!IsPasswordSecure(model.NouveauMotDePasse))
                 {
-                    ModelState.AddModelError("NouveauMotDePasse", "Le nouveau mot de passe n'est pas suffisamment sécurisé. Il doit contenir au moins 8 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial.");
+                    ModelState.AddModelError("NouveauMotDePasse", "The new password is not secure enough. It must contain at least 8 characters, an uppercase letter, a lowercase letter, a digit, and a special character.");
                     _logger.LogWarning("Insecure new password provided by user {Email}.", userEmail);
                     return View(model);
                 }
@@ -463,7 +463,7 @@ namespace Dataportal.Controllers
 
                 //TODO: Send email to user for password change Notification
                 _logger.LogInformation("Password updated successfully for {Email}.", userEmail);
-                TempData["SuccessMessage"] = "Votre mot de passe a été mis à jour avec succès!";
+                TempData["SuccessMessage"] = "Your password has been updated successfully!";
                 return RedirectToAction("Profil");
             }
 
@@ -484,7 +484,7 @@ namespace Dataportal.Controllers
         public async Task<IActionResult> MotDePasseOublie(MotDePasseOublieViewModel model)
         {
             //TOD: Send email to user for password reset
-            ModelState.AddModelError(string.Empty, "Vous devriez recevoir sous peu un courriel vous permettant de réinitialiser votre mot de passe.");
+            ModelState.AddModelError(string.Empty, "You should receive an email shortly allowing you to reset your password.");
             return View(model);
         }
     }

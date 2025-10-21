@@ -7,24 +7,24 @@ namespace Dataportal.ViewModels
     public class ChangerMotDePasseViewModel
     {
 
-        [Required(ErrorMessage = "L'Email est requis.")]
+        [Required(ErrorMessage = "Email is required.")]
         [EmailAddress]
         [Display(Name = "Email")]
         public string Email { get; set; }
 
-        [Required(ErrorMessage = "Le mot de passe actuel est requis.")]
+        [Required(ErrorMessage = "Current password is required.")]
         [DataType(DataType.Password)]
-        [Display(Name = "Mot de passe actuel")]
+        [Display(Name = "Current password")]
         public string MotDePasseActuel { get; set; }
 
-        [Required(ErrorMessage = "Le nouveau mot de passe est requis.")]
+        [Required(ErrorMessage = "New password is required.")]
         [DataType(DataType.Password)]
-        [Display(Name = "Nouveau mot de passe")]
+        [Display(Name = "New password")]
         public string NouveauMotDePasse { get; set; }
 
         [DataType(DataType.Password)]
-        [Display(Name = "Confirmer le mot de passe")]
-        [Compare("NouveauMotDePasse", ErrorMessage = "Le nouveau mot de passe ne correspond pas.")]
+        [Display(Name = "Confirm password")]
+        [Compare("NouveauMotDePasse", ErrorMessage = "The new password does not match.")]
         public string? ConfirmNouveauMotDePasse { get; set; }
     }
 }

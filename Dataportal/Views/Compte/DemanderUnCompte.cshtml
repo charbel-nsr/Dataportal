@@ -1,7 +1,7 @@
 ﻿@model Dataportal.ViewModels.DemanderUnCompteViewModel
 
 @{
-    ViewData["Title"] = "Demander un Compte";
+    ViewData["Title"] = "Request an account";
     ViewData["HideFooter"] = true;
     ViewData["DisableScroll"] = true;
 }
@@ -12,7 +12,7 @@
             <div class="col-md-6 pt-3 pb-5 d-flex align-items-center justify-content-center">
                 <div class="p-4 bg-white rounded shadow" style="max-width: 450px; width: 100%;">
                     <h2 class="mb-4 text-center">@ViewData["Title"]</h2>
-                    <span class="text-primary">Attention:</span> cela ne vous créera pas automatiquement un compte, c'est plutôt une demande qui doit être approuvée par l'un des gestionnaires de la plateforme.
+                    <span class="text-primary">Note:</span> this will not automatically create an account. It is a request that must be approved by one of the platform managers.
                     <form asp-action="DemanderUnCompte" method="post" novalidate>
                         @Html.AntiForgeryToken()
                         <div asp-validation-summary="All" class="text-danger mb-3"></div>
@@ -60,10 +60,10 @@
                             <span asp-validation-for="Commentaire" class="text-danger"></span>
                         </div>
                         <button type="submit" class="btn btn-primary w-100 mt-3">
-                            Demander un Compte
+                            Request an account
                         </button>
                     </form>
-                    <a href="/Compte/SeConnecter" class="btn btn-outline-primary mt-2 w-100">Se connecter</a>
+                    <a href="/Compte/SeConnecter" class="btn btn-outline-primary mt-2 w-100">Sign in</a>
                 </div>
             </div>
             <div class="col-md-6 d-flex flex-column justify-content-center align-items-center p-4 logo-fade">

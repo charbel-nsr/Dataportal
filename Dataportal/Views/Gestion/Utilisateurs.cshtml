@@ -1,6 +1,6 @@
 ﻿@model Dataportal.ViewModels.UtilisateursAdminViewModel
 @{
-    ViewData["Title"] = "Gestion des utilisateurs";
+    ViewData["Title"] = "User management";
 }
 
 <div class="container">
@@ -22,51 +22,51 @@
         <form method="get" class="row g-3">
             <div class="col-md-8 mt-2">
                 <div class="form-floating">
-                    <input type="text" class="form-control" name="search" id="search" placeholder="Recherche" value="@Model.Search">
-                    <label for="search">Nom, prénom ou email</label>
+                    <input type="text" class="form-control" name="search" id="search" placeholder="Search" value="@Model.Search">
+                    <label for="search">Name, first name, or email</label>
                 </div>
             </div>
             <div class="col-md-4 mt-2">
                 <div class="form-floating">
                     <select class="form-select" name="selectedEntrepriseId" id="selectedEntrepriseId">
-                        <option value="">Toutes les entreprises</option>
+                        <option value="">All organizations</option>
                         @foreach (var e in Model.Entreprises)
                         {
                             <option value="@e.Id" selected="@(e.Id == Model.SelectedEntrepriseId ? "selected" : null)">@e.Nom</option>
                         }
                     </select>
-                    <label for="selectedEntrepriseId">Entreprise</label>
+                    <label for="selectedEntrepriseId">Organization</label>
                 </div>
             </div>
             <div class="col-md-4 mt-2">
                 <div class="form-floating">
                     <select class="form-select" name="selectedRoleId" id="selectedRoleId">
-                        <option value="">Tous les rôles</option>
+                        <option value="">All roles</option>
                         @foreach (var r in Model.Roles)
                         {
                             <option value="@r.Id" selected="@(r.Id == Model.SelectedRoleId ? "selected" : null)">@r.Libelle</option>
                         }
                     </select>
-                    <label for="selectedRoleId">Rôle</label>
+                    <label for="selectedRoleId">Role</label>
                 </div>
             </div>
             <div class="col-md-4 mt-2">
                 <div class="form-floating">
                     <select class="form-select" name="compteActif" id="compteActif">
-                        <option value="">Tous</option>
-                        <option value="true" selected="@(Model.CompteActif == true ? "selected" : null)">Actifs</option>
-                        <option value="false" selected="@(Model.CompteActif == false ? "selected" : null)">Inactifs</option>
+                        <option value="">All</option>
+                        <option value="true" selected="@(Model.CompteActif == true ? "selected" : null)">Active</option>
+                        <option value="false" selected="@(Model.CompteActif == false ? "selected" : null)">Inactive</option>
                     </select>
-                    <label for="compteActif">Statut du compte</label>
+                    <label for="compteActif">Account status</label>
                 </div>
             </div>
             <div class="col-md-4 mt-2">
                 <div class="row g-2">
                     <div class="col-6">
-                        <button type="submit" class="btn btn-primary w-100">Filtrer</button>
+                        <button type="submit" class="btn btn-primary w-100">Filter</button>
                     </div>
                     <div class="col-6">
-                        <a href="@Url.Action("Utilisateurs", "Gestion")" class="btn btn-outline-primary w-100">Réinitialiser</a>
+                        <a href="@Url.Action("Utilisateurs", "Gestion")" class="btn btn-outline-primary w-100">Reset</a>
                     </div>
                 </div>
             </div>
@@ -79,12 +79,12 @@
                 <table class="table table-hover shadow-sm">
                     <thead class="table-light">
                         <tr>
-                            <th>Nom</th>
-                            <th>Prénom</th>
+                            <th>Name</th>
+                            <th>First name</th>
                             <th>Email</th>
-                            <th>Statut</th>
-                            <th>Entreprise</th>
-                            <th>Rôle</th>
+                            <th>Status</th>
+                            <th>Organization</th>
+                            <th>Role</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -98,11 +98,11 @@
                                 <td>
                                     @if (u.CompteActif)
                                     {
-                                        <span class="badge bg-success">Actif</span>
+                                        <span class="badge bg-success">Active</span>
                                     }
                                     else
                                     {
-                                        <span class="badge bg-secondary">Inactif</span>
+                                        <span class="badge bg-secondary">Inactive</span>
                                     }
                                 </td>
                                 <td>@u.Entreprise?.Nom</td>
@@ -148,8 +148,8 @@
     else
     {
         <div class="text-center">
-            <img src="/illustration/empty-search.svg" alt="Aucune donnée trouvée" class="img-fluid" style="max-height:200px;" />
-            <p class="text-muted mt-2">Aucune donnée trouvée.</p>
+            <img src="/illustration/empty-search.svg" alt="No data found" class="img-fluid" style="max-height:200px;" />
+            <p class="text-muted mt-2">No data found.</p>
         </div>
     }
 </div>
@@ -158,17 +158,17 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="userDetailsModalLabel">Détails de l'utilisateur</h5>
+                <h5 class="modal-title" id="userDetailsModalLabel">User details</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p><strong>Nom:</strong> <span id="detailNom"></span></p>
-                <p><strong>Prénom:</strong> <span id="detailPrenom"></span></p>
+                <p><strong>Name:</strong> <span id="detailNom"></span></p>
+                <p><strong>First name:</strong> <span id="detailPrenom"></span></p>
                 <p><strong>Email:</strong> <span id="detailEmail"></span></p>
-                <p><strong>Statut:</strong> <span id="detailActif"></span></p>
-                <p><strong>Entreprise:</strong> <span id="detailEntreprise"></span></p>
-                <p><strong>Rôle:</strong> <span id="detailRole"></span></p>
-                <p><strong>Dernier login:</strong> <span id="detailLogin"></span></p>
+                <p><strong>Status:</strong> <span id="detailActif"></span></p>
+                <p><strong>Organization:</strong> <span id="detailEntreprise"></span></p>
+                <p><strong>Role:</strong> <span id="detailRole"></span></p>
+                <p><strong>Last login:</strong> <span id="detailLogin"></span></p>
                 <p><strong>Description:</strong> <span id="detailDescription"></span></p>
                 <p><strong>LinkedIn:</strong> <a id="detailLinkedIn" href="#" target="_blank"></a></p>
                 @if (User.IsInRole("administrateur"))
@@ -187,7 +187,7 @@
                         </button>
                     </form>
                 }
-                <button type="button" class="btn btn-outline-primary" data-bs-dismiss="modal">Fermer</button>
+                <button type="button" class="btn btn-outline-primary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -202,25 +202,25 @@
                     @Html.AntiForgeryToken()
                     <input type="hidden" id="editRoleUserId" name="id" value="" />
                     <div class="modal-header">
-                        <h5 class="modal-title" id="editRoleModalLabel">Modifier le rôle</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                        <h5 class="modal-title" id="editRoleModalLabel">Edit role</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <p><strong>Utilisateur:</strong> <span id="editRoleUserName"></span></p>
+                        <p><strong>User:</strong> <span id="editRoleUserName"></span></p>
                         <div class="form-floating">
                             <select class="form-select" id="editRoleSelect" name="newRoleId" required>
-                                <option value="">Sélectionner un rôle</option>
+                                <option value="">Select a role</option>
                                 @foreach (var role in Model.Roles)
                                 {
                                     <option value="@role.Id">@role.Libelle</option>
                                 }
                             </select>
-                            <label for="editRoleSelect">Nouveau rôle</label>
+                            <label for="editRoleSelect">New role</label>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                        <button type="submit" class="btn btn-success">Enregistrer</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success">Save</button>
                     </div>
                 </form>
             </div>
@@ -256,14 +256,14 @@
             currentIsActive = actif;
             const entreprise = button.getAttribute('data-entreprise');
             const role = button.getAttribute('data-role');
-            const login = button.getAttribute('data-login') || 'Jamais';
+            const login = button.getAttribute('data-login') || 'Never';
             const description = button.getAttribute('data-description') || '—';
             const linkedin = button.getAttribute('data-linkedin');
 
             document.getElementById('detailNom').textContent = nom;
             document.getElementById('detailPrenom').textContent = prenom;
             document.getElementById('detailEmail').textContent = email;
-            document.getElementById('detailActif').textContent = actif ? 'Actif' : 'Inactif';
+            document.getElementById('detailActif').textContent = actif ? 'Active' : 'Inactive';
             document.getElementById('detailEntreprise').textContent = entreprise;
             document.getElementById('detailRole').textContent = role;
             document.getElementById('detailLogin').textContent = login;
@@ -289,11 +289,11 @@
                     toggleActifForm.classList.remove('d-none');
                     // Setup initial button text
                     if (actif) {
-                        toggleActifButtonText.textContent = 'Désactiver ce profil';
+                        toggleActifButtonText.textContent = 'Deactivate this profile';
                         toggleActifButton.classList.remove('btn-success');
                         toggleActifButton.classList.add('btn-warning');
                     } else {
-                        toggleActifButtonText.textContent = 'Activer ce profil';
+                        toggleActifButtonText.textContent = 'Activate this profile';
                         toggleActifButton.classList.remove('btn-warning');
                         toggleActifButton.classList.add('btn-success');
                     }
@@ -309,13 +309,13 @@
                     if (confirmWarning) {
                         confirmWarning.classList.remove('d-none');
                         if (currentIsActive) {
-                            confirmWarning.innerHTML = "Êtes-vous sûr de vouloir <strong>désactiver</strong> ce profil ? Attention, l'utilisateur sera <strong>déconnecté immédiatement</strong> et averti par mail.";
-                            toggleActifButtonText.textContent = 'Confirmer la désactivation';
+                            confirmWarning.innerHTML = "Are you sure you want to <strong>deactivate</strong> this profile? The user will be <strong>signed out immediately</strong> and notified by email.";
+                            toggleActifButtonText.textContent = 'Confirm deactivation';
                             toggleActifButton.classList.remove('btn-warning');
                             toggleActifButton.classList.add('btn-danger');
                         } else {
-                            confirmWarning.textContent = "Êtes-vous sûr de vouloir activer ce profil ?";
-                            toggleActifButtonText.textContent = 'Confirmer l’activation';
+                            confirmWarning.textContent = "Are you sure you want to activate this profile?";
+                            toggleActifButtonText.textContent = 'Confirm activation';
                             toggleActifButton.classList.remove('btn-success');
                             toggleActifButton.classList.add('btn-primary');
                         }

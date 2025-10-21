@@ -53,7 +53,7 @@ namespace Dataportal.Controllers
         {
             if (string.IsNullOrWhiteSpace(Nom))
             {
-                TempData["Error"] = "Le nom du site est requis.";
+                TempData["Error"] = "Site name is required.";
                 return RedirectToAction("Sites");
             }
 
@@ -61,7 +61,7 @@ namespace Dataportal.Controllers
             var exists = _context.Site.Any(s => s.Nom.Trim().ToLower() == normalized);
             if (exists)
             {
-                TempData["Error"] = "Un site avec ce nom existe déjà.";
+                TempData["Error"] = "A site with this name already exists.";
                 return RedirectToAction("Sites");
             }
 
@@ -76,7 +76,7 @@ namespace Dataportal.Controllers
             _context.Site.Add(site);
             _context.SaveChanges();
 
-            TempData["Success"] = "Site créé avec succès.";
+            TempData["Success"] = "Site created successfully.";
             return RedirectToAction("Sites");
         }
 
@@ -88,14 +88,14 @@ namespace Dataportal.Controllers
             var site = _context.Site.FirstOrDefault(s => s.Id == id);
             if (site == null)
             {
-                TempData["Error"] = "Site introuvable.";
+                TempData["Error"] = "Site not found.";
                 return RedirectToAction("Sites");
             }
 
             site.Actif = true;
             _context.SaveChanges();
 
-            TempData["Success"] = "Site activé avec succès.";
+            TempData["Success"] = "Site activated successfully.";
             return RedirectToAction("Sites");
         }
 
@@ -107,14 +107,14 @@ namespace Dataportal.Controllers
             var site = _context.Site.FirstOrDefault(s => s.Id == id);
             if (site == null)
             {
-                TempData["Error"] = "Site introuvable.";
+                TempData["Error"] = "Site not found.";
                 return RedirectToAction("Sites");
             }
 
             site.Actif = false;
             _context.SaveChanges();
 
-            TempData["Success"] = "Site désactivé avec succès.";
+            TempData["Success"] = "Site deactivated successfully.";
             return RedirectToAction("Sites");
         }
 
@@ -125,14 +125,14 @@ namespace Dataportal.Controllers
         {
             if (string.IsNullOrWhiteSpace(Nom))
             {
-                TempData["Error"] = "Le nom est requis.";
+                TempData["Error"] = "Name is required.";
                 return RedirectToAction("Sites");
             }
 
             var site = _context.Site.FirstOrDefault(s => s.Id == Id);
             if (site == null)
             {
-                TempData["Error"] = "Site introuvable.";
+                TempData["Error"] = "Site not found.";
                 return RedirectToAction("Sites");
             }
 
@@ -140,7 +140,7 @@ namespace Dataportal.Controllers
             var duplicate = _context.Site.Any(s => s.Id != Id && s.Nom.Trim().ToLower() == normalizedNom);
             if (duplicate)
             {
-                TempData["Error"] = "Un autre site avec ce nom existe déjà.";
+                TempData["Error"] = "Another site with this name already exists.";
                 return RedirectToAction("Sites");
             }
 
@@ -151,7 +151,7 @@ namespace Dataportal.Controllers
 
             _context.SaveChanges();
 
-            TempData["Success"] = "Site modifié avec succès.";
+            TempData["Success"] = "Site updated successfully.";
             return RedirectToAction("Sites");
         }
 
@@ -190,7 +190,7 @@ namespace Dataportal.Controllers
         {
             if (string.IsNullOrWhiteSpace(Libelle))
             {
-                TempData["Error"] = "Le libellé est requis.";
+                TempData["Error"] = "Label is required.";
                 return RedirectToAction("Licences");
             }
 
@@ -198,7 +198,7 @@ namespace Dataportal.Controllers
             var exists = _context.Licence.Any(l => l.Libelle.Trim().ToLower() == normalized);
             if (exists)
             {
-                TempData["Error"] = "Une licence avec ce libellé existe déjà.";
+                TempData["Error"] = "A license with this label already exists.";
                 return RedirectToAction("Licences");
             }
 
@@ -212,7 +212,7 @@ namespace Dataportal.Controllers
             _context.Licence.Add(licence);
             _context.SaveChanges();
 
-            TempData["Success"] = "Licence créée avec succès.";
+            TempData["Success"] = "License created successfully.";
             return RedirectToAction("Licences");
         }
 
@@ -224,14 +224,14 @@ namespace Dataportal.Controllers
             var licence = _context.Licence.FirstOrDefault(l => l.Id == id);
             if (licence == null)
             {
-                TempData["Error"] = "Licence introuvable.";
+                TempData["Error"] = "License not found.";
                 return RedirectToAction("Licences");
             }
 
             licence.Actif = true;
             _context.SaveChanges();
 
-            TempData["Success"] = "Licence activée avec succès.";
+            TempData["Success"] = "License activated successfully.";
             return RedirectToAction("Licences");
         }
 
@@ -243,14 +243,14 @@ namespace Dataportal.Controllers
             var licence = _context.Licence.FirstOrDefault(l => l.Id == id);
             if (licence == null)
             {
-                TempData["Error"] = "Licence introuvable.";
+                TempData["Error"] = "License not found.";
                 return RedirectToAction("Licences");
             }
 
             licence.Actif = false;
             _context.SaveChanges();
 
-            TempData["Success"] = "Licence désactivée avec succès.";
+            TempData["Success"] = "License deactivated successfully.";
             return RedirectToAction("Licences");
         }
 
@@ -261,14 +261,14 @@ namespace Dataportal.Controllers
         {
             if (string.IsNullOrWhiteSpace(Libelle))
             {
-                TempData["Error"] = "Le libellé est requis.";
+                TempData["Error"] = "Label is required.";
                 return RedirectToAction("Licences");
             }
 
             var licence = _context.Licence.FirstOrDefault(l => l.Id == Id);
             if (licence == null)
             {
-                TempData["Error"] = "Licence introuvable.";
+                TempData["Error"] = "License not found.";
                 return RedirectToAction("Licences");
             }
 
@@ -276,7 +276,7 @@ namespace Dataportal.Controllers
             var duplicate = _context.Licence.Any(l => l.Id != Id && l.Libelle.Trim().ToLower() == normalizedLibelle);
             if (duplicate)
             {
-                TempData["Error"] = "Une autre licence avec ce libellé existe déjà.";
+                TempData["Error"] = "Another license with this label already exists.";
                 return RedirectToAction("Licences");
             }
 
@@ -286,7 +286,7 @@ namespace Dataportal.Controllers
 
             _context.SaveChanges();
 
-            TempData["Success"] = "Licence modifiée avec succès.";
+            TempData["Success"] = "License updated successfully.";
             return RedirectToAction("Licences");
         }
 
@@ -328,7 +328,7 @@ namespace Dataportal.Controllers
         {
             if (string.IsNullOrWhiteSpace(Nom))
             {
-                TempData["Error"] = "Le nom est requis.";
+                TempData["Error"] = "Name is required.";
                 return RedirectToAction("Appareils");
             }
 
@@ -336,7 +336,7 @@ namespace Dataportal.Controllers
             var exists = _context.Appareil.Any(a => a.Nom.Trim().ToLower() == normalized);
             if (exists)
             {
-                TempData["Error"] = "Un appareil avec ce nom existe déjà.";
+                TempData["Error"] = "A device with this name already exists.";
                 return RedirectToAction("Appareils");
             }
 
@@ -353,7 +353,7 @@ namespace Dataportal.Controllers
             _context.Appareil.Add(appareil);
             _context.SaveChanges();
 
-            TempData["Success"] = "Appareil créé avec succès.";
+            TempData["Success"] = "Device created successfully.";
             return RedirectToAction("Appareils");
         }
 
@@ -365,14 +365,14 @@ namespace Dataportal.Controllers
             var appareil = _context.Appareil.FirstOrDefault(a => a.Id == id);
             if (appareil == null)
             {
-                TempData["Error"] = "Appareil introuvable.";
+                TempData["Error"] = "Device not found.";
                 return RedirectToAction("Appareils");
             }
 
             appareil.Actif = true;
             _context.SaveChanges();
 
-            TempData["Success"] = "Appareil activé avec succès.";
+            TempData["Success"] = "Device activated successfully.";
             return RedirectToAction("Appareils");
         }
 
@@ -384,14 +384,14 @@ namespace Dataportal.Controllers
             var appareil = _context.Appareil.FirstOrDefault(a => a.Id == id);
             if (appareil == null)
             {
-                TempData["Error"] = "Appareil introuvable.";
+                TempData["Error"] = "Device not found.";
                 return RedirectToAction("Appareils");
             }
 
             appareil.Actif = false;
             _context.SaveChanges();
 
-            TempData["Success"] = "Appareil désactivé avec succès.";
+            TempData["Success"] = "Device deactivated successfully.";
             return RedirectToAction("Appareils");
         }
 
@@ -402,14 +402,14 @@ namespace Dataportal.Controllers
         {
             if (string.IsNullOrWhiteSpace(Nom))
             {
-                TempData["Error"] = "Le nom est requis.";
+                TempData["Error"] = "Name is required.";
                 return RedirectToAction("Appareils");
             }
 
             var appareil = _context.Appareil.FirstOrDefault(a => a.Id == Id);
             if (appareil == null)
             {
-                TempData["Error"] = "Appareil introuvable.";
+                TempData["Error"] = "Device not found.";
                 return RedirectToAction("Appareils");
             }
 
@@ -418,7 +418,7 @@ namespace Dataportal.Controllers
             var duplicate = _context.Appareil.Any(a => a.Id != Id && a.Nom.Trim().ToLower() == normalizedNom);
             if (duplicate)
             {
-                TempData["Error"] = "Un autre appareil avec ce nom existe déjà.";
+                TempData["Error"] = "Another device with this name already exists.";
                 return RedirectToAction("Appareils");
             }
 
@@ -431,7 +431,7 @@ namespace Dataportal.Controllers
 
             _context.SaveChanges();
 
-            TempData["Success"] = "Appareil modifié avec succès.";
+            TempData["Success"] = "Device updated successfully.";
             return RedirectToAction("Appareils");
         }
     }

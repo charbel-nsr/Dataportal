@@ -1,16 +1,16 @@
 ﻿@model Dataportal.ViewModels.DonneesContexteEnvironnementalCreateStep4ViewModel
 
 @{
-    ViewData["Title"] = "Créer un ensemble de données - Étape 4";
+    ViewData["Title"] = "Create a dataset - Step 4";
     ViewData["CurrentStep"] = 4;
 }
 
 <div class="container">
-    <h2 class="mb-4">Ajouter les données de Contexte Environnemental (Étape 4/5)</h2>
+    <h2 class="mb-4">Add environmental context data (Step 4/5)</h2>
     @await Html.PartialAsync("_CreationProgress")
 
     <div class="alert alert-info">
-        <p>⚠️ Cette étape est <strong>optionnelle</strong>. Vous pouvez ajouter des fichiers de contexte environnemental, ou cliquer sur <strong>Ignorer</strong> pour passer à l'étape suivante.</p>
+        <p>⚠️ This step is <strong>optional</strong>. You can upload environmental context files, or click <strong>Skip</strong> to move to the next step.</p>
     </div>
 
     <form asp-action="CreateStep4" method="post" enctype="multipart/form-data" class="bg-light p-4 rounded shadow-sm upload-overlay-form">
@@ -21,7 +21,7 @@
         <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
 
         <div class="form-floating mb-3">
-            <input asp-for="Libelle" class="form-control" placeholder="Libellé">
+            <input asp-for="Libelle" class="form-control" placeholder="Label">
             <label asp-for="Libelle"></label>
             <span asp-validation-for="Libelle" class="text-danger"></span>
         </div>
@@ -58,17 +58,17 @@
         </div>
 
         <div class="mb-3">
-            <label asp-for="UploadedFiles" class="form-label">Importer des fichiers CSV, XLSX, Parquet ou CSV.zip (optionnel)</label>
+            <label asp-for="UploadedFiles" class="form-label">Upload CSV, XLSX, Parquet, or CSV.zip files (optional)</label>
             <input asp-for="UploadedFiles" class="form-control" type="file" multiple accept=".csv,.xlsx,.parquet,.zip">
-            <small class="form-text text-muted">Tous les fichiers ajoutés doivent partager le même format.</small>
+            <small class="form-text text-muted">All uploaded files must share the same format.</small>
             <span asp-validation-for="UploadedFiles" class="text-danger"></span>
         </div>
 
         <div id="fileList" class="mb-3"></div>
 
         <div class="d-flex justify-content-between">
-            <a asp-action="Details" asp-route-id="@Model.IdMetadonnee" asp-route-creation="true" class="btn btn-outline-secondary">Ignorer cette étape</a>
-            <button type="submit" class="btn btn-primary">Suivant</button>
+            <a asp-action="Details" asp-route-id="@Model.IdMetadonnee" asp-route-creation="true" class="btn btn-outline-secondary">Skip this step</a>
+            <button type="submit" class="btn btn-primary">Next</button>
         </div>
     </form>
 </div>
@@ -86,7 +86,7 @@
             const form = document.querySelector('form.upload-overlay-form');
 
             initUploadOverlay(form, {
-                confirmMessage: 'Une fois cette étape validée, les données seront créées temporairement. Souhaitez-vous continuer ?'
+                confirmMessage: 'Once this step is confirmed, the data will be created temporarily. Do you want to continue?'
             });
 
             if (fileInput && fileListDiv) {
@@ -96,7 +96,7 @@
                         const table = document.createElement('table');
                         table.className = 'table table-sm table-bordered';
                         const thead = document.createElement('thead');
-                        thead.innerHTML = '<tr><th>Nom</th><th>Taille</th><th>Type</th></tr>';
+                        thead.innerHTML = '<tr><th>Name</th><th>Size</th><th>Type</th></tr>';
                         table.appendChild(thead);
 
                         const tbody = document.createElement('tbody');

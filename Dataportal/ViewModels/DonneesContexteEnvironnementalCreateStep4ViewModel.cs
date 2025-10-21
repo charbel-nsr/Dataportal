@@ -10,33 +10,33 @@ namespace Dataportal.ViewModels
         [Required]
         public int IdMetadonnee { get; set; }
 
-        [Required(ErrorMessage = "Le libellé est requis.")]
+        [Required(ErrorMessage = "Label is required.")]
         [MaxLength(50)]
-        [Display(Name = "Libellé")]
+        [Display(Name = "Label")]
         public string Libelle { get; set; }
 
         [MaxLength(500)]
         [Display(Name = "Description")]
         public string Description { get; set; }
 
-        [Required(ErrorMessage = "Le code est requis.")]
+        [Required(ErrorMessage = "Code is required.")]
         [MaxLength(50)]
         [Display(Name = "Code")]
         public string Code { get; set; }
 
-        [Display(Name = "Date de début")]
+        [Display(Name = "Start date")]
         [DataType(DataType.DateTime)]
         public DateTime StartTimestamp { get; set; }
 
-        [Display(Name = "Date de fin")]
+        [Display(Name = "End date")]
         [DataType(DataType.DateTime)]
         public DateTime EndTimestamp { get; set; }
 
-        [Display(Name = "Fichiers (CSV, XLSX, Parquet ou CSV.zip)")]
+        [Display(Name = "Files (CSV, XLSX, Parquet, or CSV.zip)")]
         public List<IFormFile> UploadedFiles { get; set; }
 
-        [Required(ErrorMessage = "La qualité des données est requise.")]
-        [Display(Name = "Qualité des données")]
+        [Required(ErrorMessage = "Data quality is required.")]
+        [Display(Name = "Data quality")]
         public int? IdQualiteDonnees { get; set; }
 
         public IEnumerable<SelectListItem> QualiteOptions { get; set; } = new List<SelectListItem>();
@@ -46,7 +46,7 @@ namespace Dataportal.ViewModels
             if (StartTimestamp > EndTimestamp)
             {
                 yield return new ValidationResult(
-                    "La date de début doit précéder la date de fin.",
+                    "The start date must be before the end date.",
                     new[] { nameof(StartTimestamp), nameof(EndTimestamp) });
             }
         }
