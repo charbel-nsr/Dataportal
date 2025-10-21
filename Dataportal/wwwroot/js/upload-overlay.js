@@ -11,6 +11,7 @@
     const DEFAULT_JSON_URL = '/json/wired-outline-1331-repository-hover-pinch.json';
     const DEFAULT_CONFIRM_MESSAGE = "Once this step is confirmed, the data will be created temporarily. Do you want to continue?";
     const SUBMIT_DELAY_MS = 800;
+    const BYPASS_ATTRIBUTE = 'data-upload-overlay-bypass';
 
     let lottieLoaderPromise = null;
     let animationInstance = null;
@@ -288,6 +289,11 @@
         let hasConfirmed = false;
 
         formElement.addEventListener('submit', function (event) {
+            const submitter = event.submitter;
+            if (submitter && submitter.hasAttribute(BYPASS_ATTRIBUTE)) {
+                return;
+            }
+
             if (hasConfirmed) {
                 return;
             }

@@ -476,6 +476,27 @@ namespace Dataportal.Controllers
             return RedirectToAction("CreateStep4", new { id = model.IdMetadonnee });
         }
 
+        [HttpPost]
+        [Authorize(Roles = "administrateur,editeur,utilisateur")]
+        [ValidateAntiForgeryToken]
+        public IActionResult SkipStep3(int id)
+        {
+            var metadonnee = _context.Metadonnee.Find(id);
+            if (metadonnee == null)
+            {
+                return NotFound();
+            }
+
+            if (User.IsInRole("utilisateur") && metadonnee.IdVisibilite != VisibiliteIds.Personnelle)
+            {
+                return Forbid();
+            }
+
+            HttpContext.Session.SetInt32(SessionKeys.CreationNextStep, 4);
+
+            return RedirectToAction("CreateStep4", new { id });
+        }
+
         // GET: /Donnees/CreateStep4/{id}
         [HttpGet]
         [Authorize(Roles = "administrateur,editeur,utilisateur")]

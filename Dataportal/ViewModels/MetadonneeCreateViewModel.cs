@@ -43,9 +43,8 @@ namespace Dataportal.ViewModels
         public IEnumerable<Licence>? Licences { get; set; }
         public IEnumerable<Visibilite>? Visibilites { get; set; }
 
-        [Required(ErrorMessage = "Devices are required.")]
         [Display(Name = "Devices")]
-        public IEnumerable<int> SelectedAppareils { get; set; }
+        public IEnumerable<int>? SelectedAppareils { get; set; }
         public IEnumerable<Appareil>? Appareils { get; set; }
 
         public List<MetadonneeAppareilInfo> AppareilInfos { get; set; } = new();
