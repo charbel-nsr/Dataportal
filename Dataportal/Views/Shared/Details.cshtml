@@ -6,7 +6,12 @@
 }
 
 <div class="container my-4">
-    <h2 class="mb-4">@Model.Metadonnee.Nom</h2>
+    <div class="d-flex justify-content-between align-items-center mb-4 gap-2 flex-wrap">
+        <h2 class="mb-0">@Model.Metadonnee.Nom</h2>
+        <button type="button" class="btn btn-link p-0 toggle-all-sections" data-expanded-text="Retract all" data-collapsed-text="Expand all" aria-expanded="true" style="box-shadow: none;">
+            Retract all
+        </button>
+    </div>
     @if (currentStep.HasValue)
     {
         @await Html.PartialAsync("_CreationProgress")
@@ -211,33 +216,78 @@
 @section Scripts {
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            document.querySelectorAll('.card-header .toggle-section').forEach((button) => {
+            const sectionButtons = Array.from(document.querySelectorAll('.card-header .toggle-section'));
+            const toggleAllButton = document.querySelector('.toggle-all-sections');
+
+            const getCardBody = (button) => {
+                const cardHeader = button.closest('.card-header');
+                return cardHeader ? cardHeader.nextElementSibling : null;
+            };
+
+            const isSectionCollapsed = (button) => {
+                const cardBody = getCardBody(button);
+                return cardBody ? cardBody.classList.contains('d-none') : false;
+            };
+
+            const setSectionState = (button, collapsed) => {
+                const cardBody = getCardBody(button);
+                if (!cardBody) {
+                    return;
+                }
+
+                cardBody.classList.toggle('d-none', collapsed);
+
                 const expandedSymbol = button.dataset.expandedSymbol || '−';
-                button.textContent = expandedSymbol;
+                const collapsedSymbol = button.dataset.collapsedSymbol || '+';
+                const sectionTitle = button.dataset.sectionTitle || '';
+                const actionLabel = collapsed ? 'Expand' : 'Collapse';
+
+                button.textContent = collapsed ? collapsedSymbol : expandedSymbol;
+                button.setAttribute('aria-expanded', (!collapsed).toString());
+                button.setAttribute('aria-label', sectionTitle
+                    ? `${actionLabel} the ${sectionTitle} section`
+                    : `${actionLabel} the section`);
+            };
+
+            const updateToggleAllState = () => {
+                if (!toggleAllButton) {
+                    return;
+                }
+
+                if (sectionButtons.length === 0) {
+                    toggleAllButton.classList.add('d-none');
+                    return;
+                }
+
+                const collapsedText = toggleAllButton.dataset.collapsedText || 'Expand all';
+                const expandedText = toggleAllButton.dataset.expandedText || 'Retract all';
+                const anyExpanded = sectionButtons.some((button) => !isSectionCollapsed(button));
+
+                toggleAllButton.textContent = anyExpanded ? expandedText : collapsedText;
+                toggleAllButton.setAttribute('aria-expanded', anyExpanded.toString());
+            };
+
+            sectionButtons.forEach((button) => {
+                setSectionState(button, isSectionCollapsed(button));
 
                 button.addEventListener('click', () => {
-                    const cardHeader = button.closest('.card-header');
-                    if (!cardHeader) {
-                        return;
-                    }
-
-                    const cardBody = cardHeader.nextElementSibling;
-                    if (!cardBody) {
-                        return;
-                    }
-
-                    const isCollapsed = cardBody.classList.toggle('d-none');
-                    const collapsedSymbol = button.dataset.collapsedSymbol || '+';
-                    const sectionTitle = button.dataset.sectionTitle || '';
-                    const actionLabel = isCollapsed ? 'Expand' : 'Collapse';
-
-                    button.textContent = isCollapsed ? collapsedSymbol : expandedSymbol;
-                    button.setAttribute('aria-expanded', (!isCollapsed).toString());
-                    button.setAttribute('aria-label', sectionTitle
-                        ? `${actionLabel} the ${sectionTitle} section`
-                        : `${actionLabel} the section`);
+                    const currentlyCollapsed = isSectionCollapsed(button);
+                    setSectionState(button, !currentlyCollapsed);
+                    updateToggleAllState();
                 });
             });
+
+            if (toggleAllButton && sectionButtons.length > 0) {
+                updateToggleAllState();
+
+                toggleAllButton.addEventListener('click', () => {
+                    const collapseAll = toggleAllButton.getAttribute('aria-expanded') === 'true';
+                    sectionButtons.forEach((button) => setSectionState(button, collapseAll));
+                    updateToggleAllState();
+                });
+            } else if (toggleAllButton) {
+                toggleAllButton.classList.add('d-none');
+            }
         });
     </script>
 }
