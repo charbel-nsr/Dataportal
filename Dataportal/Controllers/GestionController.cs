@@ -107,9 +107,9 @@ namespace Dataportal.Controllers
                 return NotFound();
 
             var pendingOrRejectedStatuses = _context.StatutDeLaDemande
-                .Where(s => s.Libelle != null &&
-                            (s.Libelle.Equals("pending", StringComparison.OrdinalIgnoreCase) ||
-                             s.Libelle.Equals("rejected", StringComparison.OrdinalIgnoreCase)))
+                .Where(s => s.Libelle != null)
+                .Select(s => new { s.Id, Libelle = s.Libelle.ToLower() })
+                .Where(s => s.Libelle == "pending" || s.Libelle == "rejected")
                 .Select(s => s.Id)
                 .ToList();
 
@@ -367,7 +367,15 @@ namespace Dataportal.Controllers
                 .FirstOrDefault(e => e.Id == id);
 
             if (entreprise == null)
-                return NotFound();
+            {
+                var errorVm = new ModalErrorViewModel
+                {
+                    Title = "Organization unavailable",
+                    Message = "The selected organization could not be found. It may have been removed or you no longer have access to it."
+                };
+
+                return PartialView("_ModalError", errorVm);
+            }
 
             var vm = new EntrepriseDomainesViewModel
             {

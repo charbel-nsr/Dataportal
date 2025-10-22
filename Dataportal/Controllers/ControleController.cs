@@ -204,6 +204,11 @@ namespace Dataportal.Controllers
                 TempData["Error"] = "Label is required.";
                 return RedirectToAction("Licences");
             }
+            if (string.IsNullOrWhiteSpace(Description))
+            {
+                TempData["Error"] = "Description is required.";
+                return RedirectToAction("Licences");
+            }
 
             var normalized = Libelle.Trim().ToLower();
             var exists = _context.Licence.Any(l => l.Libelle.Trim().ToLower() == normalized);
@@ -340,6 +345,26 @@ namespace Dataportal.Controllers
             if (string.IsNullOrWhiteSpace(Nom))
             {
                 TempData["Error"] = "Name is required.";
+                return RedirectToAction("Appareils");
+            }
+            if (string.IsNullOrWhiteSpace(Description))
+            {
+                TempData["Error"] = "Description is required.";
+                return RedirectToAction("Appareils");
+            }
+            if (string.IsNullOrWhiteSpace(Capacite))
+            {
+                TempData["Error"] = "Capacite is required.";
+                return RedirectToAction("Appareils");
+            }
+            if (string.IsNullOrWhiteSpace(Model))
+            {
+                TempData["Error"] = "Model is required.";
+                return RedirectToAction("Appareils");
+            }
+            if (string.IsNullOrWhiteSpace(Manufacturer))
+            {
+                TempData["Error"] = "Manufacturer is required.";
                 return RedirectToAction("Appareils");
             }
 

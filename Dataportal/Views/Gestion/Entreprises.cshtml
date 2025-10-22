@@ -347,13 +347,72 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             const domainesModal = document.getElementById('domainesModal');
+            const modalContent = document.getElementById('domainesModalContent');
+            let currentEntrepriseId = null;
+
+            if (!domainesModal || !modalContent) {
+                return;
+            }
+
+            const renderError = (message) => {
+                modalContent.innerHTML = `
+                    <div class="modal-header">
+                        <h5 class="modal-title text-danger">Unable to load domains</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-danger mb-0">${message}</div>
+                    </div>`;
+            };
+
+            const renderSpinner = () => {
+                modalContent.innerHTML = `
+                    <div class="modal-body py-5 text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>`;
+            };
+
             domainesModal.addEventListener('show.bs.modal', event => {
-                const button = event.relatedTarget;
-                const entrepriseId = button.getAttribute('data-id');
-                fetch(`/Gestion/GetDomaines?id=${entrepriseId}`)
-                    .then(response => response.text())
+                const trigger = event.relatedTarget;
+
+                if (trigger && domainesModal.contains(trigger)) {
+                    // Opening a nested modal (e.g., "Add a new domain") should not reload the parent content
+                    return;
+                }
+
+                if (!trigger) {
+                    renderError('No organization was selected.');
+                    currentEntrepriseId = null;
+                    return;
+                }
+
+                const entrepriseId = trigger.getAttribute('data-id');
+
+                if (!entrepriseId) {
+                    renderError('No organization identifier was provided.');
+                    currentEntrepriseId = null;
+                    return;
+                }
+
+                currentEntrepriseId = entrepriseId;
+                renderSpinner();
+
+                fetch(`/Gestion/GetDomaines?id=${encodeURIComponent(entrepriseId)}`, { credentials: 'same-origin' })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Request failed');
+                        }
+
+                        return response.text();
+                    })
                     .then(html => {
-                        document.getElementById('domainesModalContent').innerHTML = html;
+                        modalContent.innerHTML = html;
+                    })
+                    .catch(() => {
+                        renderError('An error occurred while retrieving the domains. Please refresh the page and try again.');
+                        currentEntrepriseId = null;
                     });
             });
         });
