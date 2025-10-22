@@ -410,3 +410,7 @@ body.upload-confirmation-open {
 .data-details-all {
     min-height: 43vh;
 }
+
+.download-table {
+    padding: 0 5px 0 5px;
+}
