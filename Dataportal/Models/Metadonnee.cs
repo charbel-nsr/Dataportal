@@ -75,6 +75,10 @@ namespace Dataportal.Models
         public int? IdDonneesContexteEnvironnemental { get; set; }
 
         public DonneesContexteEnvironnemental? DonneesContexteEnvironnemental { get; set; }
-        
+
+        [ForeignKey("TypeEnergieRenouvelable")]
+        public int? IdTypeEnergieRenouvelable { get; set; }
+
+        public TypeEnergieRenouvelable? TypeEnergieRenouvelable { get; set; }
     }
 }

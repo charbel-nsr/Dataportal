@@ -32,6 +32,7 @@ namespace Dataportal.Context
         public DbSet<Utilisateur> Utilisateur { get; set; }
         public DbSet<Visibilite> Visibilite { get; set; }
         public DbSet<QualiteDonnees> QualiteDonnees { get; set; }
+        public DbSet<TypeEnergieRenouvelable> TypeEnergieRenouvelable { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -226,6 +227,10 @@ namespace Dataportal.Context
                 entity.HasOne(m => m.Utilisateur)
                       .WithMany(u => u.Metadonnees)
                       .HasForeignKey(m => m.IdUtilisateur);
+                entity.HasOne(m => m.TypeEnergieRenouvelable)
+                      .WithMany(t => t.Metadonnees)
+                      .HasForeignKey(m => m.IdTypeEnergieRenouvelable)
+                      .OnDelete(DeleteBehavior.Restrict);
                 entity.HasOne(m => m.Donnees)
                       .WithOne(d => d.Metadonnee)
                       .HasForeignKey<Metadonnee>(m => m.IdDonnees);
@@ -338,6 +343,19 @@ namespace Dataportal.Context
                 entity.HasMany(v => v.Metadonnees)
                       .WithOne(m => m.Visibilite)
                       .HasForeignKey(m => m.IdVisibilite)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+            modelBuilder.Entity<TypeEnergieRenouvelable>(entity =>
+            {
+                entity.HasKey(t => t.Id);
+                entity.Property(t => t.Libelle)
+                      .IsRequired()
+                      .HasMaxLength(100);
+                entity.HasIndex(t => t.Libelle)
+                      .IsUnique();
+                entity.HasMany(t => t.Metadonnees)
+                      .WithOne(m => m.TypeEnergieRenouvelable)
+                      .HasForeignKey(m => m.IdTypeEnergieRenouvelable)
                       .OnDelete(DeleteBehavior.Restrict);
             });
         }

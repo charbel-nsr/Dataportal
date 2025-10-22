@@ -27,6 +27,9 @@ namespace Dataportal.ViewModels
         [Display(Name = "Visibility")]
         public int IdVisibilite { get; set; }
 
+        [Display(Name = "Renewable energy type")]
+        public int? IdTypeEnergieRenouvelable { get; set; }
+
         [Display(Name = "Time series")]
         public bool SeriesTemporelles { get; set; }
 
@@ -42,6 +45,7 @@ namespace Dataportal.ViewModels
         public IEnumerable<Site>? Sites { get; set; }
         public IEnumerable<Licence>? Licences { get; set; }
         public IEnumerable<Visibilite>? Visibilites { get; set; }
+        public IEnumerable<TypeEnergieRenouvelable>? TypesEnergieRenouvelable { get; set; }
 
         [Display(Name = "Devices")]
         public IEnumerable<int>? SelectedAppareils { get; set; }

@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using System.Globalization;
 using Microsoft.AspNetCore.Http;
+using System.Linq;
 
 namespace Dataportal.Controllers
 {
@@ -41,6 +42,7 @@ namespace Dataportal.Controllers
                 Licences = _context.Licence.Where(l => l.Actif).ToList(),
                 Sites = _context.Site.Where(s => s.Actif).ToList(),
                 Visibilites = visibilites.ToList(),
+                TypesEnergieRenouvelable = _context.TypeEnergieRenouvelable.OrderBy(t => t.Libelle).ToList(),
                 Appareils = _context.Appareil.Where(a => a.Actif).ToList(),
                 AppareilInfos = new List<MetadonneeAppareilInfo>()
             };
@@ -63,6 +65,7 @@ namespace Dataportal.Controllers
                     visibilites = visibilites.Where(v => v.Id == VisibiliteIds.Personnelle);
                 }
                 model.Visibilites = visibilites.ToList();
+                model.TypesEnergieRenouvelable = _context.TypeEnergieRenouvelable.OrderBy(t => t.Libelle).ToList();
                 model.Appareils = _context.Appareil.Where(a => a.Actif).ToList();
                 model.AppareilInfos ??= new List<MetadonneeAppareilInfo>();
                 return View(model);
@@ -76,6 +79,7 @@ namespace Dataportal.Controllers
                 model.Licences = _context.Licence.Where(l => l.Actif).ToList();
                 model.Sites = _context.Site.Where(s => s.Actif).ToList();
                 model.Visibilites = visibilites;
+                model.TypesEnergieRenouvelable = _context.TypeEnergieRenouvelable.OrderBy(t => t.Libelle).ToList();
                 model.Appareils = _context.Appareil.Where(a => a.Actif).ToList();
                 model.AppareilInfos ??= new List<MetadonneeAppareilInfo>();
                 return View(model);
@@ -285,6 +289,7 @@ namespace Dataportal.Controllers
                 IdLicence = step1Data.IdLicence,
                 IdSite = step1Data.IdSite,
                 IdVisibilite = step1Data.IdVisibilite,
+                IdTypeEnergieRenouvelable = step1Data.IdTypeEnergieRenouvelable,
                 TailleDesDonnees = FormatDataSize(dataSize),
                 SeriesTemporelles = step1Data.SeriesTemporelles,
                 AutoriserApi = step1Data.AutoriserApi,
@@ -666,6 +671,7 @@ namespace Dataportal.Controllers
                 .Include(m => m.Licence)
                 .Include(m => m.Site)
                 .Include(m => m.Visibilite)
+                .Include(m => m.TypeEnergieRenouvelable)
                 .Include(m => m.Utilisateur)
                 .Include(m => m.Metadonnee_Appareils).ThenInclude(ma => ma.Appareil)
                 .FirstOrDefaultAsync(m => m.Id == id);
@@ -715,6 +721,7 @@ namespace Dataportal.Controllers
                 Site = metadonnee.Site,
                 Visibilite = metadonnee.Visibilite,
                 Utilisateur = metadonnee.Utilisateur,
+                TypeEnergieRenouvelable = metadonnee.TypeEnergieRenouvelable,
                 AppareilsLies = metadonnee.Metadonnee_Appareils?.ToList(),
 
                 Donnees = donnees,

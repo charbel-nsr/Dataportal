@@ -26,6 +26,7 @@
             <p><strong>License:</strong> @Model.Licence?.Libelle</p>
             <p><strong>Site:</strong> @Model.Site?.Nom</p>
             <p><strong>Visibility:</strong> @Model.Visibilite?.Libelle</p>
+            <p><strong>Renewable energy type:</strong> @(Model.TypeEnergieRenouvelable?.Libelle ?? "—")</p>
             <p><strong>Creator:</strong> @Model.Utilisateur?.Nom @Model.Utilisateur?.Prenom (@Model.Utilisateur?.Email)</p>
             <p><strong>Data size:</strong> @(Model.Metadonnee?.TailleDesDonnees ?? "—")</p>
             <p><strong>Time series:</strong> @(Model.Metadonnee.SeriesTemporelles ? "Yes" : "No")</p>

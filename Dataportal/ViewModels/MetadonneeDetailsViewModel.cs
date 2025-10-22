@@ -12,6 +12,8 @@ namespace Dataportal.ViewModels
         public Site Site { get; set; }
         public Visibilite Visibilite { get; set; }
         public Utilisateur Utilisateur { get; set; }
+        public TypeEnergieRenouvelable? TypeEnergieRenouvelable { get; set; }
+
 
         public List<Metadonnee_Appareil> AppareilsLies { get; set; }
 

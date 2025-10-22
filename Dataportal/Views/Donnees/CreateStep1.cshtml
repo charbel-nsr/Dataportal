@@ -58,6 +58,14 @@
             <span asp-validation-for="IdVisibilite" class="text-danger"></span>
         </div>
 
+        <div class="form-floating mb-3">
+            <select asp-for="IdTypeEnergieRenouvelable" class="form-select" asp-items="@(new SelectList(Model.TypesEnergieRenouvelable ?? new List<Dataportal.Models.TypeEnergieRenouvelable>(), "Id", "Libelle"))">
+                <option value="">Select a renewable energy type (optional)</option>
+            </select>
+            <label asp-for="IdTypeEnergieRenouvelable"></label>
+            <span asp-validation-for="IdTypeEnergieRenouvelable" class="text-danger"></span>
+        </div>
+
         <div class="form-check mb-2">
             <input class="form-check-input" asp-for="SeriesTemporelles" />
             <label class="form-check-label" asp-for="SeriesTemporelles"></label>

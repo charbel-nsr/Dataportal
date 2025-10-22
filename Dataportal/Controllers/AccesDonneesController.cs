@@ -35,6 +35,7 @@ namespace Dataportal.Controllers
                 .Include(m => m.Licence)
                 .Include(m => m.Site)
                 .Include(m => m.Visibilite)
+                .Include(m => m.TypeEnergieRenouvelable)
                 .Include(m => m.Utilisateur)
                     .ThenInclude(u => u.Entreprise)
                 .AsQueryable();
