@@ -75,20 +75,21 @@
 
     @if (Model.Utilisateurs != null && Model.Utilisateurs.Any()){
         <div class="container">
-            <div class="table-responsive">
-                <table class="table table-hover shadow-sm">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Name</th>
-                            <th>First name</th>
-                            <th>Email</th>
-                            <th>Status</th>
-                            <th>Organization</th>
-                            <th>Role</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+            <div class="paginated-table-wrapper" data-page-size="20">
+                <div class="table-responsive">
+                    <table class="table table-hover shadow-sm paginated-table">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Name</th>
+                                <th>First name</th>
+                                <th>Email</th>
+                                <th>Status</th>
+                                <th>Organization</th>
+                                <th>Role</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
                         @foreach (var u in Model.Utilisateurs)
                         {
                             <tr>
@@ -140,8 +141,26 @@
                                 </td>
                             </tr>
                         }
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="table-pagination-controls d-flex justify-content-end align-items-center gap-2 mt-3 d-none">
+                    <button type="button" class="table-pagination-button table-pagination-prev" aria-label="Previous page" disabled>
+                        <span class="material-symbols-outlined">
+                            arrow_circle_left
+                        </span>
+                    </button>
+                    <div class="d-flex align-items-center gap-1">
+                        <input type="number" class="form-control table-pagination-input" value="1" min="1" />
+                        <span>/</span>
+                        <span class="table-pagination-total">1</span>
+                    </div>
+                    <button type="button" class="table-pagination-button table-pagination-next" aria-label="Next page" disabled>
+                        <span class="material-symbols-outlined">
+                            arrow_circle_right
+                        </span>
+                    </button>
+                </div>
             </div>
         </div>
     }

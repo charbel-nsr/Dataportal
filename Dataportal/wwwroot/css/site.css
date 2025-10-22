@@ -199,6 +199,47 @@ header nav.scrolled {
     min-height: calc(2.5rem + 2px);
     cursor: pointer;
 }
+
+.table-pagination-controls {
+    font-size: 0.95rem;
+}
+
+.table-pagination-button {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    color: #212529;
+    cursor: pointer;
+}
+
+.table-pagination-button:disabled {
+    color: #adb5bd;
+    cursor: not-allowed;
+}
+
+.table-pagination-button:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+.table-pagination-button .material-symbols-outlined {
+    font-size: 28px;
+    line-height: 1;
+}
+
+.table-pagination-input {
+    width: 64px;
+    text-align: center;
+    border-radius: 0.5rem;
+    box-shadow: none;
+}
+
+.table-pagination-input:focus {
+    box-shadow: none;
+}
 .multi-select-input {
     border: none;
     outline: none;
