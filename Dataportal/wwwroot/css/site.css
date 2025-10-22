@@ -211,7 +211,7 @@ header nav.scrolled {
     padding: 0;
     display: flex;
     align-items: center;
-    color: #212529;
+    color: #e72b37;
     cursor: pointer;
 }
 
@@ -401,4 +401,12 @@ body.upload-overlay-open {
 
 body.upload-confirmation-open {
     overflow: hidden;
+}
+
+.paginated-table-wrapper {
+    min-height: 21vh;
+}
+
+.data-details-all {
+    min-height: 43vh;
 }

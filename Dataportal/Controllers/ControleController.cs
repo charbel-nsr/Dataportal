@@ -4,6 +4,7 @@ using Dataportal.ViewModels;
 using Dataportal.Models;
 using System.Linq;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.IdentityModel.Tokens;
 
 namespace Dataportal.Controllers
 {
@@ -54,6 +55,16 @@ namespace Dataportal.Controllers
             if (string.IsNullOrWhiteSpace(Nom))
             {
                 TempData["Error"] = "Site name is required.";
+                return RedirectToAction("Sites");
+            }
+            if (string.IsNullOrWhiteSpace(Description))
+            {
+                TempData["Error"] = "Description is required.";
+                return RedirectToAction("Sites");
+            }
+            if (string.IsNullOrWhiteSpace(Emplacement))
+            {
+                TempData["Error"] = "Location is required.";
                 return RedirectToAction("Sites");
             }
 
