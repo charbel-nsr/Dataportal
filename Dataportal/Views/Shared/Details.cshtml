@@ -56,7 +56,22 @@
         <div class="card mb-4 shadow-sm">
             <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
                 <span>Data</span>
-                <button type="button" class="btn btn-sm btn-outline-light toggle-section" data-section-title="Data" data-expanded-symbol="−" data-collapsed-symbol="+" aria-expanded="true" aria-label="Collapse the Data section">−</button>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-light toggle-section" data-section-title="Data" data-expanded-symbol="−" data-collapsed-symbol="+" aria-expanded="true" aria-label="Collapse the Data section">−</button>
+                    @if (Model.Metadonnee?.AutoriserLeTelechargement == true && !string.IsNullOrWhiteSpace(Model.Donnees?.NomDeLaTable))
+                    {
+                        <button type="button"
+                                class="btn btn-sm btn-outline-light download-table"
+                                data-table-name="@Model.Donnees.NomDeLaTable"
+                                data-download-parts='@System.Text.Json.JsonSerializer.Serialize(new[] { Model.Metadonnee.Nom, Model.Donnees?.Libelle, "data" })'
+                                data-max-rows-per-part="1000000"
+                                title="Download data as CSV (ZIP)"
+                                aria-label="Download the Data table as a ZIP archive">
+                            <span class="material-symbols-outlined" aria-hidden="true">download</span>
+                            <span class="visually-hidden">Download data as ZIP</span>
+                        </button>
+                    }
+                </div>
             </div>
             <div class="card-body">
                 <p><strong>Label:</strong> @Model.Donnees.Libelle</p>
@@ -109,7 +124,22 @@
         <div class="card mb-4 shadow-sm">
             <div class="card-header bg-warning text-white d-flex justify-content-between align-items-center">
                 <span>Event logs</span>
-                <button type="button" class="btn btn-sm btn-outline-light toggle-section" data-section-title="Event logs" data-expanded-symbol="−" data-collapsed-symbol="+" aria-expanded="true" aria-label="Collapse the event logs section">−</button>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-light toggle-section" data-section-title="Event logs" data-expanded-symbol="−" data-collapsed-symbol="+" aria-expanded="true" aria-label="Collapse the event logs section">−</button>
+                    @if (Model.Metadonnee?.AutoriserLeTelechargement == true && !string.IsNullOrWhiteSpace(Model.DonneesEventLogs?.NomDeLaTable))
+                    {
+                        <button type="button"
+                                class="btn btn-sm btn-outline-light download-table"
+                                data-table-name="@Model.DonneesEventLogs.NomDeLaTable"
+                                data-download-parts='@System.Text.Json.JsonSerializer.Serialize(new[] { Model.Metadonnee.Nom, Model.DonneesEventLogs?.Libelle, "eventLogs" })'
+                                data-max-rows-per-part="1000000"
+                                title="Download event logs as CSV (ZIP)"
+                                aria-label="Download the Event logs table as a ZIP archive">
+                            <span class="material-symbols-outlined" aria-hidden="true">download</span>
+                            <span class="visually-hidden">Download event logs as ZIP</span>
+                        </button>
+                    }
+                </div>
             </div>
             <div class="card-body">
                 <p><strong>Label:</strong> @Model.DonneesEventLogs.Libelle</p>
@@ -161,7 +191,22 @@
         <div class="card mb-4 shadow-sm">
             <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
                 <span>Environmental context</span>
-                <button type="button" class="btn btn-sm btn-outline-light toggle-section" data-section-title="Environmental context" data-expanded-symbol="−" data-collapsed-symbol="+" aria-expanded="true" aria-label="Collapse the environmental context section">−</button>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-light toggle-section" data-section-title="Environmental context" data-expanded-symbol="−" data-collapsed-symbol="+" aria-expanded="true" aria-label="Collapse the environmental context section">−</button>
+                    @if (Model.Metadonnee?.AutoriserLeTelechargement == true && !string.IsNullOrWhiteSpace(Model.DonneesContexteEnvironnemental?.NomDeLaTable))
+                    {
+                        <button type="button"
+                                class="btn btn-sm btn-outline-light download-table"
+                                data-table-name="@Model.DonneesContexteEnvironnemental.NomDeLaTable"
+                                data-download-parts='@System.Text.Json.JsonSerializer.Serialize(new[] { Model.Metadonnee.Nom, Model.DonneesContexteEnvironnemental?.Libelle, "environment" })'
+                                data-max-rows-per-part="1000000"
+                                title="Download environmental context as CSV (ZIP)"
+                                aria-label="Download the Environmental context table as a ZIP archive">
+                            <span class="material-symbols-outlined" aria-hidden="true">download</span>
+                            <span class="visually-hidden">Download environmental context as ZIP</span>
+                        </button>
+                    }
+                </div>
             </div>
             <div class="card-body">
                 <p><strong>Label:</strong> @Model.DonneesContexteEnvironnemental.Libelle</p>
@@ -289,6 +334,99 @@
             } else if (toggleAllButton) {
                 toggleAllButton.classList.add('d-none');
             }
+
+            const downloadButtons = Array.from(document.querySelectorAll('.download-table'));
+
+            const parseDownloadParts = (rawParts) => {
+                if (!rawParts) {
+                    return [];
+                }
+
+                try {
+                    const parsed = JSON.parse(rawParts);
+                    if (Array.isArray(parsed)) {
+                        return parsed;
+                    }
+                } catch (_err) {
+                    // Fallback to delimiter-based parsing for legacy data attributes.
+                }
+
+                return rawParts.split('|');
+            };
+
+            const buildDownloadName = (rawParts) => {
+                const parts = parseDownloadParts(rawParts);
+                if (!parts || parts.length === 0) {
+                    return 'dataset';
+                }
+
+                const seen = new Set();
+                const normalized = [];
+
+                parts.forEach((part) => {
+                    const trimmed = (part ?? '').toString().trim();
+                    if (!trimmed) {
+                        return;
+                    }
+
+                    const key = trimmed.toLowerCase();
+                    if (seen.has(key)) {
+                        return;
+                    }
+
+                    seen.add(key);
+                    normalized.push(trimmed);
+                });
+
+                return normalized.length > 0 ? normalized.join('_') : 'dataset';
+            };
+
+            const sanitizeFileName = (name) => {
+                if (!name) {
+                    return 'dataset';
+                }
+
+                const invalidChars = /[\\/:*?"<>|]+/g;
+                const sanitized = name.replace(invalidChars, '_').trim();
+                if (!sanitized) {
+                    return 'dataset';
+                }
+
+                return sanitized.length > 120 ? sanitized.slice(0, 120) : sanitized;
+            };
+
+            downloadButtons.forEach((button) => {
+                button.addEventListener('click', () => {
+                    const tableName = button.dataset.tableName;
+                    if (!tableName) {
+                        return;
+                    }
+
+                    const fileBase = sanitizeFileName(buildDownloadName(button.dataset.downloadParts || tableName));
+                    const maxRows = button.dataset.maxRowsPerPart || '1000000';
+                    const url = `/api/exports/table/${encodeURIComponent(tableName)}/zip?maxRowsPerPart=${encodeURIComponent(maxRows)}`;
+
+                    button.disabled = true;
+                    button.setAttribute('aria-busy', 'true');
+
+                    const anchor = document.createElement('a');
+                    anchor.href = url;
+                    anchor.rel = 'noopener';
+                    anchor.style.display = 'none';
+                    anchor.download = `${fileBase}.zip`;
+                    document.body.appendChild(anchor);
+                    anchor.click();
+
+                    window.setTimeout(() => {
+                        anchor.remove();
+                    }, 0);
+
+                    window.setTimeout(() => {
+                        button.disabled = false;
+                        button.removeAttribute('aria-busy');
+                    }, 1500);
+                });
+            });
         });
     </script>
 }
