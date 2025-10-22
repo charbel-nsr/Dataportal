@@ -101,62 +101,81 @@
 
     @if (Model.Demandes != null && Model.Demandes.Any()){
         <div class="row mt-4">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle shadow-sm">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Last name</th>
-                            <th>First name</th>
-                            <th>Email</th>
-                            <th>Company</th>
-                            <th>Status</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var demande in Model.Demandes)
-                        {
+            <div class="paginated-table-wrapper" data-page-size="20">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle shadow-sm paginated-table">
+                        <thead class="table-light">
                             <tr>
-                                <td>@demande.Nom</td>
-                                <td>@demande.Prenom</td>
-                                <td>@demande.Email</td>
-                                <td>@demande.Entreprise?.Nom</td>
-                                <td>
-                                    @switch (demande.StatutDeLaDemande?.Libelle?.ToLower())
-                                    {
-                                        case "attente":
-                                            <i class="bi bi-hourglass-split text-warning" title="Pending">Pending</i>
-                                            break;
-                                        case "valider":
-                                            <i class="bi bi-check-circle-fill text-success" title="Approved">Approved</i>
-                                            break;
-                                        case "refuser":
-                                            <i class="bi bi-x-circle-fill text-danger" title="Rejected">Rejected</i>
-                                            break;
-                                        default:
-                                            <i class="bi bi-question-circle text-secondary" title="Unknown">Unknown</i>
-                                            break;
-                                    }
-                                </td>
-                                <td>
-                                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editModal" data-id="@demande.Id">
-                                        <i class="bi bi-pencil"></i>
-                                    </button>
-                                    @if (demande.StatutDeLaDemande?.Libelle?.ToLower() == "refuser")
-                                    {
-                                        <form method="post" asp-action="DeleteDemande" class="d-inline">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="id" value="@demande.Id" />
-                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </form>
-                                    }
-                                </td>
+                                <th>Last name</th>
+                                <th>First name</th>
+                                <th>Email</th>
+                                <th>Company</th>
+                                <th>Status</th>
+                                <th>Action</th>
                             </tr>
-                        }
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            @foreach (var demande in Model.Demandes)
+                            {
+                                <tr>
+                                    <td>@demande.Nom</td>
+                                    <td>@demande.Prenom</td>
+                                    <td>@demande.Email</td>
+                                    <td>@demande.Entreprise?.Nom</td>
+                                    <td>
+                                        @switch (demande.StatutDeLaDemande?.Libelle?.ToLower())
+                                        {
+                                            case "attente":
+                                                <i class="bi bi-hourglass-split text-warning" title="Pending">Pending</i>
+                                                break;
+                                            case "valider":
+                                                <i class="bi bi-check-circle-fill text-success" title="Approved">Approved</i>
+                                                break;
+                                            case "refuser":
+                                                <i class="bi bi-x-circle-fill text-danger" title="Rejected">Rejected</i>
+                                                break;
+                                            default:
+                                                <i class="bi bi-question-circle text-secondary" title="Unknown">Unknown</i>
+                                                break;
+                                        }
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editModal" data-id="@demande.Id">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        @if (demande.StatutDeLaDemande?.Libelle?.ToLower() == "refuser")
+                                        {
+                                            <form method="post" asp-action="DeleteDemande" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@demande.Id" />
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <div class="table-pagination-controls d-flex justify-content-end align-items-center gap-2 mt-3 d-none">
+                    <button type="button" class="table-pagination-button table-pagination-prev" aria-label="Previous page" disabled>
+                        <span class="material-symbols-outlined">
+                            arrow_circle_left
+                        </span>
+                    </button>
+                    <div class="d-flex align-items-center gap-1">
+                        <input type="number" class="form-control table-pagination-input" value="1" min="1" />
+                        <span>/</span>
+                        <span class="table-pagination-total">1</span>
+                    </div>
+                    <button type="button" class="table-pagination-button table-pagination-next" aria-label="Next page" disabled>
+                        <span class="material-symbols-outlined">
+                            arrow_circle_right
+                        </span>
+                    </button>
+                </div>
             </div>
         </div>
     }
