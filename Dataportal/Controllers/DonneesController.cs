@@ -29,11 +29,11 @@ namespace Dataportal.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "administrateur,editeur,utilisateur")]
+        [Authorize(Roles = "administrator,editor,user")]
         public IActionResult CreateStep1()
         {
             var visibilites = _context.Visibilite.AsQueryable();
-            if (User.IsInRole("utilisateur"))
+            if (User.IsInRole("user"))
             {
                 visibilites = visibilites.Where(v => v.Id == VisibiliteIds.Personnelle);
             }
@@ -51,7 +51,7 @@ namespace Dataportal.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "administrateur,editeur,utilisateur")]
+        [Authorize(Roles = "administrator,editor,user")]
         [ValidateAntiForgeryToken]
         public IActionResult CreateStep1(MetadonneeCreateViewModel model)
         {
@@ -61,7 +61,7 @@ namespace Dataportal.Controllers
                 model.Licences = _context.Licence.Where(l => l.Actif).ToList();
                 model.Sites = _context.Site.Where(s => s.Actif).ToList();
                 var visibilites = _context.Visibilite.AsQueryable();
-                if (User.IsInRole("utilisateur"))
+                if (User.IsInRole("user"))
                 {
                     visibilites = visibilites.Where(v => v.Id == VisibiliteIds.Personnelle);
                 }
@@ -72,7 +72,7 @@ namespace Dataportal.Controllers
                 return View(model);
             }
 
-            if (User.IsInRole("utilisateur") && model.IdVisibilite != VisibiliteIds.Personnelle)
+            if (User.IsInRole("user") && model.IdVisibilite != VisibiliteIds.Personnelle)
             {
                 ModelState.AddModelError("IdVisibilite", "Standard users can only create personal data.");
                 // Reload choices
@@ -158,7 +158,7 @@ namespace Dataportal.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "administrateur,editeur,utilisateur")]
+        [Authorize(Roles = "administrator,editor,user")]
         public IActionResult CreateStep2()
         {
             var (resumeId, nextStep) = GetCreationWizardState();
@@ -193,7 +193,7 @@ namespace Dataportal.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "administrateur,editeur,utilisateur")]
+        [Authorize(Roles = "administrator,editor,user")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateStep2(DonneesCreateStep2ViewModel model)
         {
@@ -213,7 +213,7 @@ namespace Dataportal.Controllers
                 model.QualiteDescriptions = qualiteDataLocal.Descriptions;
             }
 
-            if (User.IsInRole("utilisateur") && step1Data.IdVisibilite != VisibiliteIds.Personnelle)
+            if (User.IsInRole("user") && step1Data.IdVisibilite != VisibiliteIds.Personnelle)
             {
                 TempData.Remove("Step1Data");
                 return Forbid();
@@ -360,7 +360,7 @@ namespace Dataportal.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "administrateur,editeur,utilisateur")]
+        [Authorize(Roles = "administrator,editor,user")]
         public IActionResult CreateStep3(int id)
         {
             var (resumeId, nextStep) = GetCreationWizardState();
@@ -380,7 +380,7 @@ namespace Dataportal.Controllers
                 return NotFound();
             }
 
-            if (User.IsInRole("utilisateur") && metadonnee.IdVisibilite != VisibiliteIds.Personnelle)
+            if (User.IsInRole("user") && metadonnee.IdVisibilite != VisibiliteIds.Personnelle)
             {
                 return Forbid();
             }
@@ -398,7 +398,7 @@ namespace Dataportal.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "administrateur,editeur,utilisateur")]
+        [Authorize(Roles = "administrator,editor,user")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateStep3(DonneesEventLogsCreateStep3ViewModel model)
         {
@@ -422,7 +422,7 @@ namespace Dataportal.Controllers
                 return RedirectToAction("CreateStep1");
             }
 
-            if (User.IsInRole("utilisateur") && metadonnee.IdVisibilite != VisibiliteIds.Personnelle)
+            if (User.IsInRole("user") && metadonnee.IdVisibilite != VisibiliteIds.Personnelle)
             {
                 return Forbid();
             }
@@ -515,7 +515,7 @@ namespace Dataportal.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "administrateur,editeur,utilisateur")]
+        [Authorize(Roles = "administrator,editor,user")]
         [ValidateAntiForgeryToken]
         public IActionResult SkipStep3(int id)
         {
@@ -525,7 +525,7 @@ namespace Dataportal.Controllers
                 return NotFound();
             }
 
-            if (User.IsInRole("utilisateur") && metadonnee.IdVisibilite != VisibiliteIds.Personnelle)
+            if (User.IsInRole("user") && metadonnee.IdVisibilite != VisibiliteIds.Personnelle)
             {
                 return Forbid();
             }
@@ -537,7 +537,7 @@ namespace Dataportal.Controllers
 
         // GET: /Donnees/CreateStep4/{id}
         [HttpGet]
-        [Authorize(Roles = "administrateur,editeur,utilisateur")]
+        [Authorize(Roles = "administrator,editor,user")]
         public IActionResult CreateStep4(int id)
         {
             var (resumeId, nextStep) = GetCreationWizardState();
@@ -569,7 +569,7 @@ namespace Dataportal.Controllers
                 return NotFound();
             }
 
-            if (User.IsInRole("utilisateur") && metadonnee.IdVisibilite != VisibiliteIds.Personnelle)
+            if (User.IsInRole("user") && metadonnee.IdVisibilite != VisibiliteIds.Personnelle)
             {
                 return Forbid();
             }
@@ -588,7 +588,7 @@ namespace Dataportal.Controllers
 
         // POST: /Donnees/CreateStep4
         [HttpPost]
-        [Authorize(Roles = "administrateur,editeur,utilisateur")]
+        [Authorize(Roles = "administrator,editor,user")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateStep4(DonneesContexteEnvironnementalCreateStep4ViewModel model)
         {
@@ -612,7 +612,7 @@ namespace Dataportal.Controllers
                 return RedirectToAction("CreateStep1");
             }
 
-            if (User.IsInRole("utilisateur") && metadonnee.IdVisibilite != VisibiliteIds.Personnelle)
+            if (User.IsInRole("user") && metadonnee.IdVisibilite != VisibiliteIds.Personnelle)
             {
                 return Forbid();
             }

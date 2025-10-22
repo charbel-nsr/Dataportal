@@ -12,7 +12,7 @@
                 <tr>
                     <th>Domain</th>
                     <th>Active</th>
-                    @if (User.IsInRole("administrateur"))
+                    @if (User.IsInRole("administrator"))
                     {
                         <th>Action</th>
                     }
@@ -33,7 +33,7 @@
                                 <span class="badge bg-secondary">Inactive</span>
                             }
                         </td>
-                        @if (User.IsInRole("administrateur"))
+                        @if (User.IsInRole("administrator"))
                         {
                             <td>
                                 <form method="post" asp-action="ToggleDomaineActif" class="d-inline">
@@ -60,7 +60,7 @@
 </div>
 <div class="modal-footer">
     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-    @if (User.IsInRole("administrateur"))
+    @if (User.IsInRole("administrator"))
     {
         <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addDomainModal">
             Add a domain
@@ -68,7 +68,7 @@
     }
 </div>
 
-@if (User.IsInRole("administrateur"))
+@if (User.IsInRole("administrator"))
 {
     <!-- Add Domain Modal -->
     <div class="modal fade" id="addDomainModal" tabindex="-1" aria-labelledby="addDomainModalLabel" aria-hidden="true">
