@@ -118,6 +118,36 @@ header nav.scrolled {
     transform: scale(1.1);
 }
 
+/* Home latest datasets */
+.latest-datasets .latest-dataset-card {
+    border: none;
+    border-radius: 1rem;
+    padding: 1.75rem 1.5rem;
+    width: 100%;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.latest-datasets .latest-dataset-card .card-body {
+    padding: 0;
+}
+
+.latest-datasets .latest-dataset-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 18px 36px rgba(0, 0, 0, 0.12);
+}
+
+.latest-datasets .dataset-icon-circle {
+    width: 96px;
+    height: 96px;
+    background-color: #f1f1f1;
+}
+
+.latest-datasets .dataset-icon {
+    font-size: 42px;
+    color: #e72b37;
+}
+
 /*Login*/
 .text-danger ul {
     list-style-type: none;

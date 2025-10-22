@@ -1,4 +1,6 @@
-﻿@{
+﻿@model Dataportal.ViewModels.AccueilIndexViewModel
+
+@{
     ViewData["Title"] = "Home";
 }
 
@@ -28,7 +30,7 @@
                     }
                     else
                     {
-                        <a href="/AccesDonnees/RechercheDonnees" class="btn btn-primary mt-4">Data</a>
+                        <a href="/AccesDonnees/RechercheDonnees" class="btn btn-primary mt-4">View data</a>
                     }
                 </div>
             </div>
@@ -38,3 +40,29 @@
         </div>
     </div>
 </div>
+
+@if (Model?.LatestDatasets?.Count > 0)
+{
+    <section class="latest-datasets py-5">
+        <div class="container">
+            <h2 class="text-center mb-5">Latest datasets</h2>
+            <div class="row g-5 justify-content-center">
+                @foreach (var dataset in Model.LatestDatasets)
+                {
+                    <div class="col-12 col-sm-6 col-lg-4 col-xl-3 d-flex">
+                        <div class="card latest-dataset-card h-100 text-center">
+                            <div class="card-body d-flex flex-column align-items-center">
+                                <div class="dataset-icon-circle rounded-circle d-flex align-items-center justify-content-center mb-3">
+                                    <span class="material-symbols-outlined dataset-icon">@dataset.IconName</span>
+                                </div>
+                                <h5 class="card-title mb-1">@dataset.Name</h5>
+                                <p class="text-muted mb-4">@(string.IsNullOrWhiteSpace(dataset.EnergyType) ? "Other" : dataset.EnergyType)</p>
+                                <a class="btn btn-outline-primary mt-auto" href="@Url.Action("Details", "Donnees", new { id = dataset.Id })">See data sets</a>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+}

@@ -1,21 +1,52 @@
+using System;
 using System.Diagnostics;
-using Microsoft.AspNetCore.Mvc;
+using System.Linq;
+using System.Threading.Tasks;
+using Dataportal.Classes;
+using Dataportal.Context;
 using Dataportal.Models;
+using Dataportal.ViewModels;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace Dataportal.Controllers;
 
 public class AccueilController : Controller
 {
     private readonly ILogger<AccueilController> _logger;
+    private readonly ApplicationDbContext _context;
 
-    public AccueilController(ILogger<AccueilController> logger)
+    public AccueilController(ILogger<AccueilController> logger, ApplicationDbContext context)
     {
         _logger = logger;
+        _context = context;
     }
 
-    public IActionResult Index()
+    public async Task<IActionResult> Index()
     {
-        return View();
+        var latestMetadonnees = await _context.Metadonnee
+            .AsNoTracking()
+            .Include(m => m.TypeEnergieRenouvelable)
+            .Where(m => m.IdVisibilite == VisibiliteIds.Public)
+            .OrderByDescending(m => m.DernierMiseAJour ?? DateTime.MinValue)
+            .ThenByDescending(m => m.Id)
+            .Take(3)
+            .ToListAsync();
+
+        var viewModel = new AccueilIndexViewModel
+        {
+            LatestDatasets = latestMetadonnees
+                .Select(m => new LatestDatasetViewModel
+                {
+                    Id = m.Id,
+                    Name = m.Nom,
+                    EnergyType = m.TypeEnergieRenouvelable?.Libelle,
+                    IconName = ResolveIconName(m.TypeEnergieRenouvelable?.Libelle)
+                })
+                .ToList()
+        };
+
+        return View(viewModel);
     }
 
     public IActionResult Politiques()
@@ -38,5 +69,32 @@ public class AccueilController : Controller
             return View("40X");
         }
         return View("50X");
+    }
+
+    private static string ResolveIconName(string? energyType)
+    {
+        if (string.IsNullOrWhiteSpace(energyType))
+        {
+            return "energy_savings_leaf";
+        }
+
+        var normalized = energyType.Trim().ToLowerInvariant();
+
+        if (normalized.Contains("wind") || normalized.Contains("éolien") || normalized.Contains("eolien"))
+        {
+            return "wind_power";
+        }
+
+        if (normalized.Contains("solar") || normalized.Contains("solaire") || normalized.Contains("photovolta"))
+        {
+            return "solar_power";
+        }
+
+        if (normalized.Contains("hydro") || normalized.Contains("water") || normalized.Contains("hydroé") || normalized.Contains("hydroe"))
+        {
+            return "water_ec";
+        }
+
+        return "energy_savings_leaf";
     }
 }
