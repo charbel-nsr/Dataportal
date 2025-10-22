@@ -24,7 +24,7 @@ namespace Dataportal.Controllers
         public IActionResult RechercheDonnees(
             string? search,
             int? idLicence,
-            int? idSite,
+            int? idTypeEnergieRenouvelable,
             bool? seriesTemporelles,
             bool? anonymiser,
             bool? autoriserLeTelechargement,
@@ -77,7 +77,7 @@ namespace Dataportal.Controllers
             }
 
             if (idLicence.HasValue) query = query.Where(m => m.IdLicence == idLicence);
-            if (idSite.HasValue) query = query.Where(m => m.IdSite == idSite);
+            if (idTypeEnergieRenouvelable.HasValue) query = query.Where(m => m.IdTypeEnergieRenouvelable == idTypeEnergieRenouvelable);
             if (seriesTemporelles.HasValue) query = query.Where(m => m.SeriesTemporelles == seriesTemporelles);
             if (anonymiser.HasValue) query = query.Where(m => m.Anonymiser == anonymiser);
             if (autoriserLeTelechargement.HasValue) query = query.Where(m => m.AutoriserLeTelechargement == autoriserLeTelechargement);
@@ -88,14 +88,14 @@ namespace Dataportal.Controllers
             {
                 Search = search,
                 IdLicence = idLicence,
-                IdSite = idSite,
+                IdTypeEnergieRenouvelable = idTypeEnergieRenouvelable,
                 SeriesTemporelles = seriesTemporelles,
                 Anonymiser = anonymiser,
                 AutoriserLeTelechargement = autoriserLeTelechargement,
                 HasEventLogs = hasEventLogs,
                 HasContextEnv = hasContextEnv,
                 Licences = _context.Licence.Where(l => l.Actif).ToList(),
-                Sites = _context.Site.Where(s => s.Actif).ToList(),
+                TypesEnergieRenouvelable = _context.TypeEnergieRenouvelable.OrderBy(t => t.Libelle).ToList(),
                 Metadonnees = query.ToList()
             };
 

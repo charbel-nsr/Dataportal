@@ -7,7 +7,7 @@ namespace Dataportal.ViewModels
         // Filters
         public string? Search { get; set; }
         public int? IdLicence { get; set; }
-        public int? IdSite { get; set; }
+        public int? IdTypeEnergieRenouvelable { get; set; }
         public bool? SeriesTemporelles { get; set; }
         public bool? Anonymiser { get; set; }
         public bool? AutoriserLeTelechargement { get; set; }
@@ -16,7 +16,7 @@ namespace Dataportal.ViewModels
 
         // Dropdown data
         public IEnumerable<Licence>? Licences { get; set; }
-        public IEnumerable<Site>? Sites { get; set; }
+        public IEnumerable<TypeEnergieRenouvelable>? TypesEnergieRenouvelable { get; set; }
 
         // Result
         public List<Metadonnee> Metadonnees { get; set; } = new();

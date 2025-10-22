@@ -73,14 +73,14 @@
                     </div>
                     <div class="col-12 col-lg-6">
                         <div class="form-floating">
-                            <select class="form-select" name="idSite" id="idSite">
-                                <option value="">All sites</option>
-                                @foreach (var site in Model.Sites ?? new List<Dataportal.Models.Site>())
+                            <select class="form-select" name="idTypeEnergieRenouvelable" id="idTypeEnergieRenouvelable">
+                                <option value="">All energy types</option>
+                                @foreach (var energyType in Model.TypesEnergieRenouvelable ?? new List<Dataportal.Models.TypeEnergieRenouvelable>())
                                 {
-                                    <option value="@site.Id" selected="@(site.Id == Model.IdSite ? "selected" : null)">@site.Nom</option>
+                                    <option value="@energyType.Id" selected="@(energyType.Id == Model.IdTypeEnergieRenouvelable ? "selected" : null)">@energyType.Libelle</option>
                                 }
                             </select>
-                            <label for="idSite">Site</label>
+                            <label for="idTypeEnergieRenouvelable">Energy type</label>
                         </div>
                     </div>
                 </div>
