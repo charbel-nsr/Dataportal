@@ -47,7 +47,7 @@
             </div>
         </form>
     </div>
-    @if (User.IsInRole("administrateur"))
+    @if (User.IsInRole("administrator"))
     {
         <div class="col-12 col-md-auto mb-3">
             <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createModal">
@@ -84,7 +84,7 @@
                                     }
                                 </td>
                                 <td>
-                                    @if (User.IsInRole("administrateur"))
+                                    @if (User.IsInRole("administrator"))
                                     {
                                         if (!entreprise.Actif)
                                         {
@@ -116,7 +116,7 @@
                                             title="Manage domains">
                                         <i class="bi bi-envelope"></i>
                                     </button>
-                                    @if (User.IsInRole("administrateur"))
+                                    @if (User.IsInRole("administrator"))
                                     {
                                         <button type="button" class="btn btn-sm btn-outline-primary"
                                                 data-bs-toggle="modal"
@@ -172,7 +172,7 @@
     </div>
 </div>
 
-@if (User.IsInRole("administrateur"))
+@if (User.IsInRole("administrator"))
 {
     <!-- Create Modal -->
     <div class="modal fade" id="createModal" tabindex="-1" aria-labelledby="createModalLabel" aria-hidden="true">

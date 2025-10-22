@@ -34,7 +34,7 @@
                         </li>
                         @if (User.Identity.IsAuthenticated)
                         {
-                            @if (User.IsInRole("administrateur") || User.IsInRole("editeur"))
+                            @if (User.IsInRole("administrator") || User.IsInRole("editor"))
                             {
                                 <li class="nav-item dropdown">
                                     <a class="nav-link dropdown-toggle text-dark" href="#" id="controleDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Control</a>
@@ -57,12 +57,12 @@
                                     </ul>
                                 </li>
                             }
-                            @if (User.IsInRole("administrateur") || User.IsInRole("editeur"))
+                            @if (User.IsInRole("administrator") || User.IsInRole("editor"))
                             {
                                 <li class="nav-item dropdown">
                                     <a class="nav-link dropdown-toggle text-dark" href="#" id="gestionDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Management</a>
                                     <ul class="dropdown-menu" aria-labelledby="gestionDropdown">
-                                        @if (User.IsInRole("administrateur"))
+                                        @if (User.IsInRole("administrator"))
                                         {
                                             <li>
                                             <a class="dropdown-item" asp-area="" asp-controller="Gestion" asp-action="DemandeDeCompte">

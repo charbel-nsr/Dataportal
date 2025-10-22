@@ -108,7 +108,7 @@ namespace Dataportal.Controllers
                                 new Claim(ClaimTypes.Name, utilisateur.Email),
                                 new Claim("NomComplet", $"{utilisateur.Prenom} {utilisateur.Nom}"),
                                 new Claim("UserId", utilisateur.Id.ToString()),
-                                new Claim(ClaimTypes.Role, utilisateur.Role != null ? utilisateur.Role.Libelle.ToString() : "Observateur")
+                                new Claim(ClaimTypes.Role, utilisateur.Role != null ? utilisateur.Role.Libelle.ToString() : "Viewer")
                             };
 
                             var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);

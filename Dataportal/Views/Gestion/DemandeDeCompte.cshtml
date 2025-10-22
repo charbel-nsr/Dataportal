@@ -125,13 +125,13 @@
                                     <td>
                                         @switch (demande.StatutDeLaDemande?.Libelle?.ToLower())
                                         {
-                                            case "attente":
+                                            case "pending":
                                                 <i class="bi bi-hourglass-split text-warning" title="Pending">Pending</i>
                                                 break;
-                                            case "valider":
+                                            case "approved":
                                                 <i class="bi bi-check-circle-fill text-success" title="Approved">Approved</i>
                                                 break;
-                                            case "refuser":
+                                            case "rejected":
                                                 <i class="bi bi-x-circle-fill text-danger" title="Rejected">Rejected</i>
                                                 break;
                                             default:
@@ -143,7 +143,7 @@
                                         <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editModal" data-id="@demande.Id">
                                             <i class="bi bi-pencil"></i>
                                         </button>
-                                        @if (demande.StatutDeLaDemande?.Libelle?.ToLower() == "refuser")
+                                        @if (demande.StatutDeLaDemande?.Libelle?.ToLower() == "rejected")
                                         {
                                             <form method="post" asp-action="DeleteDemande" class="d-inline">
                                                 @Html.AntiForgeryToken()

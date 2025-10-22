@@ -25,7 +25,7 @@ namespace Dataportal.Controllers
 
         // GET: /Gestion/DemandeDeCompte
         [HttpGet]
-        [Authorize(Roles = "administrateur")]
+        [Authorize(Roles = "administrator")]
         public IActionResult DemandeDeCompte(string search, int? selectedEntrepriseId, int? selectedStatutId, DateTime? dateMin, DateTime? dateMax)
         {
             var query = _context.DemandeDeCompte
@@ -72,7 +72,7 @@ namespace Dataportal.Controllers
 
         // GET: /Gestion/DemandeDeCompteDetails/5 (for AJAX modal)
         [HttpGet]
-        [Authorize(Roles = "administrateur")]
+        [Authorize(Roles = "administrator")]
         public IActionResult DemandeDeCompteDetails(int id)
         {
             var demande = _context.DemandeDeCompte
@@ -99,19 +99,21 @@ namespace Dataportal.Controllers
 
         // POST: /Gestion/ApprouverDemande (submit approve from modal)
         [HttpPost]
-        [Authorize(Roles = "administrateur")]
+        [Authorize(Roles = "administrator")]
         public IActionResult ApprouverDemande(int id, int idStatut, int idEntreprise, bool emailVerifie, string commentaire, int? idRole)
         {
             var demande = _context.DemandeDeCompte.FirstOrDefault(d => d.Id == id);
             if (demande == null)
                 return NotFound();
 
-            var statutEnAttenteOuRefuse = _context.StatutDeLaDemande
-                .Where(s => s.Libelle.ToLower().Contains("attente") || s.Libelle.ToLower().Contains("refus"))
+            var pendingOrRejectedStatuses = _context.StatutDeLaDemande
+                .Where(s => s.Libelle != null &&
+                            (s.Libelle.Equals("pending", StringComparison.OrdinalIgnoreCase) ||
+                             s.Libelle.Equals("rejected", StringComparison.OrdinalIgnoreCase)))
                 .Select(s => s.Id)
                 .ToList();
 
-            if (!statutEnAttenteOuRefuse.Contains(demande.IdStatutDeLaDemande))
+            if (!pendingOrRejectedStatuses.Contains(demande.IdStatutDeLaDemande))
                 return Forbid();
 
             if (idStatut == StatutDeLaDemandeIds.Valider) // Approving
@@ -169,7 +171,7 @@ namespace Dataportal.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "administrateur")]
+        [Authorize(Roles = "administrator")]
         public IActionResult DeleteDemande(int id)
         {
             var demande = _context.DemandeDeCompte.FirstOrDefault(d => d.Id == id);
@@ -194,7 +196,7 @@ namespace Dataportal.Controllers
 
         // GET: /Gestion/Entreprises
         [HttpGet]
-        [Authorize(Roles = "administrateur,editeur")]
+        [Authorize(Roles = "administrator,editor")]
         public IActionResult Entreprises(string search, bool? actif)
         {
             var query = _context.Entreprise.AsQueryable();
@@ -218,7 +220,7 @@ namespace Dataportal.Controllers
         //Post: /Gestion/CreateEntreprise
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "administrateur")]
+        [Authorize(Roles = "administrator")]
         public IActionResult CreateEntreprise(string Nom, bool Actif)
         {
             if (string.IsNullOrWhiteSpace(Nom))
@@ -254,7 +256,7 @@ namespace Dataportal.Controllers
         // POST: /Gestion/ActivateEntreprise
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "administrateur")]
+        [Authorize(Roles = "administrator")]
         public IActionResult ActivateEntreprise(int id)
         {
             var entreprise = _context.Entreprise.FirstOrDefault(e => e.Id == id);
@@ -274,7 +276,7 @@ namespace Dataportal.Controllers
         // POST: /Gestion/DeactivateEntreprise
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "administrateur")]
+        [Authorize(Roles = "administrator")]
         public IActionResult DeactivateEntreprise(int id)
         {
             var entreprise = _context.Entreprise.FirstOrDefault(e => e.Id == id);
@@ -294,7 +296,7 @@ namespace Dataportal.Controllers
         // POST: /Gestion/DeleteEntreprise
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "administrateur")]
+        [Authorize(Roles = "administrator")]
         public IActionResult DeleteEntreprise(int id)
         {
             var entreprise = _context.Entreprise
@@ -323,7 +325,7 @@ namespace Dataportal.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "administrateur")]
+        [Authorize(Roles = "administrator")]
         public IActionResult EditEntreprise(int id, string Nom, bool Actif)
         {
             if (string.IsNullOrWhiteSpace(Nom))
@@ -357,7 +359,7 @@ namespace Dataportal.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "administrateur,editeur")]
+        [Authorize(Roles = "administrator,editor")]
         public IActionResult GetDomaines(int id)
         {
             var entreprise = _context.Entreprise
@@ -385,7 +387,7 @@ namespace Dataportal.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "administrateur")]
+        [Authorize(Roles = "administrator")]
         public IActionResult AddDomaine(int entrepriseId, string newDomaine, bool Actif)
         {
             if (string.IsNullOrWhiteSpace(newDomaine))
@@ -428,7 +430,7 @@ namespace Dataportal.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "administrateur")]
+        [Authorize(Roles = "administrator")]
         public IActionResult ToggleDomaineActif(int id)
         {
             var domaine = _context.DomaineEmail.FirstOrDefault(d => d.Id == id);
@@ -447,7 +449,7 @@ namespace Dataportal.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "administrateur")]
+        [Authorize(Roles = "administrator")]
         public IActionResult DeleteDomaine(int id)
         {
             var domaine = _context.DomaineEmail
@@ -478,7 +480,7 @@ namespace Dataportal.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "administrateur,editeur")]
+        [Authorize(Roles = "administrator,editor")]
         public IActionResult Utilisateurs(string search, int? selectedEntrepriseId, int? selectedRoleId, bool? compteActif)
         {
             var query = _context.Utilisateur
@@ -525,7 +527,7 @@ namespace Dataportal.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "administrateur")]
+        [Authorize(Roles = "administrator")]
         public IActionResult ToggleUtilisateurActif(int id)
         {
             //TODO: send email on activation or deactivation of the user
@@ -563,7 +565,7 @@ namespace Dataportal.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "administrateur")]
+        [Authorize(Roles = "administrator")]
         public IActionResult EditUserRole(int id, int newRoleId)
         {
             var utilisateur = _context.Utilisateur.FirstOrDefault(u => u.Id == id);

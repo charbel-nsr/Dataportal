@@ -8,7 +8,7 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace Dataportal.Controllers
 {
-    [Authorize(Roles = "administrateur,editeur")]
+    [Authorize(Roles = "administrator,editor")]
     public class ControleController : Controller
     {
         private readonly ApplicationDbContext _context;

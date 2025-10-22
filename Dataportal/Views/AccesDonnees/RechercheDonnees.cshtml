@@ -98,7 +98,7 @@
         </form>
     </div>
     
-    @if (User.IsInRole("administrateur") || User.IsInRole("editeur"))
+    @if (User.IsInRole("administrator") || User.IsInRole("editor"))
     {
         <div class="col-12 col-md-auto mb-3">
             <a class="btn btn-success" href="@Url.Action("CreateStep1", "Donnees")">
@@ -145,11 +145,11 @@
                                         }
                                     </td>
                                     <td>
-                                        @if (User.IsInRole("administrateur") && m.IdVisibilite == VisibiliteIds.Interne)
+                                        @if (User.IsInRole("administrator") && m.IdVisibilite == VisibiliteIds.Interne)
                                         {
                                             @(m.Visibilite?.Libelle + $" ({m.Utilisateur?.Entreprise?.Nom})")
                                         }
-                                        else if (User.IsInRole("administrateur") && m.IdVisibilite == VisibiliteIds.Personnelle)
+                                        else if (User.IsInRole("administrator") && m.IdVisibilite == VisibiliteIds.Personnelle)
                                         {
                                             @(m.Visibilite?.Libelle + $" ({m.Utilisateur?.Prenom} {m.Utilisateur?.Nom})")
                                         }
@@ -163,7 +163,7 @@
                                         <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("Details", "Donnees", new { id = m.Id })" title="View details">
                                             <i class="bi bi-exclamation-circle"></i>
                                         </a>
-                                        @if (User.IsInRole("administrateur") || (User.Identity.IsAuthenticated && User.FindFirst("UserId")?.Value == m.IdUtilisateur.ToString()))
+                                        @if (User.IsInRole("administrator") || (User.Identity.IsAuthenticated && User.FindFirst("UserId")?.Value == m.IdUtilisateur.ToString()))
                                         {
                                             <button type="button" class="btn btn-sm btn-outline-danger ms-1" data-bs-toggle="modal" data-bs-target="#deleteModal" data-id="@m.Id" title="Delete">
                                                 <i class="bi bi-trash"></i>

@@ -125,7 +125,7 @@
                                             data-linkedin="@u.LienLinkedIn">
                                         <i class="bi bi-exclamation-circle"></i>
                                     </button>
-                                    @if (User.IsInRole("administrateur"))
+                                    @if (User.IsInRole("administrator"))
                                     {
                                         <button type="button"
                                                 class="btn btn-sm btn-outline-primary"
@@ -190,13 +190,13 @@
                 <p><strong>Last login:</strong> <span id="detailLogin"></span></p>
                 <p><strong>Description:</strong> <span id="detailDescription"></span></p>
                 <p><strong>LinkedIn:</strong> <a id="detailLinkedIn" href="#" target="_blank"></a></p>
-                @if (User.IsInRole("administrateur"))
+                @if (User.IsInRole("administrator"))
                 {
                     <div id="confirmWarning" class="alert alert-danger d-none mt-3"></div>
                 }
             </div>
             <div class="modal-footer">
-                @if (User.IsInRole("administrateur"))
+                @if (User.IsInRole("administrator"))
                 {
                     <form id="toggleActifForm" method="post" asp-action="ToggleUtilisateurActif" class="d-flex gap-2 align-items-center m-0">
                         @Html.AntiForgeryToken()
@@ -212,7 +212,7 @@
     </div>
 </div>
 
-@if (User.IsInRole("administrateur"))
+@if (User.IsInRole("administrator"))
 {
     <div class="modal fade" id="editRoleModal" tabindex="-1" aria-labelledby="editRoleModalLabel" aria-hidden="true">
         <div class="modal-dialog">
@@ -301,7 +301,7 @@
             }
 
             if (toggleActifForm && toggleActifButton && toggleActifButtonText) {
-                if (role && role.toLowerCase() === 'administrateur') {
+                if (role && role.toLowerCase() === 'administrator') {
                     // Hide activation controls for administrators
                     toggleActifForm.classList.add('d-none');
                 } else {
