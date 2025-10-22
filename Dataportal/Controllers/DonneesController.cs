@@ -102,8 +102,7 @@ namespace Dataportal.Controllers
 
         private int? TryGetCurrentUserId()
         {
-            var claim = User.FindFirst("UserId")?.Value;
-            return int.TryParse(claim, out var id) ? id : (int?)null;
+            return HttpContextUserHelper.TryGetCurrentUserId(User);
         }
 
         /// <summary>
@@ -812,123 +811,17 @@ namespace Dataportal.Controllers
 
         private int? GetCurrentUserRole()
         {
-            if (HttpContext.Items.TryGetValue(nameof(GetCurrentUserRole), out var cached) && cached is int cachedRole)
-            {
-                return cachedRole;
-            }
-
-            var claim = User.FindFirst("RoleId")?.Value;
-            if (int.TryParse(claim, out var roleId))
-            {
-                HttpContext.Items[nameof(GetCurrentUserRole)] = roleId;
-                return roleId;
-            }
-
-            var userId = TryGetCurrentUserId();
-            if (!userId.HasValue)
-            {
-                return null;
-            }
-
-            var resolvedRoleId = _context.Utilisateur
-                .AsNoTracking()
-                .Where(u => u.Id == userId.Value)
-                .Select(u => (int?)u.IdRole)
-                .FirstOrDefault();
-
-            if (resolvedRoleId.HasValue)
-            {
-                HttpContext.Items[nameof(GetCurrentUserRole)] = resolvedRoleId.Value;
-            }
-
-            return resolvedRoleId;
+            return HttpContextUserHelper.GetCurrentUserRole(HttpContext, _context);
         }
 
         private int? GetCurrentUserEntrepriseId()
         {
-            if (HttpContext.Items.TryGetValue(nameof(GetCurrentUserEntrepriseId), out var cached) && cached is int cachedId)
-            {
-                return cachedId;
-            }
-
-            var claim = User.FindFirst("EntrepriseId")?.Value;
-            if (int.TryParse(claim, out var entrepriseId))
-            {
-                HttpContext.Items[nameof(GetCurrentUserEntrepriseId)] = entrepriseId;
-                return entrepriseId;
-            }
-
-            var userId = TryGetCurrentUserId();
-            if (!userId.HasValue)
-            {
-                return null;
-            }
-
-            var resolvedEntrepriseId = _context.Utilisateur
-                .AsNoTracking()
-                .Where(u => u.Id == userId.Value)
-                .Select(u => (int?)u.IdEntreprise)
-                .FirstOrDefault();
-
-            if (resolvedEntrepriseId.HasValue)
-            {
-                HttpContext.Items[nameof(GetCurrentUserEntrepriseId)] = resolvedEntrepriseId.Value;
-            }
-
-            return resolvedEntrepriseId;
+            return HttpContextUserHelper.GetCurrentUserEntrepriseId(HttpContext, _context);
         }
 
         private bool CanCurrentUserAccessMetadonnee(Metadonnee metadonnee, out bool requiresAuthentication)
         {
-            var isAuthenticated = User.Identity?.IsAuthenticated ?? false;
-            requiresAuthentication = false;
-
-            if (metadonnee.IdVisibilite == VisibiliteIds.Public)
-            {
-                return true;
-            }
-
-            if (!isAuthenticated)
-            {
-                requiresAuthentication = true;
-                return false;
-            }
-
-            var role = GetCurrentUserRole();
-            var userId = TryGetCurrentUserId();
-
-            switch (metadonnee.IdVisibilite)
-            {
-                case VisibiliteIds.Prive:
-                    return true;
-
-                case VisibiliteIds.Interne:
-                    if (role == RoleIds.Administrateur)
-                    {
-                        return true;
-                    }
-
-                    if (role == RoleIds.Utilisateur || role == RoleIds.Editeur)
-                    {
-                        var entrepriseId = GetCurrentUserEntrepriseId();
-                        return entrepriseId.HasValue &&
-                            metadonnee.Utilisateur != null &&
-                            metadonnee.Utilisateur.IdEntreprise == entrepriseId.Value;
-                    }
-
-                    return false;
-
-                case VisibiliteIds.Personnelle:
-                    if (role == RoleIds.Administrateur)
-                    {
-                        return true;
-                    }
-
-                    return userId.HasValue && metadonnee.IdUtilisateur == userId.Value;
-
-                default:
-                    return false;
-            }
+            return HttpContextUserHelper.CanCurrentUserAccessMetadonnee(HttpContext, _context, metadonnee, out requiresAuthentication);
         }
 
 
