@@ -12,6 +12,7 @@ using Newtonsoft.Json;
 using System.Globalization;
 using Microsoft.AspNetCore.Http;
 using System.Linq;
+using System.Collections.Generic;
 
 namespace Dataportal.Controllers
 {
@@ -122,10 +123,19 @@ namespace Dataportal.Controllers
             return (metadonneeId, nextStep);
         }
 
-        private List<SelectListItem> BuildQualiteOptions()
+        private (List<SelectListItem> Options, Dictionary<string, string> Descriptions) BuildQualiteOptions()
         {
-            var options = _context.QualiteDonnees
+            var qualites = _context.QualiteDonnees
                 .OrderBy(q => q.Libelle)
+                .Select(q => new
+                {
+                    q.Id,
+                    q.Libelle,
+                    q.Description
+                })
+                .ToList();
+
+            var options = qualites
                 .Select(q => new SelectListItem
                 {
                     Value = q.Id.ToString(),
@@ -139,7 +149,13 @@ namespace Dataportal.Controllers
                 Text = "Select a quality"
             });
 
-            return options;
+            var descriptions = qualites.ToDictionary(
+                q => q.Id.ToString(),
+                q => q.Description ?? string.Empty);
+
+            descriptions[string.Empty] = string.Empty;
+
+            return (options, descriptions);
         }
 
         [HttpGet]
@@ -166,11 +182,13 @@ namespace Dataportal.Controllers
             }
 
             // show the upload + Donnees form
+            var qualiteData = BuildQualiteOptions();
             var vm = new DonneesCreateStep2ViewModel
             {
                 StartTimestamp = DateTime.Now,
                 EndTimestamp = DateTime.Now,
-                QualiteOptions = BuildQualiteOptions()
+                QualiteOptions = qualiteData.Options,
+                QualiteDescriptions = qualiteData.Descriptions
             };
             return View(vm);
         }
@@ -189,6 +207,13 @@ namespace Dataportal.Controllers
 
             var step1Data = JsonConvert.DeserializeObject<MetadonneeCreateViewModel>(step1Json);
 
+            void RepopulateQualiteSelections()
+            {
+                var qualiteDataLocal = BuildQualiteOptions();
+                model.QualiteOptions = qualiteDataLocal.Options;
+                model.QualiteDescriptions = qualiteDataLocal.Descriptions;
+            }
+
             if (User.IsInRole("utilisateur") && step1Data.IdVisibilite != VisibiliteIds.Personnelle)
             {
                 TempData.Remove("Step1Data");
@@ -198,7 +223,7 @@ namespace Dataportal.Controllers
             if (!ModelState.IsValid)
             {
                 TempData.Keep("Step1Data");
-                model.QualiteOptions = BuildQualiteOptions();
+                RepopulateQualiteSelections();
                 return View(model);
             }
 
@@ -216,7 +241,7 @@ namespace Dataportal.Controllers
                 ModelState.AddModelError("Code", "This label/code combination already exists.");
 
                 TempData.Keep("Step1Data");
-                model.QualiteOptions = BuildQualiteOptions();
+                RepopulateQualiteSelections();
                 return View(model);
             }
 
@@ -224,7 +249,7 @@ namespace Dataportal.Controllers
             {
                 ModelState.AddModelError("UploadedFiles", "You must upload at least one data file (CSV, XLSX, Parquet, or CSV.zip).");
                 TempData.Keep("Step1Data");
-                model.QualiteOptions = BuildQualiteOptions();
+                RepopulateQualiteSelections();
                 return View(model);
             }
 
@@ -243,21 +268,21 @@ namespace Dataportal.Controllers
             {
                 ModelState.AddModelError(nameof(model.UploadedFiles), ex.Message);
                 TempData.Keep("Step1Data");
-                model.QualiteOptions = BuildQualiteOptions();
+                RepopulateQualiteSelections();
                 return View(model);
             }
             catch (SqlException)
             {
                 ModelState.AddModelError(nameof(model.UploadedFiles), "An error occurred while importing the data.");
                 TempData.Keep("Step1Data");
-                model.QualiteOptions = BuildQualiteOptions();
+                RepopulateQualiteSelections();
                 return View(model);
             }
             catch (Exception)
             {
                 ModelState.AddModelError(nameof(model.UploadedFiles), "An unexpected error occurred while importing the data.");
                 TempData.Keep("Step1Data");
-                model.QualiteOptions = BuildQualiteOptions();
+                RepopulateQualiteSelections();
                 return View(model);
             }
 
@@ -361,12 +386,14 @@ namespace Dataportal.Controllers
                 return Forbid();
             }
 
+            var qualiteData = BuildQualiteOptions();
             var vm = new DonneesEventLogsCreateStep3ViewModel
             {
                 IdMetadonnee = id,
                 StartTimestamp = DateTime.Now,
                 EndTimestamp = DateTime.Now,
-                QualiteOptions = BuildQualiteOptions()
+                QualiteOptions = qualiteData.Options,
+                QualiteDescriptions = qualiteData.Descriptions
             };
             return View(vm);
         }
@@ -376,9 +403,16 @@ namespace Dataportal.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateStep3(DonneesEventLogsCreateStep3ViewModel model)
         {
+            void RepopulateQualiteSelections()
+            {
+                var qualiteDataLocal = BuildQualiteOptions();
+                model.QualiteOptions = qualiteDataLocal.Options;
+                model.QualiteDescriptions = qualiteDataLocal.Descriptions;
+            }
+
             if (!ModelState.IsValid)
             {
-                model.QualiteOptions = BuildQualiteOptions();
+                RepopulateQualiteSelections();
                 return View(model);
             }
 
@@ -412,7 +446,7 @@ namespace Dataportal.Controllers
                 if (duplicate.Code.Equals(model.Code.Trim(), StringComparison.OrdinalIgnoreCase))
                     ModelState.AddModelError("Code", "This code already exists.");
 
-                model.QualiteOptions = BuildQualiteOptions();
+                RepopulateQualiteSelections();
                 return View(model);
             }
 
@@ -434,19 +468,19 @@ namespace Dataportal.Controllers
             catch (InvalidOperationException ex)
             {
                 ModelState.AddModelError(nameof(model.UploadedFiles), ex.Message);
-                model.QualiteOptions = BuildQualiteOptions();
+                RepopulateQualiteSelections();
                 return View(model);
             }
             catch (SqlException)
             {
                 ModelState.AddModelError(nameof(model.UploadedFiles), "An error occurred while importing the data.");
-                model.QualiteOptions = BuildQualiteOptions();
+                RepopulateQualiteSelections();
                 return View(model);
             }
             catch (Exception)
             {
                 ModelState.AddModelError(nameof(model.UploadedFiles), "An unexpected error occurred while importing the data.");
-                model.QualiteOptions = BuildQualiteOptions();
+                RepopulateQualiteSelections();
                 return View(model);
             }
 
@@ -541,12 +575,14 @@ namespace Dataportal.Controllers
                 return Forbid();
             }
 
+            var qualiteData = BuildQualiteOptions();
             var vm = new DonneesContexteEnvironnementalCreateStep4ViewModel
             {
                 IdMetadonnee = id,
                 StartTimestamp = DateTime.Now,
                 EndTimestamp = DateTime.Now,
-                QualiteOptions = BuildQualiteOptions()
+                QualiteOptions = qualiteData.Options,
+                QualiteDescriptions = qualiteData.Descriptions
             };
             return View(vm);
         }
@@ -557,9 +593,16 @@ namespace Dataportal.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateStep4(DonneesContexteEnvironnementalCreateStep4ViewModel model)
         {
+            void RepopulateQualiteSelections()
+            {
+                var qualiteDataLocal = BuildQualiteOptions();
+                model.QualiteOptions = qualiteDataLocal.Options;
+                model.QualiteDescriptions = qualiteDataLocal.Descriptions;
+            }
+
             if (!ModelState.IsValid)
             {
-                model.QualiteOptions = BuildQualiteOptions();
+                RepopulateQualiteSelections();
                 return View(model);
             }
 
@@ -594,7 +637,7 @@ namespace Dataportal.Controllers
                 if (duplicate.Code.Equals(model.Code.Trim(), StringComparison.OrdinalIgnoreCase))
                     ModelState.AddModelError("Code", "This code already exists.");
 
-                model.QualiteOptions = BuildQualiteOptions();
+                RepopulateQualiteSelections();
                 return View(model);
             }
 
@@ -616,19 +659,19 @@ namespace Dataportal.Controllers
             catch (InvalidOperationException ex)
             {
                 ModelState.AddModelError(nameof(model.UploadedFiles), ex.Message);
-                model.QualiteOptions = BuildQualiteOptions();
+                RepopulateQualiteSelections();
                 return View(model);
             }
             catch (SqlException)
             {
                 ModelState.AddModelError(nameof(model.UploadedFiles), "An error occurred while importing the data.");
-                model.QualiteOptions = BuildQualiteOptions();
+                RepopulateQualiteSelections();
                 return View(model);
             }
             catch (Exception)
             {
                 ModelState.AddModelError(nameof(model.UploadedFiles), "An unexpected error occurred while importing the data.");
-                model.QualiteOptions = BuildQualiteOptions();
+                RepopulateQualiteSelections();
                 return View(model);
             }
 

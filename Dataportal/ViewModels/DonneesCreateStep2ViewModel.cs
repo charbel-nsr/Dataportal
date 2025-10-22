@@ -48,6 +48,8 @@ namespace Dataportal.ViewModels
 
         public IEnumerable<SelectListItem> QualiteOptions { get; set; } = new List<SelectListItem>();
 
+        public IDictionary<string, string> QualiteDescriptions { get; set; } = new Dictionary<string, string>();
+
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
             if (StartTimestamp > EndTimestamp)
