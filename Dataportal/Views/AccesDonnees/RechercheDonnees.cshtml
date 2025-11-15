@@ -1,5 +1,6 @@
 ﻿@model Dataportal.ViewModels.RechercheDonneesViewModel
 @using Dataportal.Classes
+@using System.Globalization
 
 @{
     ViewData["Title"] = "Search data";
@@ -39,6 +40,10 @@
                             <label class="form-check-label" for="autoriserLeTelechargement">Allow downloads</label>
                         </div>
                         <div class="form-check me-3 mb-2">
+                            <input class="form-check-input" type="checkbox" value="true" name="autoriserApi" id="autoriserApi" @(Model.AutoriserApi == true ? "checked" : "")>
+                            <label class="form-check-label" for="autoriserApi">API allowed</label>
+                        </div>
+                        <div class="form-check me-3 mb-2">
                             <input class="form-check-input" type="checkbox" value="true" name="hasEventLogs" id="hasEventLogs" @(Model.HasEventLogs == true ? "checked" : "")>
                             <label class="form-check-label" for="hasEventLogs">With event logs</label>
                         </div>
@@ -58,8 +63,25 @@
             </div>
 
             <div class="col-md-6 mt-3">
-                <div class="row">
-                    <div class="col-12 col-lg-6 mb-3 mb-lg-0">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <div class="form-floating">
+                            <input type="number" min="0" step="0.1" class="form-control" id="minDataSizeMb" name="minDataSizeMb" value="@(Model.MinDataSizeMb?.ToString(CultureInfo.InvariantCulture) ?? string.Empty)">
+                            <label for="minDataSizeMb">Min size (MB)</label>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="form-floating">
+                            <input type="number" min="0" step="0.1" class="form-control" id="maxDataSizeMb" name="maxDataSizeMb" value="@(Model.MaxDataSizeMb?.ToString(CultureInfo.InvariantCulture) ?? string.Empty)">
+                            <label for="maxDataSizeMb">Max size (MB)</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 mt-3">
+                <div class="row g-3">
+                    <div class="col-12 col-lg-4">
                         <div class="form-floating">
                             <select class="form-select" name="idLicence" id="idLicence">
                                 <option value="">All licenses</option>
@@ -71,23 +93,59 @@
                             <label for="idLicence">License</label>
                         </div>
                     </div>
-                    <div class="col-12 col-lg-6">
+                    <div class="col-12 col-lg-4">
                         <div class="form-floating">
                             <select class="form-select" name="idTypeEnergieRenouvelable" id="idTypeEnergieRenouvelable">
                                 <option value="">All energy types</option>
                                 @foreach (var energyType in Model.TypesEnergieRenouvelable ?? new List<Dataportal.Models.TypeEnergieRenouvelable>())
                                 {
-                                    <option value="@energyType.Id" selected="@(energyType.Id == Model.IdTypeEnergieRenouvelable ? "selected" : null)">@energyType.Libelle</option>
+                                    <option value="@energyType.Id" selected="@(energyType.Id == Model.IdTypeEnergieRenouvelable ? "selected" :null)">@energyType.Libelle</option>
                                 }
                             </select>
                             <label for="idTypeEnergieRenouvelable">Energy type</label>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-4">
+                        <div class="form-floating">
+                            <select class="form-select" name="idVisibilite" id="idVisibilite">
+                                <option value="">All visibility levels</option>
+                                @foreach (var visibilite in Model.Visibilites ?? Array.Empty<Dataportal.ViewModels.LookupItem>())
+                                {
+                                    <option value="@visibilite.Id" selected="@(visibilite.Id == Model.IdVisibilite ? "selected" : null)")>@visibilite.Label</option>
+                                }
+                            </select>
+                            <label for="idVisibilite">Visibility</label>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-6">
+                        <div class="form-floating">
+                            <select class="form-select" name="idCreateur" id="idCreateur">
+                                <option value="">All creators</option>
+                                @foreach (var creator in Model.Createurs ?? Array.Empty<Dataportal.ViewModels.LookupItem>())
+                                {
+                                    <option value="@creator.Id" selected="@(creator.Id == Model.IdCreateur ? "selected" : null)">@creator.Label</option>
+                                }
+                            </select>
+                            <label for="idCreateur">Creator</label>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-6">
+                        <div class="form-floating">
+                            <select class="form-select" name="idEntreprise" id="idEntreprise">
+                                <option value="">All companies</option>
+                                @foreach (var entreprise in Model.Entreprises ?? Array.Empty<Dataportal.ViewModels.LookupItem>())
+                                {
+                                    <option value="@entreprise.Id" selected="@(entreprise.Id == Model.IdEntreprise ? "selected" : null)">@entreprise.Label</option>
+                                }
+                            </select>
+                            <label for="idEntreprise">Company</label>
                         </div>
                     </div>
                 </div>
             </div>
 
 
-            <div class="col-md-6 offset-md-6 mt-3 d-flex flex-column flex-md-row">
+            <div class="col-12 mt-3 d-flex flex-column flex-md-row">
                 <button type="submit" class="btn btn-primary flex-grow-1 w-100 mb-2 mb-md-0 me-md-2">
                     Filter
                 </button>
