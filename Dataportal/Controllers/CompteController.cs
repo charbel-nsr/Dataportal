@@ -274,7 +274,7 @@ namespace Dataportal.Controllers
                         IdEntreprise = model.IdEntreprise,
                         IdStatutDeLaDemande = statutEnAttenteId,
                         EmailVerifie = false,
-                        Commentaire = model.Commentaire,
+                        Commentaire = model.Commentaire != null ? model.Commentaire : "_",
                         DateCreation = DateTime.Now
                     };
                     _context.DemandeDeCompte.Add(demande);
