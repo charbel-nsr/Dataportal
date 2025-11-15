@@ -8,12 +8,23 @@ using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Diagnostics;
 using System.Globalization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Dataportal.Classes;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = UploadSizeLimits.StepUploadLimitBytes;
+});
+
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = UploadSizeLimits.StepUploadLimitBytes;
+});
 
 // Service for DbContext
 builder.Services.AddDbContext<ApplicationDbContext>(options =>

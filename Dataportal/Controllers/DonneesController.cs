@@ -254,6 +254,13 @@ namespace Dataportal.Controllers
 
             // Calculate uploaded data size and store for next steps
             long dataSize = model.UploadedFiles.Sum(f => f.Length);
+            if (dataSize > UploadSizeLimits.StepUploadLimitBytes)
+            {
+                ModelState.AddModelError(nameof(model.UploadedFiles), $"The total size of the uploaded files exceeds the {UploadSizeLimits.StepUploadLimitDisplay} limit for this step.");
+                TempData.Keep("Step1Data");
+                RepopulateQualiteSelections();
+                return View(model);
+            }
 
             // -- Show optional processing page here if you want
             // return View("Processing");
@@ -457,6 +464,12 @@ namespace Dataportal.Controllers
                 existingDataSize = ParseDataSize(sizeValue);
             }
             long stepSize = model.UploadedFiles.Sum(f => f.Length);
+            if (stepSize > UploadSizeLimits.StepUploadLimitBytes)
+            {
+                ModelState.AddModelError(nameof(model.UploadedFiles), $"The total size of the uploaded files exceeds the {UploadSizeLimits.StepUploadLimitDisplay} limit for this step.");
+                RepopulateQualiteSelections();
+                return View(model);
+            }
             long totalDataSize = existingDataSize + stepSize;
 
             var tableName = $"DonneesEventLogs.{model.Libelle}-{model.Code}".Replace(" ", "_");
@@ -648,6 +661,12 @@ namespace Dataportal.Controllers
                 existingDataSize = ParseDataSize(sizeValue);
             }
             long stepSize = model.UploadedFiles.Sum(f => f.Length);
+            if (stepSize > UploadSizeLimits.StepUploadLimitBytes)
+            {
+                ModelState.AddModelError(nameof(model.UploadedFiles), $"The total size of the uploaded files exceeds the {UploadSizeLimits.StepUploadLimitDisplay} limit for this step.");
+                RepopulateQualiteSelections();
+                return View(model);
+            }
             long totalDataSize = existingDataSize + stepSize;
 
             var tableName = $"DonneesContexteEnvironnemental.{model.Libelle}-{model.Code}".Replace(" ", "_");

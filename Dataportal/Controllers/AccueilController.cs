@@ -60,7 +60,7 @@ public class AccueilController : Controller
         var latestMetadonnees = await baseQuery
             .OrderByDescending(m => m.DernierMiseAJour ?? DateTime.MinValue)
             .ThenByDescending(m => m.Id)
-            .Take(9)
+            .Take(6)
             .ToListAsync();
 
         var viewModel = new AccueilIndexViewModel

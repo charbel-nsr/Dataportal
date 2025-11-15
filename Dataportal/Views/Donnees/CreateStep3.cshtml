@@ -1,5 +1,6 @@
 @model Dataportal.ViewModels.DonneesEventLogsCreateStep3ViewModel
 @using System.Text.Json
+@using Dataportal.Classes
 
 @{
     ViewData["Title"] = "Create event logs - Step 3";
@@ -74,7 +75,7 @@
         <div class="mb-3">
             <label asp-for="UploadedFiles" class="form-label">CSV, XLSX, Parquet, or CSV.zip files (optional)</label>
             <input asp-for="UploadedFiles" class="form-control" type="file" multiple accept=".csv,.xlsx,.parquet,.zip">
-            <small class="form-text text-muted">All uploaded files must share the same format.</small>
+            <small class="form-text text-muted">All uploaded files must share the same format. Maximum total size per step: @UploadSizeLimits.StepUploadLimitDisplay.</small>
             <span asp-validation-for="UploadedFiles" class="text-danger"></span>
         </div>
 

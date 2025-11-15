@@ -1,5 +1,6 @@
 @model Dataportal.ViewModels.DonneesCreateStep2ViewModel
 @using System.Text.Json
+@using Dataportal.Classes
 @{
     ViewData["Title"] = "Create a dataset - Step 2";
     ViewData["CurrentStep"] = 2;
@@ -69,7 +70,7 @@
         <div class="mb-4">
             <label asp-for="UploadedFiles" class="form-label">Upload CSV, XLSX, Parquet, or CSV.zip files</label>
             <input asp-for="UploadedFiles" type="file" multiple class="form-control" accept=".csv,.xlsx,.parquet,.zip" required />
-            <small class="form-text text-muted">All files uploaded in this step must share the same format.</small>
+            <small class="form-text text-muted">All files uploaded in this step must share the same format. Maximum total size per step: @UploadSizeLimits.StepUploadLimitDisplay.</small>
             <span asp-validation-for="UploadedFiles" class="text-danger"></span>
         </div>
 
