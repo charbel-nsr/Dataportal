@@ -179,6 +179,7 @@
                             <th>Downloads</th>
                             <th>Last updated</th>
                             <th>Time series</th>
+                            <th>Energy type</th>
                             <th>Visibility</th>
                             <th>Creator</th>
                             <th>Action</th>
@@ -201,6 +202,12 @@
                                         {
                                             <span class="badge bg-secondary">No</span>
                                         }
+                                    </td>
+                                    <td>
+                                        @{
+                                            var energyTypeLabel = m.TypeEnergieRenouvelable?.Libelle;
+                                        }
+                                        @(string.IsNullOrWhiteSpace(energyTypeLabel) ? "—" : energyTypeLabel)
                                     </td>
                                     <td>
                                         @if (User.IsInRole("administrator") && m.IdVisibilite == VisibiliteIds.Interne)
