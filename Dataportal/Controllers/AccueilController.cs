@@ -24,13 +24,43 @@ public class AccueilController : Controller
 
     public async Task<IActionResult> Index()
     {
-        var latestMetadonnees = await _context.Metadonnee
+        var baseQuery = _context.Metadonnee
             .AsNoTracking()
             .Include(m => m.TypeEnergieRenouvelable)
-            .Where(m => m.IdVisibilite == VisibiliteIds.Public)
+            .Include(m => m.Utilisateur)
+                .ThenInclude(u => u.Entreprise)
+            .AsQueryable();
+
+        if (!(User.Identity?.IsAuthenticated ?? false))
+        {
+            baseQuery = baseQuery.Where(m => m.IdVisibilite == VisibiliteIds.Public);
+        }
+        else
+        {
+            var currentUserId = HttpContextUserHelper.TryGetCurrentUserId(User);
+            var currentUserRole = HttpContextUserHelper.GetCurrentUserRole(HttpContext, _context);
+            var currentUserEntrepriseId = HttpContextUserHelper.GetCurrentUserEntrepriseId(HttpContext, _context);
+
+            var isAdmin = currentUserRole == RoleIds.Administrateur;
+            var isInternalRole = currentUserRole == RoleIds.Utilisateur || currentUserRole == RoleIds.Editeur;
+
+            baseQuery = baseQuery.Where(m =>
+                m.IdVisibilite == VisibiliteIds.Public ||
+                m.IdVisibilite == VisibiliteIds.Prive ||
+                (m.IdVisibilite == VisibiliteIds.Interne &&
+                    (isAdmin ||
+                        (isInternalRole &&
+                            currentUserEntrepriseId.HasValue &&
+                            m.Utilisateur != null &&
+                            m.Utilisateur.IdEntreprise == currentUserEntrepriseId))) ||
+                (m.IdVisibilite == VisibiliteIds.Personnelle &&
+                    (isAdmin || (currentUserId.HasValue && m.IdUtilisateur == currentUserId.Value))));
+        }
+
+        var latestMetadonnees = await baseQuery
             .OrderByDescending(m => m.DernierMiseAJour ?? DateTime.MinValue)
             .ThenByDescending(m => m.Id)
-            .Take(3)
+            .Take(9)
             .ToListAsync();
 
         var viewModel = new AccueilIndexViewModel
