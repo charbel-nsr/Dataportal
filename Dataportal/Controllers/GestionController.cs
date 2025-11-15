@@ -99,6 +99,7 @@ namespace Dataportal.Controllers
 
         // POST: /Gestion/ApprouverDemande (submit approve from modal)
         [HttpPost]
+        [ValidateAntiForgeryToken]
         [Authorize(Roles = "administrator")]
         public IActionResult ApprouverDemande(int id, int idStatut, int idEntreprise, bool emailVerifie, string commentaire, int? idRole)
         {
