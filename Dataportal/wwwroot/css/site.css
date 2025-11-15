@@ -407,6 +407,36 @@ body.upload-confirmation-open {
     min-height: 21vh;
 }
 
+th[data-sortable="true"] {
+    white-space: nowrap;
+}
+
+.table-sort-button {
+    background: none;
+    border: 0;
+    color: inherit;
+    font: inherit;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.table-sort-button:hover,
+.table-sort-button:focus {
+    color: inherit;
+    text-decoration: none;
+}
+
+.table-sort-button:focus-visible {
+    outline: 2px solid var(--bs-primary);
+    outline-offset: 2px;
+}
+
+.table-sort-button .sort-icon {
+    font-size: 0.9em;
+}
+
 .data-details-all {
     min-height: 43vh;
 }

@@ -80,23 +80,55 @@
                     <table class="table table-hover shadow-sm paginated-table">
                         <thead class="table-light">
                             <tr>
-                                <th>Name</th>
-                                <th>First name</th>
-                                <th>Email</th>
-                                <th>Status</th>
-                                <th>Organization</th>
-                                <th>Role</th>
-                                <th>Action</th>
+                                <th scope="col" data-sortable="true" data-sort-type="string">
+                                    <button type="button" class="table-sort-button">
+                                        Name
+                                        <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" data-sortable="true" data-sort-type="string">
+                                    <button type="button" class="table-sort-button">
+                                        First name
+                                        <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" data-sortable="true" data-sort-type="string">
+                                    <button type="button" class="table-sort-button">
+                                        Email
+                                        <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" data-sortable="true" data-sort-type="boolean">
+                                    <button type="button" class="table-sort-button">
+                                        Status
+                                        <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" data-sortable="true" data-sort-type="string">
+                                    <button type="button" class="table-sort-button">
+                                        Organization
+                                        <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" data-sortable="true" data-sort-type="string">
+                                    <button type="button" class="table-sort-button">
+                                        Role
+                                        <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
+                                    </button>
+                                </th>
+                                <th scope="col">Action</th>
                             </tr>
                         </thead>
                         <tbody>
                         @foreach (var u in Model.Utilisateurs)
                         {
+                            var organizationDisplay = string.IsNullOrWhiteSpace(u.Entreprise?.Nom) ? "—" : u.Entreprise.Nom;
+                            var roleDisplay = string.IsNullOrWhiteSpace(u.Role?.Libelle) ? "—" : u.Role.Libelle;
                             <tr>
-                                <td>@u.Nom</td>
-                                <td>@u.Prenom</td>
-                                <td>@u.Email</td>
-                                <td>
+                                <td data-sort-value="@u.Nom">@u.Nom</td>
+                                <td data-sort-value="@u.Prenom">@u.Prenom</td>
+                                <td data-sort-value="@u.Email">@u.Email</td>
+                                <td data-sort-value="@(u.CompteActif ? 1 : 0)">
                                     @if (u.CompteActif)
                                     {
                                         <span class="badge bg-success">Active</span>
@@ -106,8 +138,8 @@
                                         <span class="badge bg-secondary">Inactive</span>
                                     }
                                 </td>
-                                <td>@u.Entreprise?.Nom</td>
-                                <td>@u.Role?.Libelle</td>
+                                <td data-sort-value="@organizationDisplay">@organizationDisplay</td>
+                                <td data-sort-value="@roleDisplay">@roleDisplay</td>
                                 <td>
                                     <button type="button"
                                             class="btn btn-sm btn-outline-secondary"

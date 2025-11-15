@@ -174,26 +174,110 @@
                     <table class="table table-hover align-middle shadow-sm paginated-table">
                     <thead class="table-light">
                         <tr>
-                            <th>Name</th>
-                            <th>Size</th>
-                            <th>Downloads</th>
-                            <th>Last updated</th>
-                            <th>Time series</th>
-                            <th>Energy type</th>
-                            <th>Visibility</th>
-                            <th>Creator</th>
-                            <th>Action</th>
+                            <th scope="col" data-sortable="true" data-sort-type="string">
+                                <button type="button" class="table-sort-button">
+                                    Name
+                                    <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
+                                </button>
+                            </th>
+                            <th scope="col" data-sortable="true" data-sort-type="size">
+                                <button type="button" class="table-sort-button">
+                                    Size
+                                    <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
+                                </button>
+                            </th>
+                            <th scope="col" data-sortable="true" data-sort-type="number">
+                                <button type="button" class="table-sort-button">
+                                    Downloads
+                                    <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
+                                </button>
+                            </th>
+                            <th scope="col" data-sortable="true" data-sort-type="date">
+                                <button type="button" class="table-sort-button">
+                                    Last updated
+                                    <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
+                                </button>
+                            </th>
+                            <th scope="col" data-sortable="true" data-sort-type="boolean">
+                                <button type="button" class="table-sort-button">
+                                    Time series
+                                    <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
+                                </button>
+                            </th>
+                            <th scope="col" data-sortable="true" data-sort-type="string">
+                                <button type="button" class="table-sort-button">
+                                    Energy type
+                                    <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
+                                </button>
+                            </th>
+                            <th scope="col" data-sortable="true" data-sort-type="string">
+                                <button type="button" class="table-sort-button">
+                                    Visibility
+                                    <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
+                                </button>
+                            </th>
+                            <th scope="col" data-sortable="true" data-sort-type="string">
+                                <button type="button" class="table-sort-button">
+                                    Creator
+                                    <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
+                                </button>
+                            </th>
+                            <th scope="col">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                             @foreach (var m in Model.Metadonnees)
                             {
+                                double? sizeSortValue = null;
+                                if (!string.IsNullOrWhiteSpace(m.TailleDesDonnees))
+                                {
+                                    var parts = m.TailleDesDonnees.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                                    if (parts.Length == 2)
+                                    {
+                                        var numberText = parts[0];
+                                        var unit = parts[1].Trim().ToUpperInvariant();
+                                        if (double.TryParse(numberText, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedValue) ||
+                                        double.TryParse(numberText, NumberStyles.Float, CultureInfo.CurrentCulture, out parsedValue))
+                                        {
+                                            sizeSortValue = unit switch
+                                            {
+                                                "B" => parsedValue / (1024d * 1024d),
+                                                "KB" => parsedValue / 1024d,
+                                                "MB" => parsedValue,
+                                                "GB" => parsedValue * 1024d,
+                                                "TB" => parsedValue * 1024d * 1024d,
+                                                _ => parsedValue
+                                            };
+                                        }
+                                    }
+                                }
+
+                                var energyTypeLabel = m.TypeEnergieRenouvelable?.Libelle;
+                                var energyTypeDisplay = string.IsNullOrWhiteSpace(energyTypeLabel) ? "—" : energyTypeLabel;
+
+                                string? visibilityLabel;
+                                if (User.IsInRole("administrator") && m.IdVisibilite == VisibiliteIds.Interne)
+                                {
+                                    visibilityLabel = m.Visibilite?.Libelle + $" ({m.Utilisateur?.Entreprise?.Nom})";
+                                }
+                                else if (User.IsInRole("administrator") && m.IdVisibilite == VisibiliteIds.Personnelle)
+                                {
+                                    visibilityLabel = m.Visibilite?.Libelle + $" ({m.Utilisateur?.Prenom} {m.Utilisateur?.Nom})";
+                                }
+                                else
+                                {
+                                    visibilityLabel = m.Visibilite?.Libelle;
+                                }
+
+                                var visibilityDisplay = string.IsNullOrWhiteSpace(visibilityLabel) ? "—" : visibilityLabel;
+                                var creatorLabel = $"{m.Utilisateur?.Prenom} {m.Utilisateur?.Nom}".Trim();
+
                                 <tr>
-                                    <td>@m.Nom</td>
-                                    <td>@(string.IsNullOrWhiteSpace(m.TailleDesDonnees) ? "—" : m.TailleDesDonnees)</td>
-                                    <td>@m.NombreDeTelechargements</td>
-                                    <td>@(m.DernierMiseAJour?.ToString("dd/MM/yyyy") ?? "—")</td>
-                                    <td>
+                                    <td data-sort-value="@m.Nom">@m.Nom</td>
+                                    <td data-sort-value="@(sizeSortValue?.ToString(CultureInfo.InvariantCulture) ?? string.Empty)">@(!string.IsNullOrWhiteSpace(m.TailleDesDonnees) ? m.TailleDesDonnees : "—")</td>
+                                    <td data-sort-value="@m.NombreDeTelechargements.ToString(CultureInfo.InvariantCulture)">@m.NombreDeTelechargements</td>
+                                    <td data-sort-value="@(m.DernierMiseAJour?.ToString("O") ?? string.Empty)">@((m.DernierMiseAJour?.ToString("dd/MM/yyyy")) ?? "—")</td>
+                                    <td data-sort-value="@(m.SeriesTemporelles ? 1 : 0)">
                                         @if (m.SeriesTemporelles)
                                         {
                                             <span class="badge bg-success">Yes</span>
@@ -203,27 +287,9 @@
                                             <span class="badge bg-secondary">No</span>
                                         }
                                     </td>
-                                    <td>
-                                        @{
-                                            var energyTypeLabel = m.TypeEnergieRenouvelable?.Libelle;
-                                        }
-                                        @(string.IsNullOrWhiteSpace(energyTypeLabel) ? "—" : energyTypeLabel)
-                                    </td>
-                                    <td>
-                                        @if (User.IsInRole("administrator") && m.IdVisibilite == VisibiliteIds.Interne)
-                                        {
-                                            @(m.Visibilite?.Libelle + $" ({m.Utilisateur?.Entreprise?.Nom})")
-                                        }
-                                        else if (User.IsInRole("administrator") && m.IdVisibilite == VisibiliteIds.Personnelle)
-                                        {
-                                            @(m.Visibilite?.Libelle + $" ({m.Utilisateur?.Prenom} {m.Utilisateur?.Nom})")
-                                        }
-                                        else
-                                        {
-                                            @m.Visibilite?.Libelle
-                                        }
-                                    </td>
-                                    <td>@($"{m.Utilisateur?.Prenom} {m.Utilisateur?.Nom}")</td>
+                                    <td data-sort-value="@energyTypeDisplay">@energyTypeDisplay</td>
+                                    <td data-sort-value="@visibilityDisplay">@visibilityDisplay</td>
+                                    <td data-sort-value="@creatorLabel">@creatorLabel</td>
                                     <td>
                                         <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("Details", "Donnees", new { id = m.Id })" title="View details">
                                             <i class="bi bi-exclamation-circle"></i>

@@ -106,38 +106,79 @@
                     <table class="table table-hover align-middle shadow-sm paginated-table">
                         <thead class="table-light">
                             <tr>
-                                <th>Last name</th>
-                                <th>First name</th>
-                                <th>Email</th>
-                                <th>Company</th>
-                                <th>Status</th>
-                                <th>Action</th>
+                                <th scope="col" data-sortable="true" data-sort-type="string">
+                                    <button type="button" class="table-sort-button">
+                                        Last name
+                                        <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" data-sortable="true" data-sort-type="string">
+                                    <button type="button" class="table-sort-button">
+                                        First name
+                                        <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" data-sortable="true" data-sort-type="string">
+                                    <button type="button" class="table-sort-button">
+                                        Email
+                                        <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" data-sortable="true" data-sort-type="string">
+                                    <button type="button" class="table-sort-button">
+                                        Company
+                                        <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" data-sortable="true" data-sort-type="string">
+                                    <button type="button" class="table-sort-button">
+                                        Status
+                                        <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
+                                    </button>
+                                </th>
+                                <th scope="col">Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach (var demande in Model.Demandes)
                             {
+                                var companyDisplay = string.IsNullOrWhiteSpace(demande.Entreprise?.Nom) ? "—" : demande.Entreprise.Nom;
+                                var statusLabel = "Unknown";
+                                var statusIconClass = "bi bi-question-circle text-secondary";
+                                var statusKey = "Unknown";
+
+                                if (!string.IsNullOrWhiteSpace(demande.StatutDeLaDemande?.Libelle))
+                                {
+                                    switch (demande.StatutDeLaDemande.Libelle.ToLower())
+                                    {
+                                        case "pending":
+                                            statusLabel = "Pending";
+                                            statusIconClass = "bi bi-hourglass-split text-warning";
+                                            statusKey = "Pending";
+                                            break;
+                                        case "approved":
+                                            statusLabel = "Approved";
+                                            statusIconClass = "bi bi-check-circle-fill text-success";
+                                            statusKey = "Approved";
+                                            break;
+                                        case "rejected":
+                                            statusLabel = "Rejected";
+                                            statusIconClass = "bi bi-x-circle-fill text-danger";
+                                            statusKey = "Rejected";
+                                            break;
+                                        default:
+                                            statusKey = demande.StatutDeLaDemande.Libelle;
+                                            break;
+                                    }
+                                }
+
                                 <tr>
-                                    <td>@demande.Nom</td>
-                                    <td>@demande.Prenom</td>
-                                    <td>@demande.Email</td>
-                                    <td>@demande.Entreprise?.Nom</td>
-                                    <td>
-                                        @switch (demande.StatutDeLaDemande?.Libelle?.ToLower())
-                                        {
-                                            case "pending":
-                                                <i class="bi bi-hourglass-split text-warning" title="Pending">Pending</i>
-                                                break;
-                                            case "approved":
-                                                <i class="bi bi-check-circle-fill text-success" title="Approved">Approved</i>
-                                                break;
-                                            case "rejected":
-                                                <i class="bi bi-x-circle-fill text-danger" title="Rejected">Rejected</i>
-                                                break;
-                                            default:
-                                                <i class="bi bi-question-circle text-secondary" title="Unknown">Unknown</i>
-                                                break;
-                                        }
+                                    <td data-sort-value="@demande.Nom">@demande.Nom</td>
+                                    <td data-sort-value="@demande.Prenom">@demande.Prenom</td>
+                                    <td data-sort-value="@demande.Email">@demande.Email</td>
+                                    <td data-sort-value="@companyDisplay">@companyDisplay</td>
+                                    <td data-sort-value="@statusKey">
+                                        <i class="@statusIconClass" title="@statusLabel">@statusLabel</i>
                                     </td>
                                     <td>
                                         <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editModal" data-id="@demande.Id">

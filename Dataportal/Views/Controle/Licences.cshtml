@@ -62,26 +62,36 @@
                     <table class="table table-hover align-middle shadow-sm paginated-table">
                         <thead class="table-light">
                             <tr>
-                                <th>Label</th>
-                                <th>Active</th>
-                                <th>Action</th>
+                                <th scope="col" data-sortable="true" data-sort-type="string">
+                                    <button type="button" class="table-sort-button">
+                                        Label
+                                        <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" data-sortable="true" data-sort-type="boolean">
+                                    <button type="button" class="table-sort-button">
+                                        Active
+                                        <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
+                                    </button>
+                                </th>
+                                <th scope="col">Action</th>
                             </tr>
                         </thead>
                         <tbody>
                         @foreach (var licence in Model.Licences)
                         {
-                            <tr>
-                                <td>@licence.Libelle</td>
-                                <td>
-                                    @if (licence.Actif)
-                                    {
-                                        <span class="badge bg-success">Active</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge bg-secondary">Inactive</span>
-                                    }
-                                </td>
+                                <tr>
+                                    <td data-sort-value="@licence.Libelle">@licence.Libelle</td>
+                                    <td data-sort-value="@(licence.Actif ? 1 : 0)">
+                                        @if (licence.Actif)
+                                        {
+                                            <span class="badge bg-success">Active</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Inactive</span>
+                                        }
+                                    </td>
                                 <td>
                                     @if (!licence.Actif)
                                     {
