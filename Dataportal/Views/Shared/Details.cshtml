@@ -1,11 +1,12 @@
-﻿@using System.Collections.Generic
+﻿﻿@using System.Collections.Generic
 @using System.Linq
+@using Dataportal.Helpers
 @model Dataportal.ViewModels.MetadonneeDetailsViewModel
 
 @{
     ViewData["Title"] = "Dataset details";
     var currentStep = ViewData["CurrentStep"] as int?;
-    var tabSections = new List<(string Id, string Title)> { ("metadata", "Metadata") };
+    var tabSections = new List<(string Id, string Title)>();
     if (Model.Donnees != null)
     {
         tabSections.Add(("data", "Data"));
@@ -19,6 +20,78 @@
         tabSections.Add(("environmental", "Environmental context"));
     }
     var activeTabId = tabSections.Count > 0 ? tabSections[0].Id : string.Empty;
+    var sanitizedDescription = RichTextSanitizer.Sanitize(Model.Metadonnee?.Description);
+    var capabilityLinks = new List<(string Label, string Url)>();
+    Func<string, string> buildQualityBadgeClass = quality =>
+    {
+        if (string.IsNullOrWhiteSpace(quality))
+        {
+            return "quality-badge quality-badge-default";
+        }
+
+        var normalized = quality.Trim().ToLowerInvariant();
+        if (normalized == "bronze")
+        {
+            return "quality-badge quality-badge-bronze";
+        }
+
+        if (normalized == "silver")
+        {
+            return "quality-badge quality-badge-silver";
+        }
+
+        if (normalized == "gold")
+        {
+            return "quality-badge quality-badge-gold";
+        }
+
+        return "quality-badge quality-badge-default";
+    };
+
+    if (Model.TypeEnergieRenouvelable?.Id > 0 && !string.IsNullOrWhiteSpace(Model.TypeEnergieRenouvelable.Libelle))
+    {
+        var renewableFilterUrl = Url.Action("RechercheDonnees", "AccesDonnees", new { idTypeEnergieRenouvelable = Model.TypeEnergieRenouvelable.Id });
+        if (!string.IsNullOrWhiteSpace(renewableFilterUrl))
+        {
+            capabilityLinks.Add((Model.TypeEnergieRenouvelable.Libelle, renewableFilterUrl));
+        }
+    }
+
+    if (Model.Metadonnee?.SeriesTemporelles == true)
+    {
+        var timeSeriesUrl = Url.Action("RechercheDonnees", "AccesDonnees", new { seriesTemporelles = true });
+        if (!string.IsNullOrWhiteSpace(timeSeriesUrl))
+        {
+            capabilityLinks.Add(("Time series", timeSeriesUrl));
+        }
+    }
+
+    if (Model.Metadonnee?.AutoriserApi == true)
+    {
+        var apiAllowedUrl = Url.Action("RechercheDonnees", "AccesDonnees", new { autoriserApi = true });
+        if (!string.IsNullOrWhiteSpace(apiAllowedUrl))
+        {
+            capabilityLinks.Add(("API allowed", apiAllowedUrl));
+        }
+    }
+
+    if (Model.Metadonnee?.Anonymiser == true)
+    {
+        var anonymizedUrl = Url.Action("RechercheDonnees", "AccesDonnees", new { anonymiser = true });
+        if (!string.IsNullOrWhiteSpace(anonymizedUrl))
+        {
+            capabilityLinks.Add(("Anonymized", anonymizedUrl));
+        }
+    }
+
+    if (Model.Metadonnee?.AutoriserLeTelechargement == true)
+    {
+        var downloadAllowedUrl = Url.Action("RechercheDonnees", "AccesDonnees", new { autoriserLeTelechargement = true });
+        if (!string.IsNullOrWhiteSpace(downloadAllowedUrl))
+        {
+            capabilityLinks.Add(("Download allowed", downloadAllowedUrl));
+        }
+    }
 }
 
 <div class="container my-4 data-details-all">
@@ -35,7 +108,15 @@
                     open_in_new
                 </span>
             </button>
-
+        }
+        @if (capabilityLinks.Any())
+        {
+            <div class="dataset-flags d-flex flex-wrap mt-2">
+                @foreach (var link in capabilityLinks)
+                {
+                    <a class="dataset-flag" href="@link.Url" target="_blank">@link.Label</a>
+                }
+            </div>
         }
     </div>
 
@@ -43,246 +124,349 @@
     {
         @await Html.PartialAsync("_CreationProgress")
     }
-
-    <ul class="nav nav-tabs" id="datasetDetailsTabs" role="tablist">
-        @foreach (var tabSection in tabSections)
-        {
-            var isActive = tabSection.Id == activeTabId;
-            <li class="nav-item" role="presentation">
-                <button class="nav-link @(isActive ? "active" : string.Empty)" id="@tabSection.Id-tab" data-bs-toggle="tab" data-bs-target="#@tabSection.Id" type="button" role="tab" aria-controls="@tabSection.Id" aria-selected="@(isActive ? "true" : "false")">
-                    @tabSection.Title
-                </button>
-            </li>
-        }
-    </ul>
-
-    <div class="tab-content border border-top-0 rounded-bottom bg-white shadow-sm p-4" id="datasetDetailsTabsContent">
-        <div class="tab-pane fade @(activeTabId == "metadata" ? "show active" : string.Empty)" id="metadata" role="tabpanel" aria-labelledby="metadata-tab">
-            <div class="row g-4">
-                <div class="col-md-6">
-                    <p><strong>Description:</strong> @Model.Metadonnee.Description</p>
-                    <p><strong>License:</strong> @Model.Licence?.Libelle</p>
-                    <p><strong>Site:</strong> @Model.Site?.Nom</p>
-                    <p><strong>Visibility:</strong> @Model.Visibilite?.Libelle</p>
-                    <p><strong>Renewable energy type:</strong> @(Model.TypeEnergieRenouvelable?.Libelle ?? "—")</p>
-                    <p><strong>Data size:</strong> @(Model.Metadonnee?.TailleDesDonnees ?? "—")</p>
-                    <p><strong>Last updated:</strong> @Model.Metadonnee.DernierMiseAJour?.ToString("g")</p>
-                </div>
-                <div class="col-md-6">
-                    <p><strong>Time series:</strong> @(Model.Metadonnee.SeriesTemporelles ? "Yes" : "No")</p>
-                    <p><strong>API allowed:</strong> @(Model.Metadonnee.AutoriserApi ? "Yes" : "No")</p>
-                    <p><strong>Anonymization:</strong> @(Model.Metadonnee.Anonymiser ? "Yes" : "No")</p>
-                    <p><strong>Downloads allowed:</strong> @(Model.Metadonnee.AutoriserLeTelechargement ? "Yes" : "No")</p>
-                    <p><strong>Creator:</strong> @Model.Utilisateur?.Nom @Model.Utilisateur?.Prenom (@Model.Utilisateur?.Email)</p>
-                    <p><strong>Data owner organisation:</strong> @(Model.Utilisateur?.Entreprise?.Nom ?? "—")</p>
-                </div>
-            </div>
-
-            @if (Model.AppareilsLies != null && Model.AppareilsLies.Any())
+    
+    <section class="metadata-section bg-white shadow-sm rounded p-4 mb-4">
+        <div class="d-flex align-items-center justify-content-end flex-wrap gap-2 mb-4">
+            <span class="badge bg-light text-dark">Last updated @(Model.Metadonnee.DernierMiseAJour?.ToString("d") ?? "—")</span>
+        </div>
+        <div class="metadata-description rich-text-content fs-5 mb-4">
+            @if (!string.IsNullOrWhiteSpace(sanitizedDescription))
             {
-                <hr />
-                <h5>Associated devices</h5>
-                <ul>
-                    @foreach (var app in Model.AppareilsLies)
-                    {
-                        <li>
-                            @app.Appareil?.Nom (@app.Commentaire)
-                        </li>
-                    }
-                </ul>
+                @Html.Raw(sanitizedDescription)
+            }
+            else
+            {
+                <p class="text-muted mb-0">No description has been provided for this dataset yet.</p>
             }
         </div>
-
-        @if (Model.Donnees != null)
-        {
-            <div class="tab-pane fade @(activeTabId == "data" ? "show active" : string.Empty)" id="data" role="tabpanel" aria-labelledby="data-tab">
-                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
-                    <div>
-                        <p><strong>Label:</strong> @Model.Donnees.Libelle</p>
-                        <p><strong>Code:</strong> @Model.Donnees.Code</p>
-                        <p><strong>Table name:</strong> @Model.Donnees.NomDeLaTable</p>
-                        <p><strong>Description:</strong> @Model.Donnees.Description</p>
-                    </div>
-                    @if (Model.Metadonnee?.AutoriserLeTelechargement == true && !string.IsNullOrWhiteSpace(Model.Donnees?.NomDeLaTable))
-                    {
-                        <button type="button"
-                                class="btn btn-outline-primary btn-sm download-table"
-                                data-table-name="@Model.Donnees.NomDeLaTable"
-                                data-download-parts='@System.Text.Json.JsonSerializer.Serialize(new[] { Model.Metadonnee.Nom, Model.Donnees?.Libelle, "data" })'
-                                data-max-rows-per-part="1000000"
-                                title="Download data as CSV (ZIP)"
-                                aria-label="Download the Data table as a ZIP archive">
-                            <span class="material-symbols-outlined align-middle" aria-hidden="true">download</span>
-                            <span class="align-middle">Download data</span>
-                        </button>
-                    }
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="detail-field">
+                    <span class="detail-label">License</span>
+                    <p class="detail-value mb-0">@Model.Licence?.Libelle</p>
                 </div>
-                <p><strong>Data quality:</strong> @(Model.Donnees.QualiteDonnees?.Libelle ?? "—")</p>
-                @if (!string.IsNullOrWhiteSpace(Model.Donnees.QualiteDonnees?.Description))
-                {
-                    <p class="text-muted">@Model.Donnees.QualiteDonnees.Description</p>
-                }
-                <p><strong>Number of sensors:</strong> @Model.Donnees.NombreDeCapteurs</p>
-                <p><strong>Collection frequency:</strong> @Model.Donnees.FrequenceDeCollect</p>
-                <p><strong>Dates:</strong> @Model.Donnees.StartTimestamp.ToShortDateString() - @Model.Donnees.EndTimestamp.ToShortDateString()</p>
+                <div class="detail-field">
+                    <span class="detail-label">Visibility</span>
+                    <p class="detail-value mb-0">@Model.Visibilite?.Libelle</p>
+                </div>
+                <div class="detail-field mb-0">
+                    <span class="detail-label">Data size</span>
+                    <p class="detail-value mb-0">@(Model.Metadonnee?.TailleDesDonnees ?? "—")</p>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="detail-field">
+                    <span class="detail-label">Site</span>
+                    <p class="detail-value mb-0">@Model.Site?.Nom</p>
+                </div>
+                <div class="detail-field mb-0">
+                    <span class="detail-label">Organisation/Team</span>
+                    <p class="detail-value mb-0">@(Model.Utilisateur?.Entreprise?.Nom ?? "—")</p>
+                </div>
+            </div>
+        </div>
 
-                @if (Model.DonneesPreviewRows?.Any() == true)
+        @if (Model.AppareilsLies != null && Model.AppareilsLies.Any())
+        {
+            <hr />
+            <h5>Associated devices</h5>
+            <ul>
+                @foreach (var app in Model.AppareilsLies)
                 {
-                    <hr />
-                    <h6>Data preview</h6>
-                    <div class="table-responsive">
-                        <table class="table table-striped table-sm">
-                            <thead>
-                                <tr>
-                                    @foreach (var col in Model.DonneesPreviewRows.First().Keys)
-                                    {
-                                        <th>@col</th>
-                                    }
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var row in Model.DonneesPreviewRows)
-                                {
+                    <li>
+                        @app.Appareil?.Nom (@app.Commentaire)
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+
+    @if (tabSections.Any())
+    {
+        <ul class="nav nav-tabs" id="datasetDetailsTabs" role="tablist">
+            @foreach (var tabSection in tabSections)
+            {
+                var isActive = tabSection.Id == activeTabId;
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link @(isActive ? "active" : string.Empty)" id="@tabSection.Id-tab" data-bs-toggle="tab" data-bs-target="#@tabSection.Id" type="button" role="tab" aria-controls="@tabSection.Id" aria-selected="@(isActive ? "true" : "false")">
+                        @tabSection.Title
+                    </button>
+                </li>
+            }
+        </ul>
+        <div class="tab-content border border-top-0 rounded-bottom bg-white shadow-sm p-4" id="datasetDetailsTabsContent">
+            @if (Model.Donnees != null)
+            {
+                <div class="tab-pane fade @(activeTabId == "data" ? "show active" : string.Empty)" id="data" role="tabpanel" aria-labelledby="data-tab">
+                    <div class="tab-pane-header">
+                        <div class="tab-pane-primary">
+                            <div class="detail-row detail-row-inline detail-row-columns">
+                                <div class="detail-field">
+                                    <span class="detail-label">Label</span>
+                                    <p class="detail-value mb-0">@Model.Donnees.Libelle</p>
+                                </div>
+                                <div class="detail-field">
+                                    <span class="detail-label">Code</span>
+                                    <p class="detail-value mb-0">@Model.Donnees.Code</p>
+                                </div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-field mb-0">
+                                    <span class="detail-label">Table name</span>
+                                    <p class="detail-value mb-0">@Model.Donnees.NomDeLaTable</p>
+                                </div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-field mb-0">
+                                    <span class="detail-label">Description</span>
+                                    <p class="detail-value mb-0">@Model.Donnees.Description</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-pane-actions">
+                            @if (!string.IsNullOrWhiteSpace(Model.Donnees.QualiteDonnees?.Libelle))
+                            {
+                                <span class="@buildQualityBadgeClass(Model.Donnees.QualiteDonnees.Libelle)" data-quality-description="@Model.Donnees.QualiteDonnees?.Description">@Model.Donnees.QualiteDonnees.Libelle</span>
+                            }
+                            @if (Model.Metadonnee?.AutoriserLeTelechargement == true && !string.IsNullOrWhiteSpace(Model.Donnees?.NomDeLaTable))
+                            {
+                                <button type="button"
+                                        class="btn btn-outline-primary btn-sm download-table"
+                                        data-table-name="@Model.Donnees.NomDeLaTable"
+                                        data-download-parts='@System.Text.Json.JsonSerializer.Serialize(new[] { Model.Metadonnee.Nom, Model.Donnees?.Libelle, "data" })'
+                                        data-max-rows-per-part="1000000"
+                                        title="Download data as CSV (ZIP)"
+                                        aria-label="Download the Data table as a ZIP archive">
+                                    <span class="material-symbols-outlined align-middle" aria-hidden="true">download</span>
+                                    <span class="align-middle">Download data</span>
+                                </button>
+                            }
+                        </div>
+                    </div>
+                    <div class="detail-row detail-row-inline detail-row-columns">
+                        <div class="detail-field">
+                            <span class="detail-label">Number of sensors</span>
+                            <p class="detail-value mb-0">@Model.Donnees.NombreDeCapteurs</p>
+                        </div>
+                        <div class="detail-field">
+                            <span class="detail-label">Collection frequency</span>
+                            <p class="detail-value mb-0">@Model.Donnees.FrequenceDeCollect</p>
+                        </div>
+                    </div>
+                    <div class="detail-row mb-0">
+                        <div class="detail-field mb-0">
+                            <span class="detail-label">Dates</span>
+                            <p class="detail-value mb-0">@Model.Donnees.StartTimestamp.ToShortDateString() - @Model.Donnees.EndTimestamp.ToShortDateString()</p>
+                        </div>
+                    </div>
+
+                    @if (Model.DonneesPreviewRows?.Any() == true)
+                    {
+                        <hr />
+                        <h6 class="preview-heading text-center">Data preview</h6>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-sm preview-table">
+                                <thead>
                                     <tr>
-                                        @foreach (var val in row.Values)
+                                        @foreach (var col in Model.DonneesPreviewRows.First().Keys)
                                         {
-                                            <td>@val</td>
+                                            <th>@col</th>
                                         }
                                     </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-            </div>
-        }
-
-        @if (Model.DonneesEventLogs != null)
-        {
-            <div class="tab-pane fade @(activeTabId == "eventLogs" ? "show active" : string.Empty)" id="eventLogs" role="tabpanel" aria-labelledby="eventLogs-tab">
-                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
-                    <div>
-                        <p><strong>Label:</strong> @Model.DonneesEventLogs.Libelle</p>
-                        <p><strong>Code:</strong> @Model.DonneesEventLogs.Code</p>
-                        <p><strong>Table name:</strong> @Model.DonneesEventLogs.NomDeLaTable</p>
-                        <p><strong>Description:</strong> @Model.DonneesEventLogs.Description</p>
-                    </div>
-                    @if (Model.Metadonnee?.AutoriserLeTelechargement == true && !string.IsNullOrWhiteSpace(Model.DonneesEventLogs?.NomDeLaTable))
-                    {
-                        <button type="button"
-                                class="btn btn-outline-primary btn-sm download-table"
-                                data-table-name="@Model.DonneesEventLogs.NomDeLaTable"
-                                data-download-parts='@System.Text.Json.JsonSerializer.Serialize(new[] { Model.Metadonnee.Nom, Model.DonneesEventLogs?.Libelle, "eventLogs" })'
-                                data-max-rows-per-part="1000000"
-                                title="Download event logs as CSV (ZIP)"
-                                aria-label="Download the Event logs table as a ZIP archive">
-                            <span class="material-symbols-outlined align-middle" aria-hidden="true">download</span>
-                            <span class="align-middle">Download event logs</span>
-                        </button>
+                                </thead>
+                                <tbody>
+                                    @foreach (var row in Model.DonneesPreviewRows)
+                                    {
+                                        <tr>
+                                            @foreach (var val in row.Values)
+                                            {
+                                                <td>@val</td>
+                                            }
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
                     }
                 </div>
-                <p><strong>Data quality:</strong> @(Model.DonneesEventLogs.QualiteDonnees?.Libelle ?? "—")</p>
-                @if (!string.IsNullOrWhiteSpace(Model.DonneesEventLogs.QualiteDonnees?.Description))
-                {
-                    <p class="text-muted">@Model.DonneesEventLogs.QualiteDonnees.Description</p>
-                }
-                <p><strong>Number of events:</strong> @Model.DonneesEventLogs.NombreDEvents</p>
-                <p><strong>Dates:</strong> @Model.DonneesEventLogs.StartTimestamp.ToShortDateString() - @Model.DonneesEventLogs.EndTimestamp.ToShortDateString()</p>
+            }
+            @if (Model.DonneesEventLogs != null)
+            {
+                <div class="tab-pane fade @(activeTabId == "eventLogs" ? "show active" : string.Empty)" id="eventLogs" role="tabpanel" aria-labelledby="eventLogs-tab">
+                    <div class="tab-pane-header">
+                        <div class="tab-pane-primary">
+                            <div class="detail-row detail-row-inline detail-row-columns">
+                                <div class="detail-field">
+                                    <span class="detail-label">Label</span>
+                                    <p class="detail-value mb-0">@Model.DonneesEventLogs.Libelle</p>
+                                </div>
+                                <div class="detail-field">
+                                    <span class="detail-label">Code</span>
+                                    <p class="detail-value mb-0">@Model.DonneesEventLogs.Code</p>
+                                </div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-field mb-0">
+                                    <span class="detail-label">Table name</span>
+                                    <p class="detail-value mb-0">@Model.DonneesEventLogs.NomDeLaTable</p>
+                                </div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-field mb-0">
+                                    <span class="detail-label">Description</span>
+                                    <p class="detail-value mb-0">@Model.DonneesEventLogs.Description</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-pane-actions">
+                            @if (!string.IsNullOrWhiteSpace(Model.DonneesEventLogs.QualiteDonnees?.Libelle))
+                            {
+                                <span class="@buildQualityBadgeClass(Model.DonneesEventLogs.QualiteDonnees.Libelle)" data-quality-description="@Model.DonneesEventLogs.QualiteDonnees?.Description">@Model.DonneesEventLogs.QualiteDonnees.Libelle</span>
+                            }
+                            @if (Model.Metadonnee?.AutoriserLeTelechargement == true && !string.IsNullOrWhiteSpace(Model.DonneesEventLogs?.NomDeLaTable))
+                            {
+                                <button type="button"
+                                        class="btn btn-outline-primary btn-sm download-table"
+                                        data-table-name="@Model.DonneesEventLogs.NomDeLaTable"
+                                        data-download-parts='@System.Text.Json.JsonSerializer.Serialize(new[] { Model.Metadonnee.Nom, Model.DonneesEventLogs?.Libelle, "eventLogs" })'
+                                        data-max-rows-per-part="1000000"
+                                        title="Download event logs as CSV (ZIP)"
+                                        aria-label="Download the Event logs table as a ZIP archive">
+                                    <span class="material-symbols-outlined align-middle" aria-hidden="true">download</span>
+                                    <span class="align-middle">Download event logs</span>
+                                </button>
+                            }
+                        </div>
+                    </div>
+                    <div class="detail-row detail-row-inline detail-row-columns mb-0">
+                        <div class="detail-field">
+                            <span class="detail-label">Number of events</span>
+                            <p class="detail-value mb-0">@Model.DonneesEventLogs.NombreDEvents</p>
+                        </div>
+                        <div class="detail-field">
+                            <span class="detail-label">Dates</span>
+                            <p class="detail-value mb-0">@Model.DonneesEventLogs.StartTimestamp.ToShortDateString() - @Model.DonneesEventLogs.EndTimestamp.ToShortDateString()</p>
+                        </div>
+                    </div>
 
-                @if (Model.EventLogsPreviewRows?.Any() == true)
-                {
-                    <hr />
-                    <h6>Event log preview</h6>
-                    <div class="table-responsive">
-                        <table class="table table-striped table-sm">
-                            <thead>
-                                <tr>
-                                    @foreach (var col in Model.EventLogsPreviewRows.First().Keys)
-                                    {
-                                        <th>@col</th>
-                                    }
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var row in Model.EventLogsPreviewRows)
-                                {
+                    @if (Model.EventLogsPreviewRows?.Any() == true)
+                    {
+                        <hr />
+                        <h6 class="preview-heading text-center">Event log preview</h6>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-sm preview-table">
+                                <thead>
                                     <tr>
-                                        @foreach (var val in row.Values)
+                                        @foreach (var col in Model.EventLogsPreviewRows.First().Keys)
                                         {
-                                            <td>@val</td>
+                                            <th>@col</th>
                                         }
                                     </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-            </div>
-        }
-
-        @if (Model.DonneesContexteEnvironnemental != null)
-        {
-            <div class="tab-pane fade @(activeTabId == "environmental" ? "show active" : string.Empty)" id="environmental" role="tabpanel" aria-labelledby="environmental-tab">
-                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
-                    <div>
-                        <p><strong>Label:</strong> @Model.DonneesContexteEnvironnemental.Libelle</p>
-                        <p><strong>Code:</strong> @Model.DonneesContexteEnvironnemental.Code</p>
-                        <p><strong>Table name:</strong> @Model.DonneesContexteEnvironnemental.NomDeLaTable</p>
-                        <p><strong>Description:</strong> @Model.DonneesContexteEnvironnemental.Description</p>
-                    </div>
-                    @if (Model.Metadonnee?.AutoriserLeTelechargement == true && !string.IsNullOrWhiteSpace(Model.DonneesContexteEnvironnemental?.NomDeLaTable))
-                    {
-                        <button type="button"
-                                class="btn btn-outline-primary btn-sm download-table"
-                                data-table-name="@Model.DonneesContexteEnvironnemental.NomDeLaTable"
-                                data-download-parts='@System.Text.Json.JsonSerializer.Serialize(new[] { Model.Metadonnee.Nom, Model.DonneesContexteEnvironnemental?.Libelle, "environment" })'
-                                data-max-rows-per-part="1000000"
-                                title="Download environmental context as CSV (ZIP)"
-                                aria-label="Download the Environmental context table as a ZIP archive">
-                            <span class="material-symbols-outlined align-middle" aria-hidden="true">download</span>
-                            <span class="align-middle">Download environmental context</span>
-                        </button>
+                                </thead>
+                                <tbody>
+                                    @foreach (var row in Model.EventLogsPreviewRows)
+                                    {
+                                        <tr>
+                                            @foreach (var val in row.Values)
+                                            {
+                                                <td>@val</td>
+                                            }
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
                     }
                 </div>
-                <p><strong>Data quality:</strong> @(Model.DonneesContexteEnvironnemental.QualiteDonnees?.Libelle ?? "—")</p>
-                @if (!string.IsNullOrWhiteSpace(Model.DonneesContexteEnvironnemental.QualiteDonnees?.Description))
-                {
-                    <p class="text-muted">@Model.DonneesContexteEnvironnemental.QualiteDonnees.Description</p>
-                }
-                <p><strong>Dates:</strong> @Model.DonneesContexteEnvironnemental.StartTimestamp.ToShortDateString() - @Model.DonneesContexteEnvironnemental.EndTimestamp.ToShortDateString()</p>
+            }
 
-                @if (Model.ContextePreviewRows?.Any() == true)
-                {
-                    <hr />
-                    <h6>Environmental context preview</h6>
-                    <div class="table-responsive">
-                        <table class="table table-striped table-sm">
-                            <thead>
-                                <tr>
-                                    @foreach (var col in Model.ContextePreviewRows.First().Keys)
-                                    {
-                                        <th>@col</th>
-                                    }
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var row in Model.ContextePreviewRows)
-                                {
+            @if (Model.DonneesContexteEnvironnemental != null)
+            {
+                <div class="tab-pane fade @(activeTabId == "environmental" ? "show active" : string.Empty)" id="environmental" role="tabpanel" aria-labelledby="environmental-tab">
+                    <div class="tab-pane-header">
+                        <div class="tab-pane-primary">
+                            <div class="detail-row detail-row-inline">
+                                <div class="detail-field">
+                                    <span class="detail-label">Label</span>
+                                    <p class="detail-value mb-0">@Model.DonneesContexteEnvironnemental.Libelle</p>
+                                </div>
+                                <div class="detail-field">
+                                    <span class="detail-label">Code</span>
+                                    <p class="detail-value mb-0">@Model.DonneesContexteEnvironnemental.Code</p>
+                                </div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-field mb-0">
+                                    <span class="detail-label">Table name</span>
+                                    <p class="detail-value mb-0">@Model.DonneesContexteEnvironnemental.NomDeLaTable</p>
+                                </div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-field mb-0">
+                                    <span class="detail-label">Description</span>
+                                    <p class="detail-value mb-0">@Model.DonneesContexteEnvironnemental.Description</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-pane-actions">
+                            @if (!string.IsNullOrWhiteSpace(Model.DonneesContexteEnvironnemental.QualiteDonnees?.Libelle))
+                            {
+                                <span class="@buildQualityBadgeClass(Model.DonneesContexteEnvironnemental.QualiteDonnees.Libelle)" data-quality-description="@Model.DonneesContexteEnvironnemental.QualiteDonnees?.Description">@Model.DonneesContexteEnvironnemental.QualiteDonnees.Libelle</span>
+                            }
+                            @if (Model.Metadonnee?.AutoriserLeTelechargement == true && !string.IsNullOrWhiteSpace(Model.DonneesContexteEnvironnemental?.NomDeLaTable))
+                            {
+                                <button type="button"
+                                        class="btn btn-outline-primary btn-sm download-table"
+                                        data-table-name="@Model.DonneesContexteEnvironnemental.NomDeLaTable"
+                                        data-download-parts='@System.Text.Json.JsonSerializer.Serialize(new[] { Model.Metadonnee.Nom, Model.DonneesContexteEnvironnemental?.Libelle, "environment" })'
+                                        data-max-rows-per-part="1000000"
+                                        title="Download environmental context as CSV (ZIP)"
+                                        aria-label="Download the Environmental context table as a ZIP archive">
+                                    <span class="material-symbols-outlined align-middle" aria-hidden="true">download</span>
+                                    <span class="align-middle">Download environmental context</span>
+                                </button>
+                            }
+                        </div>
+                    </div>
+                    <div class="detail-row mb-0">
+                        <div class="detail-field mb-0">
+                            <span class="detail-label">Dates</span>
+                            <p class="detail-value mb-0">@Model.DonneesContexteEnvironnemental.StartTimestamp.ToShortDateString() - @Model.DonneesContexteEnvironnemental.EndTimestamp.ToShortDateString()</p>
+                        </div>
+                    </div>
+
+                    @if (Model.ContextePreviewRows?.Any() == true)
+                    {
+                        <hr />
+                        <h6 class="preview-heading text-center">Environmental context preview</h6>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-sm preview-table">
+                                <thead>
                                     <tr>
-                                        @foreach (var val in row.Values)
+                                        @foreach (var col in Model.ContextePreviewRows.First().Keys)
                                         {
-                                            <td>@val</td>
+                                            <th>@col</th>
                                         }
                                     </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-            </div>
-        }
-    </div>
-
+                                </thead>
+                                <tbody>
+                                    @foreach (var row in Model.ContextePreviewRows)
+                                    {
+                                        <tr>
+                                            @foreach (var val in row.Values)
+                                            {
+                                                <td>@val</td>
+                                            }
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
     <div class="text-center mt-4">
         <a href="@Url.Action("RechercheDonnees", "AccesDonnees")" class="btn btn-outline-primary">
             All data

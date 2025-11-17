@@ -17,9 +17,50 @@
             <span asp-validation-for="Nom" class="text-danger"></span>
         </div>
 
-        <div class="form-floating mb-3">
-            <textarea asp-for="Description" class="form-control" placeholder="Description" style="height: 100px;" required></textarea>
-            <label asp-for="Description"></label>
+        <div class="mb-3">
+            <label asp-for="Description" class="form-label fw-semibold"></label>
+            <div class="rich-text-editor" data-rich-text-editor data-target-input-id="Description">
+                <div class="rich-text-editor__toolbar" role="toolbar" aria-label="Formatting options">
+                    <div class="btn-group me-2" role="group" aria-label="Text emphasis">
+                        <button type="button" class="btn btn-light btn-sm" data-command="bold" aria-label="Bold">
+                            <span class="material-symbols-outlined align-middle">format_bold</span>
+                        </button>
+                        <button type="button" class="btn btn-light btn-sm" data-command="italic" aria-label="Italic">
+                            <span class="material-symbols-outlined align-middle">format_italic</span>
+                        </button>
+                        <button type="button" class="btn btn-light btn-sm" data-command="underline" aria-label="Underline">
+                            <span class="material-symbols-outlined align-middle">format_underlined</span>
+                        </button>
+                    </div>
+                    <div class="btn-group me-2" role="group" aria-label="Lists">
+                        <button type="button" class="btn btn-light btn-sm" data-command="insertUnorderedList" aria-label="Bulleted list">
+                            <span class="material-symbols-outlined align-middle">format_list_bulleted</span>
+                        </button>
+                        <button type="button" class="btn btn-light btn-sm" data-command="insertOrderedList" aria-label="Numbered list">
+                            <span class="material-symbols-outlined align-middle">format_list_numbered</span>
+                        </button>
+                    </div>
+                    <div class="btn-group me-2" role="group" aria-label="Links">
+                        <button type="button" class="btn btn-light btn-sm" data-command="createLink" aria-label="Insert link">
+                            <span class="material-symbols-outlined align-middle">link</span>
+                        </button>
+                        <button type="button" class="btn btn-light btn-sm" data-command="unlink" aria-label="Remove link">
+                            <span class="material-symbols-outlined align-middle">link_off</span>
+                        </button>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <select id="DescriptionFormat" class="form-select form-select-sm" data-format-block>
+                            <option value="p">Paragraph</option>
+                            <option value="h2">Heading 2</option>
+                            <option value="h3">Heading 3</option>
+                            <option value="h4">Heading 4</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="Description-editor" class="rich-text-editor__content" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Describe your dataset in detail, including sources, goals, and any context that helps others understand it."></div>
+                <textarea asp-for="Description" class="d-none" required></textarea>
+            </div>
+            <small class="text-muted">Add rich formatting to make the dataset description clearer. You can use bold text, headings, bullet lists, and links.</small>
             <span asp-validation-for="Description" class="text-danger"></span>
         </div>
 
@@ -92,5 +133,6 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/richTextEditor.js" asp-append-version="true"></script>
     <script src="~/js/multiSelectTags.js" asp-append-version="true"></script>
 }
