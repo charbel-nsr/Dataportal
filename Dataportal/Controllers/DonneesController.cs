@@ -13,6 +13,8 @@ using System.Globalization;
 using Microsoft.AspNetCore.Http;
 using System.Linq;
 using System.Collections.Generic;
+using Microsoft.AspNetCore.Http.Extensions;
+using System;
 
 namespace Dataportal.Controllers
 {
@@ -725,7 +727,7 @@ namespace Dataportal.Controllers
 
         [HttpGet]
         [AllowAnonymous]
-        public async Task<IActionResult> Details(int id, bool? creation)
+        public async Task<IActionResult> Details(int id, bool? creation, string? returnUrl)
         {
             // 1️⃣ Load Metadonnee + navigation
             var metadonnee = await _context.Metadonnee
@@ -774,6 +776,11 @@ namespace Dataportal.Controllers
             var eventLogsPreview = eventLogs?.NomDeLaTable != null ? await GetTablePreviewRows(eventLogs.NomDeLaTable) : null;
             var contextePreview = contexte?.NomDeLaTable != null ? await GetTablePreviewRows(contexte.NomDeLaTable) : null;
 
+            var fallbackReturnUrl = creation == true
+                ? Url.Action("RechercheDonnees", "AccesDonnees")
+                : Url.Action("Index", "Accueil");
+            var resolvedReturnUrl = ResolveReturnUrl(returnUrl, fallbackReturnUrl);
+
             //Build ViewModel
             var vm = new MetadonneeDetailsViewModel
             {
@@ -792,10 +799,35 @@ namespace Dataportal.Controllers
                 EventLogsPreviewRows = eventLogsPreview,
 
                 DonneesContexteEnvironnemental = contexte,
-                ContextePreviewRows = contextePreview
+                ContextePreviewRows = contextePreview,
+                ReturnUrl = resolvedReturnUrl
             };
 
             return View(vm);
+        }
+
+        private string? ResolveReturnUrl(string? requestedReturnUrl, string? fallback)
+        {
+            if (!string.IsNullOrWhiteSpace(requestedReturnUrl) && Url.IsLocalUrl(requestedReturnUrl))
+            {
+                return requestedReturnUrl;
+            }
+
+            var referer = Request.GetTypedHeaders().Referer?.ToString();
+            if (!string.IsNullOrWhiteSpace(referer))
+            {
+                var currentHost = $"{Request.Scheme}://{Request.Host}";
+                if (referer.StartsWith(currentHost, StringComparison.OrdinalIgnoreCase))
+                {
+                    var localPath = referer.Substring(currentHost.Length);
+                    if (Url.IsLocalUrl(localPath))
+                    {
+                        return localPath;
+                    }
+                }
+            }
+
+            return fallback;
         }
 
         private async Task<List<Dictionary<string, object>>> GetTablePreviewRows(string tableName)

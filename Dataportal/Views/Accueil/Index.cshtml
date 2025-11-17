@@ -2,6 +2,7 @@
 
 @{
     ViewData["Title"] = "Home";
+    var homeReturnUrl = Context.Request.Path + Context.Request.QueryString;
 }
 
 <div class="hero" style="background-image: url(' /background/hero-background.jpg');">
@@ -57,7 +58,7 @@
                                 </div>
                                 <h5 class="card-title mb-1">@dataset.Name</h5>
                                 <p class="text-muted mb-4">@(string.IsNullOrWhiteSpace(dataset.EnergyType) ? "Other" : dataset.EnergyType)</p>
-                                <a class="btn btn-outline-primary mt-auto" href="@Url.Action("Details", "Donnees", new { id = dataset.Id })">See data set</a>
+                                <a class="btn btn-outline-primary mt-auto" href="@Url.Action("Details", "Donnees", new { id = dataset.Id, returnUrl = homeReturnUrl })">See data set</a>
                             </div>
                         </div>
                     </div>

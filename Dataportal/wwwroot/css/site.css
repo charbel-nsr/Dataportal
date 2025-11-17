@@ -728,3 +728,8 @@ th[data-sortable="true"] {
     text-decoration: none;
     box-shadow: none;
 }
+
+.close-details-link {
+    align-self: flex-start;
+    box-shadow: none !important;
+}

@@ -95,29 +95,40 @@
 }
 
 <div class="container my-4 data-details-all">
-    <div class="mb-4">
-        <h1 class="mb-1">@Model.Metadonnee.Nom</h1>
-        @if (Model.Utilisateur != null)
+    <div class="mb-4 d-flex flex-wrap align-items-center gap-3">
+        <div class="flex-grow-1 min-width-0">
+            <h1 class="mb-1">@Model.Metadonnee.Nom</h1>
+            @if (Model.Utilisateur != null)
+            {
+                <button type="button"
+                        class="btn btn-link p-0 text-muted text-decoration-none creator-trigger d-inline-flex align-items-center gap-1"
+                        data-bs-toggle="modal"
+                        data-bs-target="#creatorModal">
+                    <small class="mb-0">Charbel Nasr</small>
+                    <span class="material-symbols-outlined" style="font-size: 16px;">
+                        open_in_new
+                    </span>
+                </button>
+            }
+            @if (capabilityLinks.Any())
+            {
+                <div class="dataset-flags d-flex flex-wrap mt-2">
+                    @foreach (var link in capabilityLinks)
+                    {
+                        <a class="dataset-flag" href="@link.Url" target="_blank">@link.Label</a>
+                    }
+                </div>
+            }
+        </div>
+        @if (!string.IsNullOrWhiteSpace(Model.ReturnUrl))
         {
-            <button type="button"
-                     class="btn btn-link p-0 text-muted text-decoration-none creator-trigger d-inline-flex align-items-center gap-1"
-                     data-bs-toggle="modal"
-                     data-bs-target="#creatorModal">
-                <small class="mb-0">Charbel Nasr</small>
-                <span class="material-symbols-outlined" style="font-size: 16px;">
-                    open_in_new
-                </span>
-            </button>
-        }
-        @if (capabilityLinks.Any())
-        {
-            <div class="dataset-flags d-flex flex-wrap mt-2">
-                @foreach (var link in capabilityLinks)
-                {
-                    <a class="dataset-flag" href="@link.Url" target="_blank">@link.Label</a>
-                }
-            </div>
-        }
+            <a class="btn btn-link text-decoration-none text-muted ms-auto d-inline-flex align-items-center justify-content-center p-2 close-details-link"
+               href="@Model.ReturnUrl"
+               title="Close dataset details">
+                <span class="material-symbols-outlined" aria-hidden="true">cancel</span>
+                <span class="visually-hidden">Return to the previous page</span>
+                </a>
+            }
     </div>
 
     @if (currentStep.HasValue)
@@ -467,11 +478,6 @@
             }
         </div>
     }
-    <div class="text-center mt-4">
-        <a href="@Url.Action("RechercheDonnees", "AccesDonnees")" class="btn btn-outline-primary">
-            All data
-        </a>
-    </div>
 </div>
 
 @if (Model.Utilisateur != null)

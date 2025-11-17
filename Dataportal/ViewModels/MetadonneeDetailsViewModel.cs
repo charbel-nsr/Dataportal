@@ -28,5 +28,8 @@ namespace Dataportal.ViewModels
         // 4️ ContexteEnvironnemental
         public DonneesContexteEnvironnemental DonneesContexteEnvironnemental { get; set; }
         public List<Dictionary<string, object>> ContextePreviewRows { get; set; }
+
+        // Navigation helpers
+        public string? ReturnUrl { get; set; }
     }
 }

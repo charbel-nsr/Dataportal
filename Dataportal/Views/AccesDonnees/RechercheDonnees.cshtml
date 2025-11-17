@@ -4,6 +4,7 @@
 
 @{
     ViewData["Title"] = "Search data";
+    var searchReturnUrl = Context.Request.Path + Context.Request.QueryString;
 }
 
 <div class="container">
@@ -291,7 +292,7 @@
                                     <td data-sort-value="@visibilityDisplay">@visibilityDisplay</td>
                                     <td data-sort-value="@creatorLabel">@creatorLabel</td>
                                     <td>
-                                        <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("Details", "Donnees", new { id = m.Id })" title="View details">
+                                        <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("Details", "Donnees", new { id = m.Id, returnUrl = searchReturnUrl })" title="View details">
                                             <i class="bi bi-exclamation-circle"></i>
                                         </a>
                                         @if (User.IsInRole("administrator") || (User.Identity.IsAuthenticated && User.FindFirst("UserId")?.Value == m.IdUtilisateur.ToString()))
