@@ -447,3 +447,11 @@ th[data-sortable="true"] {
 .download-table {
     padding: 0 5px 0 5px;
 }
+
+.creator-trigger:focus, .creator-trigger:active, .creator-trigger:focus-visible {
+    box-shadow: none !important;
+}
+
+.creator-trigger:hover {
+    text-decoration: underline;
+}

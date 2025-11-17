@@ -733,7 +733,7 @@ namespace Dataportal.Controllers
                 .Include(m => m.Site)
                 .Include(m => m.Visibilite)
                 .Include(m => m.TypeEnergieRenouvelable)
-                .Include(m => m.Utilisateur)
+                .Include(m => m.Utilisateur).ThenInclude(u => u.Entreprise)
                 .Include(m => m.Metadonnee_Appareils).ThenInclude(ma => ma.Appareil)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
