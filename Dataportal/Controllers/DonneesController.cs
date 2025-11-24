@@ -707,6 +707,170 @@ namespace Dataportal.Controllers
 
         [HttpGet]
         [Authorize(Roles = "administrator,editor,user")]
+        public IActionResult EditMetadata(int id, string? returnUrl)
+        {
+            var metadonnee = _context.Metadonnee
+                .Include(m => m.Metadonnee_Appareils)
+                .FirstOrDefault(m => m.Id == id);
+
+            if (metadonnee == null)
+            {
+                return NotFound();
+            }
+
+            if (!CanCurrentUserAccessMetadonnee(metadonnee, out var requiresAuthentication))
+            {
+                if (requiresAuthentication)
+                {
+                    return Challenge();
+                }
+
+                return Forbid();
+            }
+
+            var currentUserId = TryGetCurrentUserId();
+            if (!User.IsInRole("administrator") && (!currentUserId.HasValue || metadonnee.IdUtilisateur != currentUserId.Value))
+            {
+                return Forbid();
+            }
+
+            var visibilites = _context.Visibilite.AsQueryable();
+            if (User.IsInRole("user"))
+            {
+                visibilites = visibilites.Where(v => v.Id == VisibiliteIds.Personnelle);
+            }
+
+            var vm = new MetadonneeEditViewModel
+            {
+                Id = metadonnee.Id,
+                Nom = metadonnee.Nom,
+                Description = metadonnee.Description,
+                IdLicence = metadonnee.IdLicence,
+                IdSite = metadonnee.IdSite,
+                IdVisibilite = metadonnee.IdVisibilite,
+                IdTypeEnergieRenouvelable = metadonnee.IdTypeEnergieRenouvelable,
+                SeriesTemporelles = metadonnee.SeriesTemporelles,
+                AutoriserApi = metadonnee.AutoriserApi,
+                Anonymiser = metadonnee.Anonymiser,
+                AutoriserLeTelechargement = metadonnee.AutoriserLeTelechargement,
+                Licences = _context.Licence.Where(l => l.Actif).ToList(),
+                Sites = _context.Site.Where(s => s.Actif).ToList(),
+                Visibilites = visibilites.ToList(),
+                TypesEnergieRenouvelable = _context.TypeEnergieRenouvelable.OrderBy(t => t.Libelle).ToList(),
+                Appareils = _context.Appareil.Where(a => a.Actif).ToList(),
+                AppareilInfos = metadonnee.Metadonnee_Appareils?.Select(link => new MetadonneeAppareilInfo
+                {
+                    IdAppareil = link.IdAppareil,
+                    IdAppareilDansDonnees = link.IdAppareilDansDonnees,
+                    Commentaire = link.Commentaire
+                }).ToList() ?? new List<MetadonneeAppareilInfo>(),
+                ReturnUrl = returnUrl ?? string.Empty
+            };
+
+            return View("EditMetadata", vm);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "administrator,editor,user")]
+        [ValidateAntiForgeryToken]
+        public IActionResult EditMetadata(MetadonneeEditViewModel model)
+        {
+            var metadonnee = _context.Metadonnee
+                .Include(m => m.Metadonnee_Appareils)
+                .FirstOrDefault(m => m.Id == model.Id);
+
+            if (metadonnee == null)
+            {
+                return NotFound();
+            }
+
+            if (!CanCurrentUserAccessMetadonnee(metadonnee, out var requiresAuthentication))
+            {
+                if (requiresAuthentication)
+                {
+                    return Challenge();
+                }
+
+                return Forbid();
+            }
+
+            var currentUserId = TryGetCurrentUserId();
+            if (!User.IsInRole("administrator") && (!currentUserId.HasValue || metadonnee.IdUtilisateur != currentUserId.Value))
+            {
+                return Forbid();
+            }
+
+            void ReloadSelections()
+            {
+                var visibilites = _context.Visibilite.AsQueryable();
+                if (User.IsInRole("user"))
+                {
+                    visibilites = visibilites.Where(v => v.Id == VisibiliteIds.Personnelle);
+                }
+
+                model.Licences = _context.Licence.Where(l => l.Actif).ToList();
+                model.Sites = _context.Site.Where(s => s.Actif).ToList();
+                model.Visibilites = visibilites.ToList();
+                model.TypesEnergieRenouvelable = _context.TypeEnergieRenouvelable.OrderBy(t => t.Libelle).ToList();
+                model.Appareils = _context.Appareil.Where(a => a.Actif).ToList();
+                model.AppareilInfos ??= new List<MetadonneeAppareilInfo>();
+                model.Nom = metadonnee.Nom;
+            }
+
+            if (User.IsInRole("user") && model.IdVisibilite != VisibiliteIds.Personnelle)
+            {
+                ModelState.AddModelError("IdVisibilite", "Standard users can only manage personal data.");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                ReloadSelections();
+                return View(model);
+            }
+
+            metadonnee.Description = model.Description?.Trim();
+            metadonnee.IdLicence = model.IdLicence;
+            metadonnee.IdSite = model.IdSite;
+            metadonnee.IdVisibilite = model.IdVisibilite;
+            metadonnee.IdTypeEnergieRenouvelable = model.IdTypeEnergieRenouvelable;
+            metadonnee.SeriesTemporelles = model.SeriesTemporelles;
+            metadonnee.AutoriserApi = model.AutoriserApi;
+            metadonnee.Anonymiser = model.Anonymiser;
+            metadonnee.AutoriserLeTelechargement = model.AutoriserLeTelechargement;
+            metadonnee.DernierMiseAJour = DateTime.Now;
+
+            _context.Metadonnee_Appareil.RemoveRange(metadonnee.Metadonnee_Appareils ?? Enumerable.Empty<Metadonnee_Appareil>());
+
+            if (model.AppareilInfos != null)
+            {
+                foreach (var info in model.AppareilInfos)
+                {
+                    var link = new Metadonnee_Appareil
+                    {
+                        IdMetadonnee = metadonnee.Id,
+                        IdAppareil = info.IdAppareil,
+                        IdAppareilDansDonnees = info.IdAppareilDansDonnees?.Trim() ?? string.Empty,
+                        Commentaire = info.Commentaire?.Trim() ?? string.Empty
+                    };
+                    _context.Metadonnee_Appareil.Add(link);
+                }
+            }
+
+            _context.Metadonnee.Update(metadonnee);
+            _context.SaveChanges();
+
+            TempData["Success"] = "Metadata updated successfully.";
+
+            if (!string.IsNullOrWhiteSpace(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
+            {
+                return Redirect(model.ReturnUrl);
+            }
+
+            return RedirectToAction("Details", new { id = metadonnee.Id });
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "administrator,editor,user")]
         public async Task<IActionResult> CreateStep2()
         {
             var (resumeId, nextStep) = GetCreationWizardState();

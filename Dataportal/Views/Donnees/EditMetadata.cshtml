@@ -164,6 +164,7 @@
                 <span asp-validation-for="SelectedAppareils" class="text-danger"></span>
             </div>
             <div id="appareilDetailsContainer" class="mb-3">
+            <div id="appareil-container">
                 @if (Model.AppareilInfos != null && Model.AppareilInfos.Any())
                 {
                     for (int i = 0; i < Model.AppareilInfos.Count; i++)
@@ -179,6 +180,36 @@
                     }
                 }
             </div>
+                        <div class="row g-2 align-items-end appareil-row mb-2" data-index="@i">
+                            <div class="col-md-4">
+                                <label class="form-label">Device</label>
+                                <select class="form-select" name="AppareilInfos[@i].IdAppareil">
+                                    @foreach (var appareil in Model.Appareils ?? Enumerable.Empty<Dataportal.Models.Appareil>())
+                                    {
+                                        <option value="@appareil.Id" selected="@(Model.AppareilInfos[i].IdAppareil == appareil.Id ? "selected" : null)">@appareil.Nom</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Device ID in the data</label>
+                                <input type="text" class="form-control" name="AppareilInfos[@i].IdAppareilDansDonnees" value="@Model.AppareilInfos[i].IdAppareilDansDonnees">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Comment</label>
+                                <input type="text" class="form-control" name="AppareilInfos[@i].Commentaire" value="@Model.AppareilInfos[i].Commentaire">
+                            </div>
+                            <div class="col-md-1 text-end">
+                                <button type="button" class="btn btn-outline-danger remove-appareil w-100">&times;</button>
+                            </div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <p class="text-muted">No devices linked yet.</p>
+                }
+            </div>
+            <button type="button" class="btn btn-outline-primary mt-2" id="add-appareil">Add device</button>
         </div>
 
         <div class="mt-4 d-flex justify-content-end gap-2">
@@ -192,4 +223,57 @@
     <partial name="_ValidationScriptsPartial" />
     <script src="~/js/richTextEditor.js" asp-append-version="true"></script>
     <script src="~/js/multiSelectTags.js" asp-append-version="true"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('appareil-container');
+            const addButton = document.getElementById('add-appareil');
+
+            function createRow(index) {
+                const row = document.createElement('div');
+                row.className = 'row g-2 align-items-end appareil-row mb-2';
+                row.dataset.index = index;
+                row.innerHTML = `
+<div class="col-md-4">
+    <label class="form-label">Device</label>
+    <select class="form-select" name="AppareilInfos[${index}].IdAppareil">
+        ${`@Html.Raw(string.Join("", (Model.Appareils ?? Enumerable.Empty<Dataportal.Models.Appareil>()).Select(a => $"<option value=\\\"{a.Id}\\\">{a.Nom}</option>")) )`}
+    </select>
+</div>
+<div class="col-md-4">
+    <label class="form-label">Device ID in the data</label>
+    <input type="text" class="form-control" name="AppareilInfos[${index}].IdAppareilDansDonnees">
+</div>
+<div class="col-md-3">
+    <label class="form-label">Comment</label>
+    <input type="text" class="form-control" name="AppareilInfos[${index}].Commentaire">
+</div>
+<div class="col-md-1 text-end">
+    <button type="button" class="btn btn-outline-danger remove-appareil w-100">&times;</button>
+</div>`;
+                return row;
+            }
+
+            addButton?.addEventListener('click', () => {
+                const index = container.querySelectorAll('.appareil-row').length;
+                const row = createRow(index);
+                container.appendChild(row);
+            });
+
+            container?.addEventListener('click', (event) => {
+                if (event.target.closest('.remove-appareil')) {
+                    const row = event.target.closest('.appareil-row');
+                    row?.remove();
+                    Array.from(container.querySelectorAll('.appareil-row')).forEach((row, idx) => {
+                        row.dataset.index = idx;
+                        row.querySelectorAll('select, input').forEach((input) => {
+                            const name = input.getAttribute('name');
+                            if (!name) return;
+                            const updated = name.replace(/AppareilInfos\[\d+\]/, `AppareilInfos[${idx}]`);
+                            input.setAttribute('name', updated);
+                        });
+                    });
+                }
+            });
+        })();
+    </script>
 }
