@@ -31,5 +31,7 @@ namespace Dataportal.ViewModels
 
         // Navigation helpers
         public string? ReturnUrl { get; set; }
+
+        public bool CanEdit { get; set; }
     }
 }

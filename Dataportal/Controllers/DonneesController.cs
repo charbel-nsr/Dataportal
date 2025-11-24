@@ -25,6 +25,7 @@ namespace Dataportal.Controllers
         private readonly ApplicationDbContext _context;
         private readonly ITabularFileImporter _fileImporter;
         private const string DataSizeTempDataKey = "DataSizeBytes";
+        private const string ReadOnlyDataMessage = "You cannot change dataset identifiers or uploaded data from this screen.";
 
         public DonneesController(ApplicationDbContext context, ITabularFileImporter fileImporter)
         {
@@ -203,6 +204,505 @@ namespace Dataportal.Controllers
             var code = await GenerateNextCodeAsync(libelle);
 
             return Json(new { code });
+        }
+
+        private bool IsOwnerOrAdministrator(Metadonnee metadonnee)
+        {
+            if (User.IsInRole("administrator"))
+            {
+                return true;
+            }
+
+            var currentUserId = TryGetCurrentUserId();
+            return currentUserId.HasValue && metadonnee.IdUtilisateur == currentUserId.Value;
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "administrator,editor,user")]
+        public IActionResult EditMetadata(int id, string? returnUrl)
+        {
+            var metadonnee = _context.Metadonnee
+                .Include(m => m.Metadonnee_Appareils)
+                .FirstOrDefault(m => m.Id == id);
+
+            if (metadonnee == null)
+            {
+                return NotFound();
+            }
+
+            if (!CanCurrentUserAccessMetadonnee(metadonnee, out var requiresAuthentication))
+            {
+                if (requiresAuthentication)
+                {
+                    return Challenge();
+                }
+
+                return Forbid();
+            }
+
+            if (!IsOwnerOrAdministrator(metadonnee))
+            {
+                return Forbid();
+            }
+
+            var visibilites = _context.Visibilite.AsQueryable();
+            if (User.IsInRole("user"))
+            {
+                visibilites = visibilites.Where(v => v.Id == VisibiliteIds.Personnelle);
+            }
+
+            var vm = new MetadonneeEditViewModel
+            {
+                Id = metadonnee.Id,
+                Nom = metadonnee.Nom,
+                Description = metadonnee.Description,
+                IdLicence = metadonnee.IdLicence,
+                IdSite = metadonnee.IdSite,
+                IdVisibilite = metadonnee.IdVisibilite,
+                IdTypeEnergieRenouvelable = metadonnee.IdTypeEnergieRenouvelable,
+                SeriesTemporelles = metadonnee.SeriesTemporelles,
+                AutoriserApi = metadonnee.AutoriserApi,
+                Anonymiser = metadonnee.Anonymiser,
+                AutoriserLeTelechargement = metadonnee.AutoriserLeTelechargement,
+                Licences = _context.Licence.Where(l => l.Actif).ToList(),
+                Sites = _context.Site.Where(s => s.Actif).ToList(),
+                Visibilites = visibilites.ToList(),
+                TypesEnergieRenouvelable = _context.TypeEnergieRenouvelable.OrderBy(t => t.Libelle).ToList(),
+                Appareils = _context.Appareil.Where(a => a.Actif).ToList(),
+                AppareilInfos = metadonnee.Metadonnee_Appareils?.Select(link => new MetadonneeAppareilInfo
+                {
+                    IdAppareil = link.IdAppareil,
+                    IdAppareilDansDonnees = link.IdAppareilDansDonnees,
+                    Commentaire = link.Commentaire
+                }).ToList() ?? new List<MetadonneeAppareilInfo>(),
+                SelectedAppareils = metadonnee.Metadonnee_Appareils?.Select(link => link.IdAppareil).ToList(),
+                ReturnUrl = returnUrl ?? string.Empty
+            };
+
+            return View("EditMetadata", vm);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "administrator,editor,user")]
+        [ValidateAntiForgeryToken]
+        public IActionResult EditMetadata(MetadonneeEditViewModel model)
+        {
+            var metadonnee = _context.Metadonnee
+                .Include(m => m.Metadonnee_Appareils)
+                .FirstOrDefault(m => m.Id == model.Id);
+
+            if (metadonnee == null)
+            {
+                return NotFound();
+            }
+
+            if (!CanCurrentUserAccessMetadonnee(metadonnee, out var requiresAuthentication))
+            {
+                if (requiresAuthentication)
+                {
+                    return Challenge();
+                }
+
+                return Forbid();
+            }
+
+            if (!IsOwnerOrAdministrator(metadonnee))
+            {
+                return Forbid();
+            }
+
+            void ReloadSelections()
+            {
+                var visibilites = _context.Visibilite.AsQueryable();
+                if (User.IsInRole("user"))
+                {
+                    visibilites = visibilites.Where(v => v.Id == VisibiliteIds.Personnelle);
+                }
+
+                model.Licences = _context.Licence.Where(l => l.Actif).ToList();
+                model.Sites = _context.Site.Where(s => s.Actif).ToList();
+                model.Visibilites = visibilites.ToList();
+                model.TypesEnergieRenouvelable = _context.TypeEnergieRenouvelable.OrderBy(t => t.Libelle).ToList();
+                model.Appareils = _context.Appareil.Where(a => a.Actif).ToList();
+                model.AppareilInfos ??= new List<MetadonneeAppareilInfo>();
+                model.SelectedAppareils = model.AppareilInfos.Select(a => a.IdAppareil).ToList();
+                model.Nom = metadonnee.Nom;
+            }
+
+            if (User.IsInRole("user") && model.IdVisibilite != VisibiliteIds.Personnelle)
+            {
+                ModelState.AddModelError("IdVisibilite", "Standard users can only manage personal data.");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                ReloadSelections();
+                return View(model);
+            }
+
+            metadonnee.Description = model.Description?.Trim();
+            metadonnee.IdLicence = model.IdLicence;
+            metadonnee.IdSite = model.IdSite;
+            metadonnee.IdVisibilite = model.IdVisibilite;
+            metadonnee.IdTypeEnergieRenouvelable = model.IdTypeEnergieRenouvelable;
+            metadonnee.SeriesTemporelles = model.SeriesTemporelles;
+            metadonnee.AutoriserApi = model.AutoriserApi;
+            metadonnee.Anonymiser = model.Anonymiser;
+            metadonnee.AutoriserLeTelechargement = model.AutoriserLeTelechargement;
+            metadonnee.DernierMiseAJour = DateTime.Now;
+
+            _context.Metadonnee_Appareil.RemoveRange(metadonnee.Metadonnee_Appareils ?? Enumerable.Empty<Metadonnee_Appareil>());
+
+            if (model.AppareilInfos != null)
+            {
+                foreach (var info in model.AppareilInfos)
+                {
+                    var link = new Metadonnee_Appareil
+                    {
+                        IdMetadonnee = metadonnee.Id,
+                        IdAppareil = info.IdAppareil,
+                        IdAppareilDansDonnees = info.IdAppareilDansDonnees?.Trim() ?? string.Empty,
+                        Commentaire = info.Commentaire?.Trim() ?? string.Empty
+                    };
+                    _context.Metadonnee_Appareil.Add(link);
+                }
+            }
+
+            _context.Metadonnee.Update(metadonnee);
+            _context.SaveChanges();
+
+            TempData["Success"] = "Metadata updated successfully.";
+
+            if (!string.IsNullOrWhiteSpace(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
+            {
+                return Redirect(model.ReturnUrl);
+            }
+
+            return RedirectToAction("Details", new { id = metadonnee.Id });
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "administrator,editor,user")]
+        public IActionResult EditStep2(int id, string? returnUrl)
+        {
+            var metadonnee = _context.Metadonnee
+                .Include(m => m.Donnees)
+                .FirstOrDefault(m => m.Id == id);
+
+            if (metadonnee == null || metadonnee.Donnees == null)
+            {
+                return NotFound();
+            }
+
+            if (!CanCurrentUserAccessMetadonnee(metadonnee, out var requiresAuthentication))
+            {
+                return requiresAuthentication ? Challenge() : Forbid();
+            }
+
+            if (!IsOwnerOrAdministrator(metadonnee))
+            {
+                return Forbid();
+            }
+
+            var qualiteData = BuildQualiteOptions();
+            var vm = new DonneesEditStep2ViewModel
+            {
+                IdMetadonnee = metadonnee.Id,
+                IdDonnees = metadonnee.Donnees.Id,
+                Libelle = metadonnee.Donnees.Libelle,
+                Code = metadonnee.Donnees.Code,
+                Description = metadonnee.Donnees.Description,
+                NombreDeCapteurs = metadonnee.Donnees.NombreDeCapteurs,
+                FrequenceDeCollect = metadonnee.Donnees.FrequenceDeCollect,
+                StartTimestamp = metadonnee.Donnees.StartTimestamp,
+                EndTimestamp = metadonnee.Donnees.EndTimestamp,
+                IdQualiteDonnees = metadonnee.Donnees.IdQualiteDonnees,
+                QualiteOptions = qualiteData.Options,
+                QualiteDescriptions = qualiteData.Descriptions,
+                ReturnUrl = ResolveReturnUrl(returnUrl, Url.Action("Details", new { id = metadonnee.Id })) ?? string.Empty,
+                BannerMessage = ReadOnlyDataMessage
+            };
+
+            return View("EditStep2", vm);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "administrator,editor,user")]
+        [ValidateAntiForgeryToken]
+        public IActionResult EditStep2(DonneesEditStep2ViewModel model)
+        {
+            var metadonnee = _context.Metadonnee
+                .Include(m => m.Donnees)
+                .FirstOrDefault(m => m.Id == model.IdMetadonnee);
+
+            if (metadonnee == null || metadonnee.Donnees == null)
+            {
+                return NotFound();
+            }
+
+            if (!CanCurrentUserAccessMetadonnee(metadonnee, out var requiresAuthentication))
+            {
+                return requiresAuthentication ? Challenge() : Forbid();
+            }
+
+            if (!IsOwnerOrAdministrator(metadonnee))
+            {
+                return Forbid();
+            }
+
+            void ReloadQualiteOptions()
+            {
+                var qualiteData = BuildQualiteOptions();
+                model.QualiteOptions = qualiteData.Options;
+                model.QualiteDescriptions = qualiteData.Descriptions;
+                model.BannerMessage = ReadOnlyDataMessage;
+            }
+
+            if (!string.Equals(model.Libelle?.Trim(), metadonnee.Donnees.Libelle, StringComparison.Ordinal))
+            {
+                ModelState.AddModelError(nameof(model.Libelle), "The label cannot be changed once created.");
+            }
+
+            if (!string.Equals(model.Code?.Trim(), metadonnee.Donnees.Code, StringComparison.Ordinal))
+            {
+                ModelState.AddModelError(nameof(model.Code), "The code cannot be changed once created.");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                ReloadQualiteOptions();
+                return View("EditStep2", model);
+            }
+
+            metadonnee.Donnees.Description = model.Description?.Trim();
+            metadonnee.Donnees.NombreDeCapteurs = model.NombreDeCapteurs;
+            metadonnee.Donnees.FrequenceDeCollect = model.FrequenceDeCollect?.Trim();
+            metadonnee.Donnees.StartTimestamp = model.StartTimestamp;
+            metadonnee.Donnees.EndTimestamp = model.EndTimestamp;
+            metadonnee.Donnees.IdQualiteDonnees = model.IdQualiteDonnees!.Value;
+            metadonnee.DernierMiseAJour = DateTime.Now;
+
+            _context.Update(metadonnee.Donnees);
+            _context.Update(metadonnee);
+            _context.SaveChanges();
+
+            return Redirect(!string.IsNullOrWhiteSpace(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl)
+                ? model.ReturnUrl
+                : Url.Action("Details", new { id = metadonnee.Id }));
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "administrator,editor,user")]
+        public IActionResult EditStep3(int id, string? returnUrl)
+        {
+            var metadonnee = _context.Metadonnee
+                .Include(m => m.DonneesEventLogs)
+                .FirstOrDefault(m => m.Id == id);
+
+            if (metadonnee == null || metadonnee.DonneesEventLogs == null)
+            {
+                return NotFound();
+            }
+
+            if (!CanCurrentUserAccessMetadonnee(metadonnee, out var requiresAuthentication))
+            {
+                return requiresAuthentication ? Challenge() : Forbid();
+            }
+
+            if (!IsOwnerOrAdministrator(metadonnee))
+            {
+                return Forbid();
+            }
+
+            var qualiteData = BuildQualiteOptions();
+            var vm = new DonneesEventLogsEditViewModel
+            {
+                IdMetadonnee = metadonnee.Id,
+                IdDonneesEventLogs = metadonnee.DonneesEventLogs.Id,
+                Libelle = metadonnee.DonneesEventLogs.Libelle,
+                Code = metadonnee.DonneesEventLogs.Code,
+                Description = metadonnee.DonneesEventLogs.Description,
+                StartTimestamp = metadonnee.DonneesEventLogs.StartTimestamp,
+                EndTimestamp = metadonnee.DonneesEventLogs.EndTimestamp,
+                NombreDEvents = metadonnee.DonneesEventLogs.NombreDEvents,
+                IdQualiteDonnees = metadonnee.DonneesEventLogs.IdQualiteDonnees,
+                QualiteOptions = qualiteData.Options,
+                QualiteDescriptions = qualiteData.Descriptions,
+                ReturnUrl = ResolveReturnUrl(returnUrl, Url.Action("Details", new { id = metadonnee.Id })) ?? string.Empty,
+                BannerMessage = ReadOnlyDataMessage
+            };
+
+            return View("EditStep3", vm);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "administrator,editor,user")]
+        [ValidateAntiForgeryToken]
+        public IActionResult EditStep3(DonneesEventLogsEditViewModel model)
+        {
+            var metadonnee = _context.Metadonnee
+                .Include(m => m.DonneesEventLogs)
+                .FirstOrDefault(m => m.Id == model.IdMetadonnee);
+
+            if (metadonnee == null || metadonnee.DonneesEventLogs == null)
+            {
+                return NotFound();
+            }
+
+            if (!CanCurrentUserAccessMetadonnee(metadonnee, out var requiresAuthentication))
+            {
+                return requiresAuthentication ? Challenge() : Forbid();
+            }
+
+            if (!IsOwnerOrAdministrator(metadonnee))
+            {
+                return Forbid();
+            }
+
+            void ReloadQualiteOptions()
+            {
+                var qualiteData = BuildQualiteOptions();
+                model.QualiteOptions = qualiteData.Options;
+                model.QualiteDescriptions = qualiteData.Descriptions;
+                model.BannerMessage = ReadOnlyDataMessage;
+            }
+
+            if (!string.Equals(model.Libelle?.Trim(), metadonnee.DonneesEventLogs.Libelle, StringComparison.Ordinal))
+            {
+                ModelState.AddModelError(nameof(model.Libelle), "The label cannot be changed once created.");
+            }
+
+            if (!string.Equals(model.Code?.Trim(), metadonnee.DonneesEventLogs.Code, StringComparison.Ordinal))
+            {
+                ModelState.AddModelError(nameof(model.Code), "The code cannot be changed once created.");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                ReloadQualiteOptions();
+                return View("EditStep3", model);
+            }
+
+            metadonnee.DonneesEventLogs.Description = model.Description?.Trim();
+            metadonnee.DonneesEventLogs.StartTimestamp = model.StartTimestamp;
+            metadonnee.DonneesEventLogs.EndTimestamp = model.EndTimestamp;
+            metadonnee.DonneesEventLogs.NombreDEvents = model.NombreDEvents;
+            metadonnee.DonneesEventLogs.IdQualiteDonnees = model.IdQualiteDonnees!.Value;
+            metadonnee.DernierMiseAJour = DateTime.Now;
+
+            _context.Update(metadonnee.DonneesEventLogs);
+            _context.Update(metadonnee);
+            _context.SaveChanges();
+
+            return Redirect(!string.IsNullOrWhiteSpace(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl)
+                ? model.ReturnUrl
+                : Url.Action("Details", new { id = metadonnee.Id }));
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "administrator,editor,user")]
+        public IActionResult EditStep4(int id, string? returnUrl)
+        {
+            var metadonnee = _context.Metadonnee
+                .Include(m => m.DonneesContexteEnvironnemental)
+                .FirstOrDefault(m => m.Id == id);
+
+            if (metadonnee == null || metadonnee.DonneesContexteEnvironnemental == null)
+            {
+                return NotFound();
+            }
+
+            if (!CanCurrentUserAccessMetadonnee(metadonnee, out var requiresAuthentication))
+            {
+                return requiresAuthentication ? Challenge() : Forbid();
+            }
+
+            if (!IsOwnerOrAdministrator(metadonnee))
+            {
+                return Forbid();
+            }
+
+            var qualiteData = BuildQualiteOptions();
+            var vm = new DonneesContexteEnvironnementalEditViewModel
+            {
+                IdMetadonnee = metadonnee.Id,
+                IdDonneesContexteEnvironnemental = metadonnee.DonneesContexteEnvironnemental.Id,
+                Libelle = metadonnee.DonneesContexteEnvironnemental.Libelle,
+                Code = metadonnee.DonneesContexteEnvironnemental.Code,
+                Description = metadonnee.DonneesContexteEnvironnemental.Description,
+                StartTimestamp = metadonnee.DonneesContexteEnvironnemental.StartTimestamp,
+                EndTimestamp = metadonnee.DonneesContexteEnvironnemental.EndTimestamp,
+                IdQualiteDonnees = metadonnee.DonneesContexteEnvironnemental.IdQualiteDonnees,
+                QualiteOptions = qualiteData.Options,
+                QualiteDescriptions = qualiteData.Descriptions,
+                ReturnUrl = ResolveReturnUrl(returnUrl, Url.Action("Details", new { id = metadonnee.Id })) ?? string.Empty,
+                BannerMessage = ReadOnlyDataMessage
+            };
+
+            return View("EditStep4", vm);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "administrator,editor,user")]
+        [ValidateAntiForgeryToken]
+        public IActionResult EditStep4(DonneesContexteEnvironnementalEditViewModel model)
+        {
+            var metadonnee = _context.Metadonnee
+                .Include(m => m.DonneesContexteEnvironnemental)
+                .FirstOrDefault(m => m.Id == model.IdMetadonnee);
+
+            if (metadonnee == null || metadonnee.DonneesContexteEnvironnemental == null)
+            {
+                return NotFound();
+            }
+
+            if (!CanCurrentUserAccessMetadonnee(metadonnee, out var requiresAuthentication))
+            {
+                return requiresAuthentication ? Challenge() : Forbid();
+            }
+
+            if (!IsOwnerOrAdministrator(metadonnee))
+            {
+                return Forbid();
+            }
+
+            void ReloadQualiteOptions()
+            {
+                var qualiteData = BuildQualiteOptions();
+                model.QualiteOptions = qualiteData.Options;
+                model.QualiteDescriptions = qualiteData.Descriptions;
+                model.BannerMessage = ReadOnlyDataMessage;
+            }
+
+            if (!string.Equals(model.Libelle?.Trim(), metadonnee.DonneesContexteEnvironnemental.Libelle, StringComparison.Ordinal))
+            {
+                ModelState.AddModelError(nameof(model.Libelle), "The label cannot be changed once created.");
+            }
+
+            if (!string.Equals(model.Code?.Trim(), metadonnee.DonneesContexteEnvironnemental.Code, StringComparison.Ordinal))
+            {
+                ModelState.AddModelError(nameof(model.Code), "The code cannot be changed once created.");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                ReloadQualiteOptions();
+                return View("EditStep4", model);
+            }
+
+            metadonnee.DonneesContexteEnvironnemental.Description = model.Description?.Trim();
+            metadonnee.DonneesContexteEnvironnemental.StartTimestamp = model.StartTimestamp;
+            metadonnee.DonneesContexteEnvironnemental.EndTimestamp = model.EndTimestamp;
+            metadonnee.DonneesContexteEnvironnemental.IdQualiteDonnees = model.IdQualiteDonnees!.Value;
+            metadonnee.DernierMiseAJour = DateTime.Now;
+
+            _context.Update(metadonnee.DonneesContexteEnvironnemental);
+            _context.Update(metadonnee);
+            _context.SaveChanges();
+
+            return Redirect(!string.IsNullOrWhiteSpace(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl)
+                ? model.ReturnUrl
+                : Url.Action("Details", new { id = metadonnee.Id }));
         }
 
         [HttpGet]
@@ -861,7 +1361,8 @@ namespace Dataportal.Controllers
 
                 DonneesContexteEnvironnemental = contexte,
                 ContextePreviewRows = contextePreview,
-                ReturnUrl = resolvedReturnUrl
+                ReturnUrl = resolvedReturnUrl,
+                CanEdit = IsOwnerOrAdministrator(metadonnee)
             };
 
             return View(vm);

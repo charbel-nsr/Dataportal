@@ -92,6 +92,8 @@
             capabilityLinks.Add(("Download allowed", downloadAllowedUrl));
         }
     }
+
+    var editReturnUrl = (Context?.Request?.Path + Context?.Request?.QueryString)?.ToString();
 }
 
 <div class="container my-4 data-details-all">
@@ -139,6 +141,13 @@
     <section class="metadata-section bg-white shadow-sm rounded p-4 mb-4">
         <div class="d-flex align-items-center justify-content-end flex-wrap gap-2 mb-4">
             <span class="badge bg-light text-dark">Last updated @(Model.Metadonnee.DernierMiseAJour?.ToString("d") ?? "—")</span>
+            @if (Model.CanEdit)
+            {
+                <a class="btn btn-outline-primary btn-sm" href="@Url.Action("EditMetadata", "Donnees", new { id = Model.Metadonnee.Id, returnUrl = editReturnUrl })">
+                    <span class="material-symbols-outlined align-middle">edit</span>
+                    <span class="align-middle">Edit metadata</span>
+                </a>
+            }
         </div>
         <div class="metadata-description rich-text-content fs-5 mb-4">
             @if (!string.IsNullOrWhiteSpace(sanitizedDescription))
@@ -242,6 +251,13 @@
                             </div>
                         </div>
                         <div class="tab-pane-actions">
+                            @if (Model.CanEdit)
+                            {
+                                <a class="btn btn-outline-primary btn-sm" href="@Url.Action("EditStep2", "Donnees", new { id = Model.Metadonnee.Id, returnUrl = editReturnUrl })" title="Edit step 2 inputs">
+                                    <span class="material-symbols-outlined align-middle" aria-hidden="true">edit</span>
+                                    <span class="align-middle">Edit</span>
+                                </a>
+                            }
                             @if (!string.IsNullOrWhiteSpace(Model.Donnees.QualiteDonnees?.Libelle))
                             {
                                 <span class="@buildQualityBadgeClass(Model.Donnees.QualiteDonnees.Libelle)" data-quality-description="@Model.Donnees.QualiteDonnees?.Description">@Model.Donnees.QualiteDonnees.Libelle</span>
@@ -337,6 +353,13 @@
                             </div>
                         </div>
                         <div class="tab-pane-actions">
+                            @if (Model.CanEdit)
+                            {
+                                <a class="btn btn-outline-primary btn-sm" href="@Url.Action("EditStep3", "Donnees", new { id = Model.Metadonnee.Id, returnUrl = editReturnUrl })" title="Edit step 3 inputs">
+                                    <span class="material-symbols-outlined align-middle" aria-hidden="true">edit</span>
+                                    <span class="align-middle">Edit</span>
+                                </a>
+                            }
                             @if (!string.IsNullOrWhiteSpace(Model.DonneesEventLogs.QualiteDonnees?.Libelle))
                             {
                                 <span class="@buildQualityBadgeClass(Model.DonneesEventLogs.QualiteDonnees.Libelle)" data-quality-description="@Model.DonneesEventLogs.QualiteDonnees?.Description">@Model.DonneesEventLogs.QualiteDonnees.Libelle</span>
@@ -427,6 +450,13 @@
                             </div>
                         </div>
                         <div class="tab-pane-actions">
+                            @if (Model.CanEdit)
+                            {
+                                <a class="btn btn-outline-primary btn-sm" href="@Url.Action("EditStep4", "Donnees", new { id = Model.Metadonnee.Id, returnUrl = editReturnUrl })" title="Edit step 4 inputs">
+                                    <span class="material-symbols-outlined align-middle" aria-hidden="true">edit</span>
+                                    <span class="align-middle">Edit</span>
+                                </a>
+                            }
                             @if (!string.IsNullOrWhiteSpace(Model.DonneesContexteEnvironnemental.QualiteDonnees?.Libelle))
                             {
                                 <span class="@buildQualityBadgeClass(Model.DonneesContexteEnvironnemental.QualiteDonnees.Libelle)" data-quality-description="@Model.DonneesContexteEnvironnemental.QualiteDonnees?.Description">@Model.DonneesContexteEnvironnemental.QualiteDonnees.Libelle</span>

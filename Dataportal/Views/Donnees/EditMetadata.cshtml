@@ -1,0 +1,195 @@
+@model Dataportal.ViewModels.MetadonneeEditViewModel
+@using System.Linq
+@using Microsoft.AspNetCore.Mvc.Rendering
+
+@{
+    ViewData["Title"] = "Edit dataset metadata";
+}
+
+<div class="container">
+    <div class="d-flex align-items-center justify-content-between flex-wrap mb-3">
+        <h2 class="mb-3 mb-md-0">Edit metadata</h2>
+        @if (!string.IsNullOrWhiteSpace(Model.ReturnUrl) && Url.IsLocalUrl(Model.ReturnUrl))
+        {
+            <a class="btn btn-outline-secondary" href="@Model.ReturnUrl">Back</a>
+        }
+    </div>
+
+    <form method="post" class="bg-light p-4 rounded shadow-sm">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
+        <input type="hidden" asp-for="ReturnUrl" />
+
+        <div class="alert alert-info">
+            You can update the metadata for this dataset. The dataset name, labels, codes, and uploaded data cannot be changed.
+        </div>
+
+        <div class="form-floating mb-3">
+            <input asp-for="Nom" class="form-control" placeholder="Name" readonly>
+            <label asp-for="Nom"></label>
+            <span asp-validation-for="Nom" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Description" class="form-label fw-semibold"></label>
+            <div class="rich-text-editor" data-rich-text-editor data-target-input-id="Description">
+                <div class="rich-text-editor__toolbar" role="toolbar" aria-label="Formatting options">
+                    <div class="btn-group me-2" role="group" aria-label="Text emphasis">
+                        <button type="button" class="btn btn-light btn-sm" data-command="bold" aria-label="Bold">
+                            <span class="material-symbols-outlined align-middle">format_bold</span>
+                        </button>
+                        <button type="button" class="btn btn-light btn-sm" data-command="italic" aria-label="Italic">
+                            <span class="material-symbols-outlined align-middle">format_italic</span>
+                        </button>
+                        <button type="button" class="btn btn-light btn-sm" data-command="underline" aria-label="Underline">
+                            <span class="material-symbols-outlined align-middle">format_underlined</span>
+                        </button>
+                    </div>
+                    <div class="btn-group me-2" role="group" aria-label="Lists">
+                        <button type="button" class="btn btn-light btn-sm" data-command="insertUnorderedList" aria-label="Bulleted list">
+                            <span class="material-symbols-outlined align-middle">format_list_bulleted</span>
+                        </button>
+                        <button type="button" class="btn btn-light btn-sm" data-command="insertOrderedList" aria-label="Numbered list">
+                            <span class="material-symbols-outlined align-middle">format_list_numbered</span>
+                        </button>
+                    </div>
+                    <div class="btn-group me-2" role="group" aria-label="Undo/Redo">
+                        <button type="button" class="btn btn-light btn-sm" data-command="undo" aria-label="Undo">
+                            <span class="material-symbols-outlined align-middle">undo</span>
+                        </button>
+                        <button type="button" class="btn btn-light btn-sm" data-command="redo" aria-label="Redo">
+                            <span class="material-symbols-outlined align-middle">redo</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="rich-text-editor__content" contenteditable="true" data-target-input-id="Description">@Html.Raw(Model.Description)</div>
+                <textarea asp-for="Description" class="d-none"></textarea>
+            </div>
+            <span asp-validation-for="Description" class="text-danger"></span>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="form-floating">
+                    <select asp-for="IdLicence" class="form-select">
+                        <option value="">Select a license</option>
+                        @foreach (var licence in Model.Licences ?? Enumerable.Empty<Dataportal.Models.Licence>())
+                        {
+                            <option value="@licence.Id">@licence.Libelle</option>
+                        }
+                    </select>
+                    <label asp-for="IdLicence"></label>
+                    <span asp-validation-for="IdLicence" class="text-danger"></span>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-floating">
+                    <select asp-for="IdSite" class="form-select">
+                        <option value="">Select a site</option>
+                        @foreach (var site in Model.Sites ?? Enumerable.Empty<Dataportal.Models.Site>())
+                        {
+                            <option value="@site.Id">@site.Nom</option>
+                        }
+                    </select>
+                    <label asp-for="IdSite"></label>
+                    <span asp-validation-for="IdSite" class="text-danger"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3 mt-2">
+            <div class="col-md-6">
+                <div class="form-floating">
+                    <select asp-for="IdVisibilite" class="form-select">
+                        <option value="">Select visibility</option>
+                        @foreach (var visibilite in Model.Visibilites ?? Enumerable.Empty<Dataportal.Models.Visibilite>())
+                        {
+                            <option value="@visibilite.Id">@visibilite.Libelle</option>
+                        }
+                    </select>
+                    <label asp-for="IdVisibilite"></label>
+                    <span asp-validation-for="IdVisibilite" class="text-danger"></span>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-floating">
+                    <select asp-for="IdTypeEnergieRenouvelable" class="form-select">
+                        <option value="">None</option>
+                        @foreach (var type in Model.TypesEnergieRenouvelable ?? Enumerable.Empty<Dataportal.Models.TypeEnergieRenouvelable>())
+                        {
+                            <option value="@type.Id">@type.Libelle</option>
+                        }
+                    </select>
+                    <label asp-for="IdTypeEnergieRenouvelable"></label>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-3">
+            <div class="col-md-3">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" asp-for="SeriesTemporelles">
+                    <label class="form-check-label" asp-for="SeriesTemporelles"></label>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" asp-for="AutoriserApi">
+                    <label class="form-check-label" asp-for="AutoriserApi"></label>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" asp-for="Anonymiser">
+                    <label class="form-check-label" asp-for="Anonymiser"></label>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" asp-for="AutoriserLeTelechargement">
+                    <label class="form-check-label" asp-for="AutoriserLeTelechargement"></label>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <h5 class="mb-3">Associated devices</h5>
+            <div class="form-floating mb-3 position-relative" id="appareilsMultiSelectWrapper">
+                <select asp-for="SelectedAppareils" asp-items="@(new MultiSelectList(Model.Appareils ?? Enumerable.Empty<Dataportal.Models.Appareil>(), "Id", "Nom", Model.SelectedAppareils))" class="d-none" multiple></select>
+                <div id="appareilsSelectDisplay" class="form-control multi-select-container">
+                    <input type="text" id="appareilsFilterInput" class="multi-select-input" placeholder="Search..." />
+                </div>
+                <div id="appareilsSelectOptions" class="multi-select-dropdown"></div>
+                <label asp-for="SelectedAppareils"></label>
+                <span asp-validation-for="SelectedAppareils" class="text-danger"></span>
+            </div>
+            <div id="appareilDetailsContainer" class="mb-3">
+                @if (Model.AppareilInfos != null && Model.AppareilInfos.Any())
+                {
+                    for (int i = 0; i < Model.AppareilInfos.Count; i++)
+                    {
+                        <details class="appareil-detail mb-2" data-id="@Model.AppareilInfos[i].IdAppareil">
+                            <summary class="d-none">Existing device</summary>
+                            <div class="mt-2">
+                                <input type="hidden" name="AppareilInfos[@i].IdAppareil" value="@Model.AppareilInfos[i].IdAppareil" />
+                                <div class="form-floating mb-2"><input type="text" class="form-control" name="AppareilInfos[@i].IdAppareilDansDonnees" value="@Model.AppareilInfos[i].IdAppareilDansDonnees" placeholder="IDs in the data" /><label>IDs in the data (comma-separated)</label></div>
+                                <div class="form-floating mb-2"><input type="text" class="form-control" name="AppareilInfos[@i].Commentaire" value="@Model.AppareilInfos[i].Commentaire" placeholder="Comment" /><label>Comment</label></div><hr />
+                            </div>
+                        </details>
+                    }
+                }
+            </div>
+        </div>
+
+        <div class="mt-4 d-flex justify-content-end gap-2">
+            <a class="btn btn-secondary" href="@(!string.IsNullOrWhiteSpace(Model.ReturnUrl) && Url.IsLocalUrl(Model.ReturnUrl) ? Model.ReturnUrl : Url.Action("Details", "Donnees", new { id = Model.Id }))">Cancel</a>
+            <button type="submit" class="btn btn-success">Save changes</button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/richTextEditor.js" asp-append-version="true"></script>
+    <script src="~/js/multiSelectTags.js" asp-append-version="true"></script>
+}

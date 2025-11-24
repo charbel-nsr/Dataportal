@@ -1,0 +1,84 @@
+@model Dataportal.ViewModels.DonneesContexteEnvironnementalEditViewModel
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Edit environmental context (Step 4)";
+}
+
+<div class="container">
+    <div class="d-flex align-items-center justify-content-between flex-wrap mb-3">
+        <h2 class="mb-3 mb-md-0">Update environmental context</h2>
+        @if (!string.IsNullOrWhiteSpace(Model.ReturnUrl) && Url.IsLocalUrl(Model.ReturnUrl))
+        {
+            <a class="btn btn-outline-secondary" href="@Model.ReturnUrl">Back</a>
+        }
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Model.BannerMessage))
+    {
+        <div class="alert alert-info" role="status">@Model.BannerMessage</div>
+    }
+
+    <form method="post" class="bg-light p-4 rounded shadow-sm">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="IdMetadonnee" />
+        <input type="hidden" asp-for="IdDonneesContexteEnvironnemental" />
+        <input type="hidden" asp-for="ReturnUrl" />
+
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
+
+        <div class="form-floating mb-3">
+            <input asp-for="Libelle" class="form-control" placeholder="Label" readonly />
+            <label asp-for="Libelle"></label>
+            <span asp-validation-for="Libelle" class="text-danger"></span>
+        </div>
+
+        <div class="form-floating mb-3">
+            <input asp-for="Code" class="form-control" placeholder="Code" readonly />
+            <label asp-for="Code"></label>
+            <span asp-validation-for="Code" class="text-danger"></span>
+        </div>
+
+        <div class="form-floating mb-3">
+            <textarea asp-for="Description" class="form-control" placeholder="Description" style="height: 100px;"></textarea>
+            <label asp-for="Description"></label>
+            <span asp-validation-for="Description" class="text-danger"></span>
+        </div>
+
+        <div class="form-floating mb-3">
+            <select asp-for="IdQualiteDonnees"
+                    class="form-select data-quality-select"
+                    asp-items="Model.QualiteOptions"
+                    data-descriptions='@Html.Raw(JsonSerializer.Serialize(Model.QualiteDescriptions))'></select>
+            <label asp-for="IdQualiteDonnees"></label>
+            <span asp-validation-for="IdQualiteDonnees" class="text-danger"></span>
+            <div class="form-text text-muted mt-1 data-quality-description d-none" data-quality-description></div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label asp-for="StartTimestamp" class="form-label"></label>
+                <input asp-for="StartTimestamp" type="datetime-local" class="form-control" />
+                <span asp-validation-for="StartTimestamp" class="text-danger"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="EndTimestamp" class="form-label"></label>
+                <input asp-for="EndTimestamp" type="datetime-local" class="form-control" />
+                <span asp-validation-for="EndTimestamp" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="alert alert-warning" role="status">
+            The uploaded dataset, label, and code cannot be altered here. Adjust metadata and descriptive fields only.
+        </div>
+
+        <div class="d-flex justify-content-end gap-2">
+            <a class="btn btn-secondary" href="@(!string.IsNullOrWhiteSpace(Model.ReturnUrl) && Url.IsLocalUrl(Model.ReturnUrl) ? Model.ReturnUrl : Url.Action("Details", "Donnees", new { id = Model.IdMetadonnee }))">Cancel</a>
+            <button type="submit" class="btn btn-success">Save changes</button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/dataQualityDescription.js" asp-append-version="true"></script>
+}
