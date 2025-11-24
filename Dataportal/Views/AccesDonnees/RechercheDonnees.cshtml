@@ -295,6 +295,12 @@
                                         <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("Details", "Donnees", new { id = m.Id, returnUrl = searchReturnUrl })" title="View details">
                                             <i class="bi bi-exclamation-circle"></i>
                                         </a>
+                                        @if (Model.EditableMetadonneeIds.Contains(m.Id))
+                                        {
+                                            <a class="btn btn-sm btn-outline-primary ms-1" href="@Url.Action("EditMetadata", "Donnees", new { id = m.Id, returnUrl = searchReturnUrl })" title="Edit metadata">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                        }
                                         @if (User.IsInRole("administrator") || (User.Identity.IsAuthenticated && User.FindFirst("UserId")?.Value == m.IdUtilisateur.ToString()))
                                         {
                                             <button type="button" class="btn btn-sm btn-outline-danger ms-1" data-bs-toggle="modal" data-bs-target="#deleteModal" data-id="@m.Id" title="Delete">

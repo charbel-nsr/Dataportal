@@ -36,5 +36,7 @@ namespace Dataportal.ViewModels
 
         // Result
         public List<Metadonnee> Metadonnees { get; set; } = new();
+
+        public HashSet<int> EditableMetadonneeIds { get; set; } = new();
     }
 }
