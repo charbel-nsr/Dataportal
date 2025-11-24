@@ -15,6 +15,7 @@ using System.Linq;
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Http.Extensions;
 using System;
+using System.Threading.Tasks;
 
 namespace Dataportal.Controllers
 {
@@ -159,9 +160,53 @@ namespace Dataportal.Controllers
             return (options, descriptions);
         }
 
+        private async Task<string> GenerateNextCodeAsync(string libelle)
+        {
+            var datePrefix = DateTime.Now.ToString("yyyyMMdd");
+
+            if (string.IsNullOrWhiteSpace(libelle))
+            {
+                return $"{datePrefix}01";
+            }
+
+            var normalizedLibelle = libelle.Trim().ToLower();
+
+            var existingCodes = await _context.Donnees
+                .Where(d => d.Libelle.ToLower() == normalizedLibelle && d.Code.StartsWith(datePrefix))
+                .Select(d => d.Code)
+                .ToListAsync();
+
+            var nextNumber = 1;
+
+            foreach (var code in existingCodes)
+            {
+                if (code.Length > datePrefix.Length &&
+                    int.TryParse(code.Substring(datePrefix.Length), out var suffix))
+                {
+                    nextNumber = Math.Max(nextNumber, suffix + 1);
+                }
+            }
+
+            return $"{datePrefix}{nextNumber:D2}";
+        }
+
         [HttpGet]
         [Authorize(Roles = "administrator,editor,user")]
-        public IActionResult CreateStep2()
+        public async Task<IActionResult> NextCode(string libelle)
+        {
+            if (string.IsNullOrWhiteSpace(libelle))
+            {
+                return BadRequest("Label is required to generate a code.");
+            }
+
+            var code = await GenerateNextCodeAsync(libelle);
+
+            return Json(new { code });
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "administrator,editor,user")]
+        public async Task<IActionResult> CreateStep2()
         {
             var (resumeId, nextStep) = GetCreationWizardState();
 
@@ -189,7 +234,8 @@ namespace Dataportal.Controllers
                 StartTimestamp = DateTime.Now,
                 EndTimestamp = DateTime.Now,
                 QualiteOptions = qualiteData.Options,
-                QualiteDescriptions = qualiteData.Descriptions
+                QualiteDescriptions = qualiteData.Descriptions,
+                Code = await GenerateNextCodeAsync(null)
             };
             return View(vm);
         }
@@ -220,6 +266,10 @@ namespace Dataportal.Controllers
                 TempData.Remove("Step1Data");
                 return Forbid();
             }
+
+            model.Code = await GenerateNextCodeAsync(model.Libelle);
+            ModelState.Remove(nameof(model.Code));
+            TryValidateModel(model);
 
             if (!ModelState.IsValid)
             {
@@ -370,7 +420,7 @@ namespace Dataportal.Controllers
 
         [HttpGet]
         [Authorize(Roles = "administrator,editor,user")]
-        public IActionResult CreateStep3(int id)
+        public async Task<IActionResult> CreateStep3(int id)
         {
             var (resumeId, nextStep) = GetCreationWizardState();
 
@@ -401,7 +451,8 @@ namespace Dataportal.Controllers
                 StartTimestamp = DateTime.Now,
                 EndTimestamp = DateTime.Now,
                 QualiteOptions = qualiteData.Options,
-                QualiteDescriptions = qualiteData.Descriptions
+                QualiteDescriptions = qualiteData.Descriptions,
+                Code = await GenerateNextCodeAsync(null)
             };
             return View(vm);
         }
@@ -417,6 +468,10 @@ namespace Dataportal.Controllers
                 model.QualiteOptions = qualiteDataLocal.Options;
                 model.QualiteDescriptions = qualiteDataLocal.Descriptions;
             }
+
+            model.Code = await GenerateNextCodeAsync(model.Libelle);
+            ModelState.Remove(nameof(model.Code));
+            TryValidateModel(model);
 
             if (!ModelState.IsValid)
             {
@@ -553,7 +608,7 @@ namespace Dataportal.Controllers
         // GET: /Donnees/CreateStep4/{id}
         [HttpGet]
         [Authorize(Roles = "administrator,editor,user")]
-        public IActionResult CreateStep4(int id)
+        public async Task<IActionResult> CreateStep4(int id)
         {
             var (resumeId, nextStep) = GetCreationWizardState();
 
@@ -596,7 +651,8 @@ namespace Dataportal.Controllers
                 StartTimestamp = DateTime.Now,
                 EndTimestamp = DateTime.Now,
                 QualiteOptions = qualiteData.Options,
-                QualiteDescriptions = qualiteData.Descriptions
+                QualiteDescriptions = qualiteData.Descriptions,
+                Code = await GenerateNextCodeAsync(null)
             };
             return View(vm);
         }
@@ -613,6 +669,10 @@ namespace Dataportal.Controllers
                 model.QualiteOptions = qualiteDataLocal.Options;
                 model.QualiteDescriptions = qualiteDataLocal.Descriptions;
             }
+
+            model.Code = await GenerateNextCodeAsync(model.Libelle);
+            ModelState.Remove(nameof(model.Code));
+            TryValidateModel(model);
 
             if (!ModelState.IsValid)
             {

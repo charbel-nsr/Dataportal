@@ -22,13 +22,13 @@
         <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
 
         <div class="form-floating mb-3">
-            <input asp-for="Libelle" class="form-control" placeholder="Label" required>
+            <input asp-for="Libelle" class="form-control" placeholder="Label" required data-next-code-input>
             <label asp-for="Libelle"></label>
             <span asp-validation-for="Libelle" class="text-danger"></span>
         </div>
 
         <div class="form-floating mb-3">
-            <input asp-for="Code" class="form-control" placeholder="Code" required>
+            <input asp-for="Code" class="form-control" placeholder="Code" required readonly />
             <label asp-for="Code"></label>
             <span asp-validation-for="Code" class="text-danger"></span>
         </div>
@@ -107,10 +107,38 @@
             const fileInput = document.querySelector('input[type="file"][multiple]');
             const fileListDiv = document.getElementById('fileList');
             const form = document.querySelector('form.upload-overlay-form');
+            const labelInput = document.querySelector('[data-next-code-input]');
+            const codeInput = document.getElementById('Code');
 
             initUploadOverlay(form, {
                 confirmMessage: 'Once this step is confirmed, the data will be created temporarily. Do you want to continue?'
             });
+
+            const updateCode = async () => {
+                if (!labelInput || !codeInput || !labelInput.value.trim()) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`@Url.Action("NextCode", "Donnees")?libelle=${encodeURIComponent(labelInput.value.trim())}`);
+                    if (!response.ok) {
+                        return;
+                    }
+
+                    const data = await response.json();
+                    if (data?.code) {
+                        codeInput.value = data.code;
+                    }
+                }
+                catch {
+                    // Silently ignore errors; the server-side will still generate a code.
+                }
+            };
+
+            if (labelInput) {
+                labelInput.addEventListener('blur', updateCode);
+                labelInput.addEventListener('change', updateCode);
+            }
 
             if (fileInput && fileListDiv) {
                 fileInput.addEventListener('change', () => {

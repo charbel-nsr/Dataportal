@@ -185,7 +185,14 @@
                 @foreach (var app in Model.AppareilsLies)
                 {
                     <li>
-                        @app.Appareil?.Nom (@app.Commentaire)
+                        <div>@app.Appareil?.Nom @if (!string.IsNullOrWhiteSpace(app.Commentaire))
+                            {
+                                <text>(@app.Commentaire)</text>
+                            }</div>
+                        @if (!string.IsNullOrWhiteSpace(app.IdAppareilDansDonnees))
+                        {
+                            <div class="text-muted small">String IDs: @app.IdAppareilDansDonnees</div>
+                        }
                     </li>
                 }
             </ul>
