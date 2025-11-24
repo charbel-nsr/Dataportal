@@ -134,6 +134,11 @@ namespace Dataportal.Controllers
 
             var metadonneesList = query.ToList();
 
+            var editableMetadonneeIds = metadonneesList
+                .Where(m => isAdmin || (userId.HasValue && m.IdUtilisateur == userId.Value))
+                .Select(m => m.Id)
+                .ToHashSet();
+
             if (minDataSizeMb.HasValue || maxDataSizeMb.HasValue)
             {
                 metadonneesList = metadonneesList
@@ -181,7 +186,8 @@ namespace Dataportal.Controllers
                 Createurs = availableCreators,
                 Visibilites = availableVisibilites,
                 Entreprises = availableEntreprises,
-                Metadonnees = metadonneesList
+                Metadonnees = metadonneesList,
+                EditableMetadonneeIds = editableMetadonneeIds
             };
             return View(result);
         }
