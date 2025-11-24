@@ -3,6 +3,7 @@ using Dataportal.Models;
 using Dataportal.ViewModels;
 using Dataportal.Classes;
 using Dataportal.Services;
+using Dataportal.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;

@@ -250,7 +250,8 @@ header nav.scrolled {
     font-style: italic;
 }
 
-.rich-text-content p {
+.rich-text-content p,
+.rich-text-content div {
     margin-bottom: 1rem;
 }
 
@@ -260,8 +261,6 @@ header nav.scrolled {
     margin-bottom: 1rem;
 }
 
-.rich-text-content h2,
-.rich-text-content h3,
 .rich-text-content h4 {
     color: #111111 !important;
     font-weight: 600;

@@ -11,17 +11,26 @@ public static class RichTextSanitizer
     {
         var sanitizer = new HtmlSanitizer();
         sanitizer.AllowedTags.Clear();
-        foreach (var tag in new[] { "p", "strong", "b", "em", "i", "u", "ol", "ul", "li", "a", "h2", "h3", "h4", "br" })
+        foreach (var tag in new[] { "p", "strong", "b", "em", "i", "u", "ol", "ul", "li", "a", "h4", "br" })
         {
             sanitizer.AllowedTags.Add(tag);
         }
 
+        sanitizer.AllowedAttributes.Clear();
         sanitizer.AllowedAttributes.Add("href");
         sanitizer.AllowedAttributes.Add("title");
         sanitizer.AllowedAttributes.Add("target");
         sanitizer.AllowedAttributes.Add("rel");
+
+        sanitizer.AllowedSchemes.Clear();
+        sanitizer.AllowedSchemes.Add("http");
+        sanitizer.AllowedSchemes.Add("https");
         sanitizer.AllowedSchemes.Add("mailto");
+
+        sanitizer.AllowedCssProperties.Clear();
         sanitizer.AllowedCssProperties.Add("text-align");
+
+        sanitizer.KeepChildNodes = true;
 
         sanitizer.AllowedClasses.Clear();
 
