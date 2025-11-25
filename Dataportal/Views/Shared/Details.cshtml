@@ -22,6 +22,25 @@
     var activeTabId = tabSections.Count > 0 ? tabSections[0].Id : string.Empty;
     var sanitizedDescription = RichTextSanitizer.Sanitize(Model.Metadonnee?.Description);
     var capabilityLinks = new List<(string Label, string Url)>();
+    var licenceTooltip = string.IsNullOrWhiteSpace(Model.Licence?.Description)
+        ? null
+        : Model.Licence.Description;
+    var visibilityTooltip = string.IsNullOrWhiteSpace(Model.Visibilite?.Description)
+        ? null
+        : Model.Visibilite.Description;
+
+    var siteTooltipParts = new List<string>();
+    if (!string.IsNullOrWhiteSpace(Model.Site?.Emplacement))
+    {
+        siteTooltipParts.Add($"Location: {Model.Site.Emplacement}");
+    }
+
+    if (!string.IsNullOrWhiteSpace(Model.Site?.Description))
+    {
+        siteTooltipParts.Add($"Description: {Model.Site.Description}");
+    }
+
+    var siteTooltip = siteTooltipParts.Any() ? string.Join(" • ", siteTooltipParts) : null;
     Func<string, string> buildQualityBadgeClass = quality =>
     {
         if (string.IsNullOrWhiteSpace(quality))
@@ -154,11 +173,27 @@
             <div class="col-md-6">
                 <div class="detail-field">
                     <span class="detail-label">License</span>
-                    <p class="detail-value mb-0">@Model.Licence?.Libelle</p>
+                    <p class="detail-value mb-0 d-flex align-items-center gap-2 flex-wrap">
+                        <span>@Model.Licence?.Libelle</span>
+                        @if (!string.IsNullOrWhiteSpace(licenceTooltip))
+                        {
+                            <span class="info-tooltip-icon" role="img" aria-label="License details" data-info-tooltip="@licenceTooltip" tabindex="0">
+                                <span class="material-symbols-outlined" aria-hidden="true">info</span>
+                            </span>
+                        }
+                    </p>
                 </div>
                 <div class="detail-field">
                     <span class="detail-label">Visibility</span>
-                    <p class="detail-value mb-0">@Model.Visibilite?.Libelle</p>
+                    <p class="detail-value mb-0 d-flex align-items-center gap-2 flex-wrap">
+                        <span>@Model.Visibilite?.Libelle</span>
+                        @if (!string.IsNullOrWhiteSpace(visibilityTooltip))
+                        {
+                            <span class="info-tooltip-icon" role="img" aria-label="Visibility details" data-info-tooltip="@visibilityTooltip" tabindex="0">
+                                <span class="material-symbols-outlined" aria-hidden="true">info</span>
+                            </span>
+                        }
+                    </p>
                 </div>
                 <div class="detail-field mb-0">
                     <span class="detail-label">Data size</span>
@@ -168,7 +203,15 @@
             <div class="col-md-6">
                 <div class="detail-field">
                     <span class="detail-label">Site</span>
-                    <p class="detail-value mb-0">@Model.Site?.Nom</p>
+                    <p class="detail-value mb-0 d-flex align-items-center gap-2 flex-wrap">
+                        <span>@Model.Site?.Nom</span>
+                        @if (!string.IsNullOrWhiteSpace(siteTooltip))
+                        {
+                            <span class="info-tooltip-icon" role="img" aria-label="Site details" data-info-tooltip="@siteTooltip" tabindex="0">
+                                <span class="material-symbols-outlined" aria-hidden="true">info</span>
+                            </span>
+                        }
+                    </p>
                 </div>
                 <div class="detail-field mb-0">
                     <span class="detail-label">Organisation/Team</span>
@@ -184,11 +227,43 @@
             <ul>
                 @foreach (var app in Model.AppareilsLies)
                 {
+                    var deviceTooltipParts = new List<string>();
+                    if (!string.IsNullOrWhiteSpace(app.Appareil?.Description))
+                    {
+                        deviceTooltipParts.Add($"Description: {app.Appareil.Description}");
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(app.Appareil?.Capacite))
+                    {
+                        deviceTooltipParts.Add($"Capacity: {app.Appareil.Capacite}");
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(app.Appareil?.Model))
+                    {
+                        deviceTooltipParts.Add($"Model: {app.Appareil.Model}");
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(app.Appareil?.Manufacturer))
+                    {
+                        deviceTooltipParts.Add($"Manufacturer: {app.Appareil.Manufacturer}");
+                    }
+
+                    var deviceTooltip = deviceTooltipParts.Any() ? string.Join(" • ", deviceTooltipParts) : null;
                     <li>
-                        <div>@app.Appareil?.Nom @if (!string.IsNullOrWhiteSpace(app.Commentaire))
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <span>@app.Appareil?.Nom</span>
+                            @if (!string.IsNullOrWhiteSpace(app.Commentaire))
                             {
-                                <text>(@app.Commentaire)</text>
-                            }</div>
+                                <span class="text-muted">(@app.Commentaire)</span>
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(deviceTooltip))
+                            {
+                                <span class="info-tooltip-icon" role="img" aria-label="Device details" data-info-tooltip="@deviceTooltip" tabindex="0">
+                                    <span class="material-symbols-outlined" aria-hidden="true">info</span>
+                                </span>
+                            }
+                        </div>
                         @if (!string.IsNullOrWhiteSpace(app.IdAppareilDansDonnees))
                         {
                             <div class="text-muted small">String IDs: @app.IdAppareilDansDonnees</div>

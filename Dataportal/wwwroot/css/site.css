@@ -394,6 +394,55 @@ header nav.scrolled {
     transform: translateY(0);
 }
 
+.info-tooltip-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 999px;
+    background-color: #f8f9fa;
+    color: #5f6368;
+    line-height: 1;
+    cursor: help;
+    position: relative;
+    text-decoration: none;
+}
+
+.info-tooltip-icon .material-symbols-outlined {
+    font-size: 0.9rem;
+    line-height: 1;
+}
+
+.info-tooltip-icon[data-info-tooltip]::after {
+    content: attr(data-info-tooltip);
+    position: absolute;
+    top: calc(100% + 0.35rem);
+    left: 0;
+    background-color: #ffffff;
+    border: 1px solid #dadce0;
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    color: #202124;
+    font-size: 0.85rem;
+    line-height: 1.3;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+    min-width: 220px;
+    max-width: 320px;
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+    z-index: 2;
+    white-space: normal;
+}
+
+.info-tooltip-icon[data-info-tooltip]:hover::after,
+.info-tooltip-icon[data-info-tooltip]:focus-visible::after {
+    opacity: 1;
+    transform: translateY(0);
+}
+
 @media (min-width: 576px) {
     .detail-row-inline {
         flex-direction: row;
