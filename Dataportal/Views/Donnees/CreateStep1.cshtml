@@ -62,19 +62,37 @@
             <span asp-validation-for="Description" class="text-danger"></span>
         </div>
 
-        <div class="form-floating mb-3">
-            <select asp-for="IdLicence" class="form-select" asp-items="@(new SelectList(Model.Licences, "Id", "Libelle"))" required>
+        <div class="form-floating mb-1">
+            <select asp-for="IdLicence" class="form-select" required data-description-target="licenceDescription">
+                <option value="">Select a license</option>
+                @foreach (var licence in Model.Licences ?? new List<Dataportal.Models.Licence>())
+                {
+                    <option value="@licence.Id" data-description="@licence.Description">@licence.Libelle</option>
+                }
                 <option value="">Select a license</option>
             </select>
-            <label asp-for="IdLicence"></label>
+            <label asp-for="IdLicence" class="d-inline-flex gap-2">
+                <span>@Html.DisplayNameFor(m => m.IdLicence)</span>
+                <span class="info-tooltip-icon" role="img" aria-label="License help" data-info-tooltip="A data license is a legal statement that tells others exactly what they are allowed or not allowed to do with a dataset—such as whether they can use it, share it, modify it, or use it commercially." tabindex="0">
+                    <span class="material-symbols-outlined" aria-hidden="true">help</span>
+                </span>
+            </label>
             <span asp-validation-for="IdLicence" class="text-danger"></span>
+            <div class="mb-3">
+                <small class="form-text text-muted" id="licenceDescription"></small>
+            </div>
         </div>
 
         <div class="form-floating mb-3">
             <select asp-for="IdSite" class="form-select" asp-items="@(new SelectList(Model.Sites, "Id", "Nom"))" required>
                 <option value="">Select a site</option>
             </select>
-            <label asp-for="IdSite"></label>
+            <label asp-for="IdSite" class="d-inline-flex align-items-center gap-2">
+                <span>@Html.DisplayNameFor(m => m.IdSite)</span>
+                <span class="info-tooltip-icon" role="img" aria-label="Site help" data-info-tooltip="To identify which site the dataset originates from." tabindex="0">
+                    <span class="material-symbols-outlined" aria-hidden="true">help</span>
+                </span>
+            </label>
             <span asp-validation-for="IdSite" class="text-danger"></span>
         </div>
 
@@ -84,16 +102,29 @@
                 <input type="text" id="appareilsFilterInput" class="multi-select-input" placeholder="Search..." />
             </div>
             <div id="appareilsSelectOptions" class="multi-select-dropdown"></div>
-            <label asp-for="SelectedAppareils"></label>
+            <label asp-for="SelectedAppareils" class="d-inline-flex align-items-center gap-2">
+                <span>@Html.DisplayNameFor(m => m.SelectedAppareils)</span>
+                <span class="info-tooltip-icon" role="img" aria-label="Devices help" data-info-tooltip="To identify possible devices in the datasets." tabindex="0">
+                    <span class="material-symbols-outlined" aria-hidden="true">help</span>
+                </span>
+            </label>
             <span asp-validation-for="SelectedAppareils" class="text-danger"></span>
         </div>
         <div id="appareilDetailsContainer" class="mb-3"></div>
 
-        <div class="form-floating mb-3">
-            <select asp-for="IdVisibilite" class="form-select" asp-items="@(new SelectList(Model.Visibilites, "Id", "Libelle"))" required>
+        <div class="form-floating mb-1">
+            <select asp-for="IdVisibilite" class="form-select" required data-description-target="visibilityDescription">
+                <option value="">Select a visibility</option>
+                @foreach (var visibilite in Model.Visibilites ?? new List<Dataportal.Models.Visibilite>())
+                {
+                    <option value="@visibilite.Id" data-description="@visibilite.Description">@visibilite.Libelle</option>
+                }
                 <option value="">Select a visibility</option>
             </select>
             <label asp-for="IdVisibilite"></label>
+            <div class="mb-3">
+                <small class="form-text text-muted" id="visibilityDescription"></small>
+            </div>
             <span asp-validation-for="IdVisibilite" class="text-danger"></span>
         </div>
 
@@ -131,6 +162,42 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const floatingInputs = document.querySelectorAll('.form-floating > input, .form-floating > select');
+            const setFilledState = (selectEl) => {
+                selectEl.classList.toggle('is-filled', Boolean(selectEl.value));
+            };
+
+            floatingInputs.forEach((input) => {
+                setFilledState(input);
+                const update = () => setFilledState(input);
+                input.addEventListener('change', update);
+                input.addEventListener('input', update);
+            });
+
+            const updateDescription = (selectEl) => {
+                const targetId = selectEl.getAttribute('data-description-target');
+                if (!targetId) return;
+                const target = document.getElementById(targetId);
+                if (!target) return;
+
+                const selectedOption = selectEl.selectedOptions[0];
+                const description = selectedOption?.dataset.description?.trim();
+                target.textContent = description || '';
+            };
+
+            const descriptionSelects = document.querySelectorAll('select[data-description-target]');
+            descriptionSelects.forEach((selectEl) => {
+                setFilledState(selectEl);
+                updateDescription(selectEl);
+                selectEl.addEventListener('change', () => {
+                    setFilledState(selectEl);
+                    updateDescription(selectEl);
+                });
+            });
+        });
+    </script>
     <script src="~/js/richTextEditor.js" asp-append-version="true"></script>
     <script src="~/js/multiSelectTags.js" asp-append-version="true"></script>
 }

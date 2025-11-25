@@ -395,6 +395,7 @@ header nav.scrolled {
 }
 
 .info-tooltip-icon {
+    pointer-events: auto;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -441,6 +442,17 @@ header nav.scrolled {
 .info-tooltip-icon[data-info-tooltip]:focus-visible::after {
     opacity: 1;
     transform: translateY(0);
+}
+
+.form-floating {
+    overflow: visible;
+}
+
+.form-floating > label {
+    display: inline-flex;
+    gap: 0.35rem;
+    overflow: visible;
+    opacity: 1 !important;
 }
 
 @media (min-width: 576px) {
