@@ -6,6 +6,6 @@ namespace Dataportal.Services
 {
     public interface ITabularFileImporter
     {
-        Task ImportAsync(string tableName, IEnumerable<IFormFile> files);
+        Task ImportAsync(TableImportTarget target, IEnumerable<IFormFile> files);
     }
 }

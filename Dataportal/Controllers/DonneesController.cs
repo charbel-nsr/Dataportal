@@ -25,6 +25,12 @@ namespace Dataportal.Controllers
         private readonly ApplicationDbContext _context;
         private readonly ITabularFileImporter _fileImporter;
         private const string DataSizeTempDataKey = "DataSizeBytes";
+        private static readonly string[] KnownSchemas =
+        {
+            TableImportSchemas.Donnees,
+            TableImportSchemas.DonneesEventLogs,
+            TableImportSchemas.DonneesContexteEnvironnemental
+        };
 
         public DonneesController(ApplicationDbContext context, ITabularFileImporter fileImporter)
         {
@@ -318,10 +324,11 @@ namespace Dataportal.Controllers
             // -- Show optional processing page here if you want
             // return View("Processing");
 
-            var tableName = $"Donnees.{model.Libelle}-{model.Code}".Replace(" ", "_");
+            var baseTableName = BuildBaseTableName(model.Libelle, model.Code);
+            var tableName = BuildSchemaQualifiedName(TableImportSchemas.Donnees, baseTableName);
             try
             {
-                await _fileImporter.ImportAsync(tableName, model.UploadedFiles);
+                await _fileImporter.ImportAsync(new TableImportTarget(TableImportSchemas.Donnees, baseTableName), model.UploadedFiles);
             }
             catch (InvalidOperationException ex)
             {
@@ -530,10 +537,11 @@ namespace Dataportal.Controllers
             }
             long totalDataSize = existingDataSize + stepSize;
 
-            var tableName = $"DonneesEventLogs.{model.Libelle}-{model.Code}".Replace(" ", "_");
+            var baseTableName = BuildBaseTableName(model.Libelle, model.Code);
+            var tableName = BuildSchemaQualifiedName(TableImportSchemas.DonneesEventLogs, baseTableName);
             try
             {
-                await _fileImporter.ImportAsync(tableName, model.UploadedFiles);
+                await _fileImporter.ImportAsync(new TableImportTarget(TableImportSchemas.DonneesEventLogs, baseTableName), model.UploadedFiles);
             }
             catch (InvalidOperationException ex)
             {
@@ -732,10 +740,11 @@ namespace Dataportal.Controllers
             }
             long totalDataSize = existingDataSize + stepSize;
 
-            var tableName = $"DonneesContexteEnvironnemental.{model.Libelle}-{model.Code}".Replace(" ", "_");
+            var baseTableName = BuildBaseTableName(model.Libelle, model.Code);
+            var tableName = BuildSchemaQualifiedName(TableImportSchemas.DonneesContexteEnvironnemental, baseTableName);
             try
             {
-                await _fileImporter.ImportAsync(tableName, model.UploadedFiles);
+                await _fileImporter.ImportAsync(new TableImportTarget(TableImportSchemas.DonneesContexteEnvironnemental, baseTableName), model.UploadedFiles);
             }
             catch (InvalidOperationException ex)
             {
@@ -833,9 +842,15 @@ namespace Dataportal.Controllers
             }
 
             //Load preview data
-            var donneesPreview = donnees?.NomDeLaTable != null ? await GetTablePreviewRows(donnees.NomDeLaTable) : null;
-            var eventLogsPreview = eventLogs?.NomDeLaTable != null ? await GetTablePreviewRows(eventLogs.NomDeLaTable) : null;
-            var contextePreview = contexte?.NomDeLaTable != null ? await GetTablePreviewRows(contexte.NomDeLaTable) : null;
+            var donneesPreview = TryBuildTableImportTarget(donnees?.NomDeLaTable, TableImportSchemas.Donnees, out var donneesTarget)
+                ? await GetTablePreviewRows(donneesTarget!)
+                : null;
+            var eventLogsPreview = TryBuildTableImportTarget(eventLogs?.NomDeLaTable, TableImportSchemas.DonneesEventLogs, out var eventLogsTarget)
+                ? await GetTablePreviewRows(eventLogsTarget!)
+                : null;
+            var contextePreview = TryBuildTableImportTarget(contexte?.NomDeLaTable, TableImportSchemas.DonneesContexteEnvironnemental, out var contexteTarget)
+                ? await GetTablePreviewRows(contexteTarget!)
+                : null;
 
             var fallbackReturnUrl = creation == true
                 ? Url.Action("RechercheDonnees", "AccesDonnees")
@@ -867,6 +882,47 @@ namespace Dataportal.Controllers
             return View(vm);
         }
 
+        private static string BuildBaseTableName(string libelle, string code)
+        {
+            return $"{libelle}-{code}".Replace(" ", "_");
+        }
+
+        private static string BuildSchemaQualifiedName(string schema, string tableName)
+        {
+            return $"{schema}.{tableName}";
+        }
+
+        private static bool TryBuildTableImportTarget(string? storedName, string fallbackSchema, out TableImportTarget? target)
+        {
+            target = null;
+
+            if (string.IsNullOrWhiteSpace(storedName))
+            {
+                return false;
+            }
+
+            var segments = storedName.Split('.', 2, StringSplitOptions.RemoveEmptyEntries);
+
+            if (segments.Length == 2 && IsKnownSchema(segments[0]))
+            {
+                target = new TableImportTarget(segments[0], segments[1]);
+                return true;
+            }
+
+            target = new TableImportTarget(fallbackSchema, storedName.Trim());
+            return true;
+        }
+
+        private static bool IsKnownSchema(string? schema)
+        {
+            if (string.IsNullOrWhiteSpace(schema))
+            {
+                return false;
+            }
+
+            return KnownSchemas.Any(s => s.Equals(schema, StringComparison.OrdinalIgnoreCase));
+        }
+
         private string? ResolveReturnUrl(string? requestedReturnUrl, string? fallback)
         {
             if (!string.IsNullOrWhiteSpace(requestedReturnUrl) && Url.IsLocalUrl(requestedReturnUrl))
@@ -891,20 +947,14 @@ namespace Dataportal.Controllers
             return fallback;
         }
 
-        private async Task<List<Dictionary<string, object>>> GetTablePreviewRows(string tableName)
+        private async Task<List<Dictionary<string, object>>> GetTablePreviewRows(TableImportTarget target)
         {
             var results = new List<Dictionary<string, object>>();
-
-            if (string.IsNullOrWhiteSpace(tableName))
-                return results;
-
-            // Sanitize table name for SQL Server
-            var safeTableName = $"[{tableName.Replace("]", "]]")}]";
 
             using var connection = new SqlConnection(_context.Database.GetConnectionString());
             await connection.OpenAsync();
 
-            var query = $"SELECT TOP 10 * FROM {safeTableName}";
+            var query = $"SELECT TOP 10 * FROM {target.QualifiedNameWithDatabase}";
             using var command = new SqlCommand(query, connection);
             using var reader = await command.ExecuteReaderAsync();
 
@@ -937,15 +987,12 @@ namespace Dataportal.Controllers
         }
 
 
-        private async Task DropSqlTableIfExists(string tableName)
+        private async Task DropSqlTableIfExists(TableImportTarget target)
         {
-            if (string.IsNullOrWhiteSpace(tableName)) return;
-
             using var connection = new SqlConnection(_context.Database.GetConnectionString());
             await connection.OpenAsync();
 
-            var safeName = $"[{tableName.Replace("]", "]]")}]";
-            var query = $"IF OBJECT_ID('{safeName}', 'U') IS NOT NULL DROP TABLE {safeName}";
+            var query = $"IF OBJECT_ID('{target.ObjectIdLiteral}', 'U') IS NOT NULL DROP TABLE {target.QualifiedNameWithDatabase}";
             using var cmd = new SqlCommand(query, connection);
             await cmd.ExecuteNonQueryAsync();
         }
@@ -1006,11 +1053,12 @@ namespace Dataportal.Controllers
                 return RedirectToAction("RechercheDonnees", "AccesDonnees");
             }
 
-            await DropSqlTableIfExists(metadonnee.Donnees?.NomDeLaTable);
-            if (metadonnee.DonneesEventLogs != null)
-                await DropSqlTableIfExists(metadonnee.DonneesEventLogs.NomDeLaTable);
-            if (metadonnee.DonneesContexteEnvironnemental != null)
-                await DropSqlTableIfExists(metadonnee.DonneesContexteEnvironnemental.NomDeLaTable);
+            if (TryBuildTableImportTarget(metadonnee.Donnees?.NomDeLaTable, TableImportSchemas.Donnees, out var donneesTarget))
+                await DropSqlTableIfExists(donneesTarget!);
+            if (TryBuildTableImportTarget(metadonnee.DonneesEventLogs?.NomDeLaTable, TableImportSchemas.DonneesEventLogs, out var donneesEventLogsTarget))
+                await DropSqlTableIfExists(donneesEventLogsTarget!);
+            if (TryBuildTableImportTarget(metadonnee.DonneesContexteEnvironnemental?.NomDeLaTable, TableImportSchemas.DonneesContexteEnvironnemental, out var donneesContexteTarget))
+                await DropSqlTableIfExists(donneesContexteTarget!);
 
             var links = _context.Metadonnee_Appareil.Where(l => l.IdMetadonnee == id);
             _context.Metadonnee_Appareil.RemoveRange(links);

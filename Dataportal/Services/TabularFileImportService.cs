@@ -32,12 +32,9 @@ namespace Dataportal.Services
             EnsureEncodingProviderRegistered();
         }
 
-        public async Task ImportAsync(string tableName, IEnumerable<IFormFile> files)
+        public async Task ImportAsync(TableImportTarget target, IEnumerable<IFormFile> files)
         {
-            if (string.IsNullOrWhiteSpace(tableName))
-            {
-                throw new ArgumentException("Le nom de la table est requis.", nameof(tableName));
-            }
+            ArgumentNullException.ThrowIfNull(target);
 
             ArgumentNullException.ThrowIfNull(files);
 
@@ -73,16 +70,16 @@ namespace Dataportal.Services
             switch (extension)
             {
                 case ".csv":
-                    await ImportCsvAsync(tableName, fileList, formatLabel);
+                    await ImportCsvAsync(target, fileList, formatLabel);
                     break;
                 case ".xlsx":
-                    await ImportExcelAsync(tableName, fileList, formatLabel);
+                    await ImportExcelAsync(target, fileList, formatLabel);
                     break;
                 case ".parquet":
-                    await ImportParquetAsync(tableName, fileList, formatLabel);
+                    await ImportParquetAsync(target, fileList, formatLabel);
                     break;
                 case ".csv.zip":
-                    await ImportZippedCsvAsync(tableName, fileList, formatLabel);
+                    await ImportZippedCsvAsync(target, fileList, formatLabel);
                     break;
                 default:
                     throw new InvalidOperationException("Only CSV, XLSX, Parquet, or CSV.zip files are supported at this time.");
@@ -126,7 +123,7 @@ namespace Dataportal.Services
                 : extension.ToLowerInvariant();
         }
 
-        private async Task ImportCsvAsync(string tableName, IReadOnlyList<IFormFile> files, string formatLabel)
+        private async Task ImportCsvAsync(TableImportTarget target, IReadOnlyList<IFormFile> files, string formatLabel)
         {
             await using var connection = new SqlConnection(_connectionString);
             await connection.OpenAsync();
@@ -159,8 +156,8 @@ namespace Dataportal.Services
                     {
                         EnsureUniqueHeaders(normalizedHeader);
                         headers = normalizedHeader.ToList();
-                        await CreateSqlTableAsync(connection, tableName, headers);
-                        bulkCopy = CreateBulkCopy(connection, tableName, headers);
+                        await CreateSqlTableAsync(connection, target, headers);
+                        bulkCopy = CreateBulkCopy(connection, target, headers);
                         buffer = CreateBufferTable(headers);
                         tableCreated = true;
                     }
@@ -179,7 +176,7 @@ namespace Dataportal.Services
             {
                 if (tableCreated)
                 {
-                    await DropSqlTableIfExists(connection, tableName);
+                    await DropSqlTableIfExists(connection, target);
                 }
 
                 throw;
@@ -196,7 +193,7 @@ namespace Dataportal.Services
             }
         }
 
-        private async Task ImportZippedCsvAsync(string tableName, IReadOnlyList<IFormFile> files, string formatLabel)
+        private async Task ImportZippedCsvAsync(TableImportTarget target, IReadOnlyList<IFormFile> files, string formatLabel)
         {
             await using var connection = new SqlConnection(_connectionString);
             await connection.OpenAsync();
@@ -243,8 +240,8 @@ namespace Dataportal.Services
                         {
                             EnsureUniqueHeaders(normalizedHeader);
                             headers = normalizedHeader.ToList();
-                            await CreateSqlTableAsync(connection, tableName, headers);
-                            bulkCopy = CreateBulkCopy(connection, tableName, headers);
+                            await CreateSqlTableAsync(connection, target, headers);
+                            bulkCopy = CreateBulkCopy(connection, target, headers);
                             buffer = CreateBufferTable(headers);
                             tableCreated = true;
                         }
@@ -264,7 +261,7 @@ namespace Dataportal.Services
             {
                 if (tableCreated)
                 {
-                    await DropSqlTableIfExists(connection, tableName);
+                    await DropSqlTableIfExists(connection, target);
                 }
 
                 throw;
@@ -281,7 +278,7 @@ namespace Dataportal.Services
             }
         }
 
-        private async Task ImportExcelAsync(string tableName, IReadOnlyList<IFormFile> files, string formatLabel)
+        private async Task ImportExcelAsync(TableImportTarget target, IReadOnlyList<IFormFile> files, string formatLabel)
         {
             await using var connection = new SqlConnection(_connectionString);
             await connection.OpenAsync();
@@ -315,8 +312,8 @@ namespace Dataportal.Services
                         {
                             EnsureUniqueHeaders(normalizedHeader);
                             headers = normalizedHeader.ToList();
-                            await CreateSqlTableAsync(connection, tableName, headers);
-                            bulkCopy = CreateBulkCopy(connection, tableName, headers);
+                            await CreateSqlTableAsync(connection, target, headers);
+                            bulkCopy = CreateBulkCopy(connection, target, headers);
                             buffer = CreateBufferTable(headers);
                             tableCreated = true;
                         }
@@ -337,7 +334,7 @@ namespace Dataportal.Services
             {
                 if (tableCreated)
                 {
-                    await DropSqlTableIfExists(connection, tableName);
+                    await DropSqlTableIfExists(connection, target);
                 }
 
                 throw;
@@ -354,7 +351,7 @@ namespace Dataportal.Services
             }
         }
 
-        private async Task ImportParquetAsync(string tableName, IReadOnlyList<IFormFile> files, string formatLabel)
+        private async Task ImportParquetAsync(TableImportTarget target, IReadOnlyList<IFormFile> files, string formatLabel)
         {
             await using var connection = new SqlConnection(_connectionString);
             await connection.OpenAsync();
@@ -388,8 +385,8 @@ namespace Dataportal.Services
                     {
                         EnsureUniqueHeaders(normalizedHeader);
                         headers = normalizedHeader.ToList();
-                        await CreateSqlTableAsync(connection, tableName, headers);
-                        bulkCopy = CreateBulkCopy(connection, tableName, headers);
+                        await CreateSqlTableAsync(connection, target, headers);
+                        bulkCopy = CreateBulkCopy(connection, target, headers);
                         buffer = CreateBufferTable(headers);
                         tableCreated = true;
                     }
@@ -408,7 +405,7 @@ namespace Dataportal.Services
             {
                 if (tableCreated)
                 {
-                    await DropSqlTableIfExists(connection, tableName);
+                    await DropSqlTableIfExists(connection, target);
                 }
 
                 throw;
@@ -755,11 +752,11 @@ namespace Dataportal.Services
             return table;
         }
 
-        private static SqlBulkCopy CreateBulkCopy(SqlConnection connection, string tableName, IReadOnlyList<string> headers)
+        private static SqlBulkCopy CreateBulkCopy(SqlConnection connection, TableImportTarget target, IReadOnlyList<string> headers)
         {
             var bulkCopy = new SqlBulkCopy(connection, SqlBulkCopyOptions.TableLock, null)
             {
-                DestinationTableName = GetQualifiedTableName(tableName),
+                DestinationTableName = target.QualifiedNameWithDatabase,
                 BulkCopyTimeout = 0,
                 BatchSize = 5000
             };
@@ -772,7 +769,7 @@ namespace Dataportal.Services
             return bulkCopy;
         }
 
-        private static async Task CreateSqlTableAsync(SqlConnection connection, string tableName, IReadOnlyList<string> headers)
+        private static async Task CreateSqlTableAsync(SqlConnection connection, TableImportTarget target, IReadOnlyList<string> headers)
         {
             var columnDefs = string.Join(", ", headers.Select(h =>
             {
@@ -783,24 +780,17 @@ namespace Dataportal.Services
             var hasIdColumn = headers.Any(h => string.Equals(h, "id", StringComparison.OrdinalIgnoreCase));
 
             var createTableCommand = hasIdColumn
-                ? $"CREATE TABLE {GetQualifiedTableName(tableName)} ({columnDefs})"
-                : $"CREATE TABLE {GetQualifiedTableName(tableName)} (Id INT IDENTITY(1,1) PRIMARY KEY, {columnDefs})";
+                ? $"CREATE TABLE {target.QualifiedNameWithDatabase} ({columnDefs})"
+                : $"CREATE TABLE {target.QualifiedNameWithDatabase} (Id INT IDENTITY(1,1) PRIMARY KEY, {columnDefs})";
 
             using var cmd = new SqlCommand(createTableCommand, connection);
             await cmd.ExecuteNonQueryAsync();
         }
 
-        private static string GetQualifiedTableName(string tableName)
+        private static async Task DropSqlTableIfExists(SqlConnection connection, TableImportTarget target)
         {
-            var safeName = tableName.Replace("]", "]]");
-            return $"[DataPortal].[dbo].[{safeName}]";
-        }
-
-        private static async Task DropSqlTableIfExists(SqlConnection connection, string tableName)
-        {
-            var qualifiedName = GetQualifiedTableName(tableName);
-            var objectIdName = qualifiedName.Replace("'", "''");
-            var dropCommand = $"IF OBJECT_ID('{objectIdName}', 'U') IS NOT NULL DROP TABLE {qualifiedName};";
+            var qualifiedName = target.QualifiedNameWithDatabase;
+            var dropCommand = $"IF OBJECT_ID('{target.ObjectIdLiteral}', 'U') IS NOT NULL DROP TABLE {qualifiedName};";
 
             using var cmd = new SqlCommand(dropCommand, connection);
             await cmd.ExecuteNonQueryAsync();
