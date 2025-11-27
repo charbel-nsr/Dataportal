@@ -87,7 +87,7 @@
             <select asp-for="IdSite" class="form-select" asp-items="@(new SelectList(Model.Sites, "Id", "Nom"))" required>
                 <option value="">Select a site</option>
             </select>
-            <label asp-for="IdSite" class="d-inline-flex align-items-center gap-2">
+            <label asp-for="IdSite" class="d-inline-flex gap-2">
                 <span>@Html.DisplayNameFor(m => m.IdSite)</span>
                 <span class="info-tooltip-icon" role="img" aria-label="Site help" data-info-tooltip="To identify which site the dataset originates from." tabindex="0">
                     <span class="material-symbols-outlined" aria-hidden="true">help</span>

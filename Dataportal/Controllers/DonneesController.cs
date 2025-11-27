@@ -17,6 +17,7 @@ using System.Collections.Generic;
 using Microsoft.AspNetCore.Http.Extensions;
 using System;
 using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 
 namespace Dataportal.Controllers
 {
@@ -97,6 +98,7 @@ namespace Dataportal.Controllers
             }
 
             TempData["Step1Data"] = JsonConvert.SerializeObject(model);
+            HttpContext.Session.SetInt32(SessionKeys.CreationNextStep, 2);
 
             return RedirectToAction("CreateStep2");
         }
@@ -130,6 +132,19 @@ namespace Dataportal.Controllers
             var nextStep = HttpContext.Session.GetInt32(SessionKeys.CreationNextStep);
 
             return (metadonneeId, nextStep);
+        }
+
+        private IActionResult RedirectToCreationFallback(int? metadonneeId)
+        {
+            if (metadonneeId.HasValue)
+            {
+                return RedirectToAction("Details", new { id = metadonneeId.Value, creation = true });
+            }
+
+            HttpContext.Session.Remove(SessionKeys.CreationMetadonneeId);
+            HttpContext.Session.Remove(SessionKeys.CreationNextStep);
+
+            return RedirectToAction("Index", "Accueil");
         }
 
         private (List<SelectListItem> Options, Dictionary<string, string> Descriptions) BuildQualiteOptions()
@@ -167,7 +182,125 @@ namespace Dataportal.Controllers
             return (options, descriptions);
         }
 
-        private async Task<string> GenerateNextCodeAsync(string libelle)
+        private enum ExistingLabelSource
+        {
+            Donnees,
+            EventLogs,
+            Contexte
+        }
+
+        private IQueryable<Metadonnee> BuildAccessibleMetadonneeQuery()
+        {
+            var baseQuery = _context.Metadonnee
+                .Include(m => m.Utilisateur)
+                .ThenInclude(u => u.Entreprise)
+                .AsQueryable();
+
+            var userId = TryGetCurrentUserId();
+            var userRole = GetCurrentUserRole();
+            var userEntrepriseId = GetCurrentUserEntrepriseId();
+
+            var isAuthenticated = userId.HasValue;
+            var isAdmin = userRole == RoleIds.Administrateur;
+            var isInternalRole = userRole == RoleIds.Utilisateur || userRole == RoleIds.Editeur;
+
+            return baseQuery.Where(m =>
+                m.IdVisibilite == VisibiliteIds.Public ||
+                (m.IdVisibilite == VisibiliteIds.Prive && isAuthenticated) ||
+                (
+                    m.IdVisibilite == VisibiliteIds.Interne &&
+                    isAuthenticated &&
+                    (
+                        isAdmin ||
+                        (
+                            isInternalRole &&
+                            userEntrepriseId.HasValue &&
+                            m.Utilisateur != null &&
+                            m.Utilisateur.IdEntreprise == userEntrepriseId
+                        )
+                    )
+                ) ||
+                (
+                    m.IdVisibilite == VisibiliteIds.Personnelle &&
+                    (isAdmin || (isAuthenticated && m.IdUtilisateur == userId))
+                ));
+        }
+
+        private async Task<List<ExistingLabelOption>> BuildExistingLabelOptionsAsync(ExistingLabelSource source)
+        {
+            var query = BuildAccessibleMetadonneeQuery();
+
+            switch (source)
+            {
+                case ExistingLabelSource.Donnees:
+                    return await query
+                        .Include(m => m.Donnees)
+                        .Where(m => m.Donnees != null)
+                        .Select(m => new ExistingLabelOption
+                        {
+                            Value = m.Id.ToString(),
+                            DisplayText = m.Donnees!.Libelle,
+                            Libelle = m.Donnees.Libelle,
+                            Code = m.Donnees.Code ?? string.Empty
+                        })
+                        .OrderBy(o => o.DisplayText)
+                        .ToListAsync();
+                case ExistingLabelSource.EventLogs:
+                    return await query
+                        .Include(m => m.DonneesEventLogs)
+                        .Where(m => m.DonneesEventLogs != null)
+                        .Select(m => new ExistingLabelOption
+                        {
+                            Value = m.Id.ToString(),
+                            DisplayText = m.DonneesEventLogs!.Libelle,
+                            Libelle = m.DonneesEventLogs.Libelle,
+                            Code = m.DonneesEventLogs.Code ?? string.Empty
+                        })
+                        .OrderBy(o => o.DisplayText)
+                        .ToListAsync();
+                case ExistingLabelSource.Contexte:
+                    return await query
+                        .Include(m => m.DonneesContexteEnvironnemental)
+                        .Where(m => m.DonneesContexteEnvironnemental != null)
+                        .Select(m => new ExistingLabelOption
+                        {
+                            Value = m.Id.ToString(),
+                            DisplayText = m.DonneesContexteEnvironnemental!.Libelle,
+                            Libelle = m.DonneesContexteEnvironnemental.Libelle,
+                            Code = m.DonneesContexteEnvironnemental.Code ?? string.Empty
+                        })
+                        .OrderBy(o => o.DisplayText)
+                        .ToListAsync();
+                default:
+                    return new List<ExistingLabelOption>();
+            }
+        }
+
+        private static int ExtractSuffixNumber(string code)
+        {
+            var match = Regex.Match(code ?? string.Empty, @"(\d{2})(?!.*\d)");
+
+            return match.Success && int.TryParse(match.Value, out var number) ? number : 0;
+        }
+
+        private IQueryable<string> BuildCodesQueryForLabel(string normalizedLibelle, ExistingLabelSource source)
+        {
+            return source switch
+            {
+                ExistingLabelSource.Donnees => _context.Donnees
+                    .Where(d => d.Libelle.ToLower() == normalizedLibelle && d.Code != null)
+                    .Select(d => d.Code!),
+                ExistingLabelSource.EventLogs => _context.DonneesEventLogs
+                    .Where(e => e.Libelle.ToLower() == normalizedLibelle && e.Code != null)
+                    .Select(e => e.Code!),
+                ExistingLabelSource.Contexte => _context.DonneesContexteEnvironnemental
+                    .Where(c => c.Libelle.ToLower() == normalizedLibelle && c.Code != null)
+                    .Select(c => c.Code!),
+                _ => Enumerable.Empty<string>().AsQueryable()
+            };
+        }
+
+        private async Task<string> GenerateNextCodeForLabelAsync(string libelle, ExistingLabelSource source)
         {
             var datePrefix = DateTime.Now.ToString("yyyyMMdd");
 
@@ -177,36 +310,31 @@ namespace Dataportal.Controllers
             }
 
             var normalizedLibelle = libelle.Trim().ToLower();
+            var codesQuery = BuildCodesQueryForLabel(normalizedLibelle, source);
+            var codes = await codesQuery.ToListAsync();
 
-            var existingCodes = await _context.Donnees
-                .Where(d => d.Libelle.ToLower() == normalizedLibelle && d.Code.StartsWith(datePrefix))
-                .Select(d => d.Code)
-                .ToListAsync();
-
-            var nextNumber = 1;
-
-            foreach (var code in existingCodes)
-            {
-                if (code.Length > datePrefix.Length &&
-                    int.TryParse(code.Substring(datePrefix.Length), out var suffix))
-                {
-                    nextNumber = Math.Max(nextNumber, suffix + 1);
-                }
-            }
+            var nextNumber = codes.Select(ExtractSuffixNumber).DefaultIfEmpty(0).Max() + 1;
 
             return $"{datePrefix}{nextNumber:D2}";
         }
 
         [HttpGet]
         [Authorize(Roles = "administrator,editor,user")]
-        public async Task<IActionResult> NextCode(string libelle)
+        public async Task<IActionResult> NextCode(string libelle, string? source)
         {
             if (string.IsNullOrWhiteSpace(libelle))
             {
                 return BadRequest("Label is required to generate a code.");
             }
 
-            var code = await GenerateNextCodeAsync(libelle);
+            var codeSource = source?.ToLower() switch
+            {
+                "eventlogs" => ExistingLabelSource.EventLogs,
+                "contexte" => ExistingLabelSource.Contexte,
+                _ => ExistingLabelSource.Donnees
+            };
+
+            var code = await GenerateNextCodeForLabelAsync(libelle, codeSource);
 
             return Json(new { code });
         }
@@ -220,6 +348,11 @@ namespace Dataportal.Controllers
             if (resumeId.HasValue && nextStep.HasValue && nextStep.Value >= 3)
             {
                 return RedirectToAction("Details", new { id = resumeId.Value, creation = true });
+            }
+
+            if (!nextStep.HasValue || nextStep.Value < 2)
+            {
+                return RedirectToAction("Index", "Accueil");
             }
 
             var step1Json = TempData.Peek("Step1Data") as string;
@@ -242,7 +375,8 @@ namespace Dataportal.Controllers
                 EndTimestamp = DateTime.Now,
                 QualiteOptions = qualiteData.Options,
                 QualiteDescriptions = qualiteData.Descriptions,
-                Code = await GenerateNextCodeAsync(null)
+                Code = await GenerateNextCodeForLabelAsync(null, ExistingLabelSource.Donnees),
+                ExistingLabelOptions = await BuildExistingLabelOptionsAsync(ExistingLabelSource.Donnees)
             };
             return View(vm);
         }
@@ -268,13 +402,33 @@ namespace Dataportal.Controllers
                 model.QualiteDescriptions = qualiteDataLocal.Descriptions;
             }
 
+            model.ExistingLabelOptions = await BuildExistingLabelOptionsAsync(ExistingLabelSource.Donnees);
+
             if (User.IsInRole("user") && step1Data.IdVisibilite != VisibiliteIds.Personnelle)
             {
                 TempData.Remove("Step1Data");
                 return Forbid();
             }
 
-            model.Code = await GenerateNextCodeAsync(model.Libelle);
+            if (model.IdExistingMetadonnee.HasValue)
+            {
+                var selected = model.ExistingLabelOptions
+                    .FirstOrDefault(o => o.Value == model.IdExistingMetadonnee.Value.ToString());
+
+                if (selected != null)
+                {
+                    model.Libelle = selected.Libelle;
+                    model.Code = await GenerateNextCodeForLabelAsync(model.Libelle, ExistingLabelSource.Donnees);
+                }
+                else
+                {
+                    ModelState.AddModelError(nameof(model.IdExistingMetadonnee), "The selected data is not available.");
+                }
+            }
+            else
+            {
+                model.Code = await GenerateNextCodeForLabelAsync(model.Libelle, ExistingLabelSource.Donnees);
+            }
             ModelState.Remove(nameof(model.Code));
             TryValidateModel(model);
 
@@ -287,6 +441,16 @@ namespace Dataportal.Controllers
 
             var normalizedLibelle = model.Libelle.Trim().ToLower();
             var normalizedCode = model.Code.Trim().ToLower();
+
+            var expectedCode = await GenerateNextCodeForLabelAsync(model.Libelle, ExistingLabelSource.Donnees);
+
+            if (!string.Equals(model.Code.Trim(), expectedCode, StringComparison.OrdinalIgnoreCase))
+            {
+                ModelState.AddModelError(nameof(model.Code), "The code must use today's date and increment the version for this label.");
+                TempData.Keep("Step1Data");
+                RepopulateQualiteSelections();
+                return View(model);
+            }
 
             var duplicate = await _context.Donnees
                 .FirstOrDefaultAsync(d =>
@@ -432,12 +596,14 @@ namespace Dataportal.Controllers
         {
             var (resumeId, nextStep) = GetCreationWizardState();
 
-            if (resumeId.HasValue)
+            if (!resumeId.HasValue || resumeId.Value != id || !nextStep.HasValue || nextStep.Value < 3)
             {
-                if (resumeId.Value != id || (nextStep.HasValue && nextStep.Value > 3))
-                {
-                    return RedirectToAction("Details", new { id = resumeId.Value, creation = true });
-                }
+                return RedirectToCreationFallback(resumeId ?? id);
+            }
+
+            if (nextStep.Value > 3)
+            {
+                return RedirectToAction("Details", new { id = resumeId.Value, creation = true });
             }
 
             // Validate Metadonnee exists
@@ -460,7 +626,8 @@ namespace Dataportal.Controllers
                 EndTimestamp = DateTime.Now,
                 QualiteOptions = qualiteData.Options,
                 QualiteDescriptions = qualiteData.Descriptions,
-                Code = await GenerateNextCodeAsync(null)
+                Code = await GenerateNextCodeForLabelAsync(null, ExistingLabelSource.EventLogs),
+                ExistingLabelOptions = await BuildExistingLabelOptionsAsync(ExistingLabelSource.EventLogs)
             };
             return View(vm);
         }
@@ -477,7 +644,27 @@ namespace Dataportal.Controllers
                 model.QualiteDescriptions = qualiteDataLocal.Descriptions;
             }
 
-            model.Code = await GenerateNextCodeAsync(model.Libelle);
+            model.ExistingLabelOptions = await BuildExistingLabelOptionsAsync(ExistingLabelSource.EventLogs);
+
+            if (model.IdExistingMetadonnee.HasValue)
+            {
+                var selected = model.ExistingLabelOptions
+                    .FirstOrDefault(o => o.Value == model.IdExistingMetadonnee.Value.ToString());
+
+                if (selected != null)
+                {
+                    model.Libelle = selected.Libelle;
+                    model.Code = await GenerateNextCodeForLabelAsync(model.Libelle, ExistingLabelSource.EventLogs);
+                }
+                else
+                {
+                    ModelState.AddModelError(nameof(model.IdExistingMetadonnee), "The selected event logs are not available.");
+                }
+            }
+            else
+            {
+                model.Code = await GenerateNextCodeForLabelAsync(model.Libelle, ExistingLabelSource.EventLogs);
+            }
             ModelState.Remove(nameof(model.Code));
             TryValidateModel(model);
 
@@ -506,16 +693,26 @@ namespace Dataportal.Controllers
                 return RedirectToAction("CreateStep4", new { id = model.IdMetadonnee });
             }
 
+            var normalizedLibelle = model.Libelle.Trim().ToLower();
+            var normalizedCode = model.Code.Trim().ToLower();
+
+            var expectedCode = await GenerateNextCodeForLabelAsync(model.Libelle, ExistingLabelSource.EventLogs);
+
+            if (!string.Equals(model.Code.Trim(), expectedCode, StringComparison.OrdinalIgnoreCase))
+            {
+                ModelState.AddModelError(nameof(model.Code), "The code must use today's date and increment the version for this label.");
+                RepopulateQualiteSelections();
+                return View(model);
+            }
+
             var duplicate = await _context.DonneesEventLogs.FirstOrDefaultAsync(e =>
-                            e.Libelle.ToLower() == model.Libelle.Trim().ToLower() ||
-                            e.Code.ToLower() == model.Code.Trim().ToLower());
+                            e.Libelle.ToLower() == normalizedLibelle &&
+                            e.Code.ToLower() == normalizedCode);
 
             if (duplicate != null)
             {
-                if (duplicate.Libelle.Equals(model.Libelle.Trim(), StringComparison.OrdinalIgnoreCase))
-                    ModelState.AddModelError("Libelle", "This label already exists.");
-                if (duplicate.Code.Equals(model.Code.Trim(), StringComparison.OrdinalIgnoreCase))
-                    ModelState.AddModelError("Code", "This code already exists.");
+                ModelState.AddModelError("Libelle", "This label/code combination already exists.");
+                ModelState.AddModelError("Code", "This label/code combination already exists.");
 
                 RepopulateQualiteSelections();
                 return View(model);
@@ -621,25 +818,14 @@ namespace Dataportal.Controllers
         {
             var (resumeId, nextStep) = GetCreationWizardState();
 
-            if (resumeId.HasValue)
+            if (!resumeId.HasValue || resumeId.Value != id)
             {
-                if (resumeId.Value != id)
-                {
-                    return RedirectToAction("Details", new { id = resumeId.Value, creation = true });
-                }
+                return RedirectToCreationFallback(id);
+            }
 
-                if (nextStep.HasValue)
-                {
-                    if (nextStep.Value < 4)
-                    {
-                        return RedirectToAction("CreateStep3", new { id = resumeId.Value });
-                    }
-
-                    if (nextStep.Value > 4)
-                    {
-                        return RedirectToAction("Details", new { id = resumeId.Value, creation = true });
-                    }
-                }
+            if (!nextStep.HasValue || nextStep.Value < 4)
+            {
+                return RedirectToAction("CreateStep3", new { id = resumeId.Value });
             }
 
             var metadonnee = _context.Metadonnee.Find(id);
@@ -661,7 +847,8 @@ namespace Dataportal.Controllers
                 EndTimestamp = DateTime.Now,
                 QualiteOptions = qualiteData.Options,
                 QualiteDescriptions = qualiteData.Descriptions,
-                Code = await GenerateNextCodeAsync(null)
+                Code = await GenerateNextCodeForLabelAsync(null, ExistingLabelSource.Contexte),
+                ExistingLabelOptions = await BuildExistingLabelOptionsAsync(ExistingLabelSource.Contexte)
             };
             return View(vm);
         }
@@ -679,7 +866,28 @@ namespace Dataportal.Controllers
                 model.QualiteDescriptions = qualiteDataLocal.Descriptions;
             }
 
-            model.Code = await GenerateNextCodeAsync(model.Libelle);
+            model.ExistingLabelOptions = await BuildExistingLabelOptionsAsync(ExistingLabelSource.Contexte);
+
+            if (model.IdExistingMetadonnee.HasValue)
+            {
+                var selected = model.ExistingLabelOptions
+                    .FirstOrDefault(o => o.Value == model.IdExistingMetadonnee.Value.ToString());
+
+                if (selected != null)
+                {
+                    model.Libelle = selected.Libelle;
+                    model.Code = await GenerateNextCodeForLabelAsync(model.Libelle, ExistingLabelSource.Contexte);
+                }
+                else
+                {
+                    ModelState.AddModelError(nameof(model.IdExistingMetadonnee), "The selected environmental context is not available.");
+                }
+            }
+            else
+            {
+                model.Code = await GenerateNextCodeForLabelAsync(model.Libelle, ExistingLabelSource.Contexte);
+            }
+
             ModelState.Remove(nameof(model.Code));
             TryValidateModel(model);
 
@@ -709,16 +917,26 @@ namespace Dataportal.Controllers
                 return RedirectToAction("Details", new { id = metadonnee.Id, creation = true });
             }
 
+            var normalizedLibelle = model.Libelle.Trim().ToLower();
+            var normalizedCode = model.Code.Trim().ToLower();
+
+            var expectedCode = await GenerateNextCodeForLabelAsync(model.Libelle, ExistingLabelSource.Contexte);
+
+            if (!string.Equals(model.Code.Trim(), expectedCode, StringComparison.OrdinalIgnoreCase))
+            {
+                ModelState.AddModelError(nameof(model.Code), "The code must use today's date and increment the version for this label.");
+                RepopulateQualiteSelections();
+                return View(model);
+            }
+
             var duplicate = await _context.DonneesContexteEnvironnemental.FirstOrDefaultAsync(c =>
-                            c.Libelle.ToLower() == model.Libelle.Trim().ToLower() ||
-                            c.Code.ToLower() == model.Code.Trim().ToLower());
+                            c.Libelle.ToLower() == normalizedLibelle &&
+                            c.Code.ToLower() == normalizedCode);
 
             if (duplicate != null)
             {
-                if (duplicate.Libelle.Equals(model.Libelle.Trim(), StringComparison.OrdinalIgnoreCase))
-                    ModelState.AddModelError("Libelle", "This label already exists.");
-                if (duplicate.Code.Equals(model.Code.Trim(), StringComparison.OrdinalIgnoreCase))
-                    ModelState.AddModelError("Code", "This code already exists.");
+                ModelState.AddModelError("Libelle", "This label/code combination already exists.");
+                ModelState.AddModelError("Code", "This label/code combination already exists.");
 
                 RepopulateQualiteSelections();
                 return View(model);
@@ -855,7 +1073,9 @@ namespace Dataportal.Controllers
             var fallbackReturnUrl = creation == true
                 ? Url.Action("RechercheDonnees", "AccesDonnees")
                 : Url.Action("Index", "Accueil");
-            var resolvedReturnUrl = ResolveReturnUrl(returnUrl, fallbackReturnUrl);
+            var resolvedReturnUrl = creation == true
+                ? fallbackReturnUrl
+                : ResolveReturnUrl(returnUrl, fallbackReturnUrl);
 
             //Build ViewModel
             var vm = new MetadonneeDetailsViewModel

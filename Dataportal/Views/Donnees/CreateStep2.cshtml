@@ -15,8 +15,34 @@
         <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
 
         <div class="form-floating mb-3">
+            <select asp-for="IdExistingMetadonnee" class="form-select" data-existing-select data-default-code="@Model.Code" data-code-source="donnees">
+                <option value="">Completely new data</option>
+                @foreach (var option in Model.ExistingLabelOptions)
+                {
+                    <option value="@option.Value" data-libelle="@option.Libelle" data-code="@option.Code">@option.DisplayText</option>
+                }
+            </select>
+            </select>
+            <label asp-for="IdExistingMetadonnee" class="d-inline-flex gap-2">
+                <span>Use existing data (optional)</span>
+                <span class="info-tooltip-icon" role="img" aria-label="Existing data help" data-info-tooltip="If you are publishing an update or a new version, pick the existing data to reuse its label and bump today's code automatically. Otherwise, please use a completely new label." tabindex="0">
+                    <span class="material-symbols-outlined" aria-hidden="true">help</span>
+                </span>
+            </label>
+            <div class="mb-2">
+                <small class="form-text text-muted">Choose "Completely new data" to provide a unique label and start from today's version 01.</small>
+            </div>
+            <span asp-validation-for="IdExistingMetadonnee" class="text-danger"></span>
+        </div>
+
+        <div class="form-floating mb-3">
             <input asp-for="Libelle" class="form-control" placeholder="Label" required data-next-code-input />
-            <label asp-for="Libelle"></label>
+            <label asp-for="Libelle">
+                <span>@Html.DisplayNameFor(m => m.Libelle)</span>
+                <span class="info-tooltip-icon" role="img" aria-label="Existing data help" data-info-tooltip="If your label is already in use, it'll affect the code. If this dataset is totally new, you should expect the code to be the current date then 01: YYYYMMDD01." tabindex="0">
+                    <span class="material-symbols-outlined" aria-hidden="true">help</span>
+                </span>
+            </label>
             <span asp-validation-for="Libelle" class="text-danger"></span>
         </div>
 
@@ -94,18 +120,90 @@
             const form = document.querySelector('form.upload-overlay-form');
             const labelInput = document.querySelector('[data-next-code-input]');
             const codeInput = document.getElementById('Code');
+            const existingSelect = document.querySelector('[data-existing-select]');
+            const defaultCode = existingSelect?.dataset.defaultCode || codeInput?.value || '';
+            const nextCodeUrl = '@Url.Action("NextCode", "Donnees")';
 
-            initUploadOverlay(form, {
-                confirmMessage: 'Once this step is confirmed, the data will be created temporarily. Do you want to continue?'
-            });
+            initUploadOverlay(form, {confirmMessage: 'Once this step is confirmed, the data will be created temporarily. Do you want to continue?'});
+
+            const buildTodayIncrementedCode = (baseCode) => {
+                const today = new Date();
+                const datePrefix = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+                const match = (baseCode || '').match(/(\d{2})(?!.*\d)/);
+                const incremented = match ? parseInt(match[1], 10) + 1 : 1;
+                const suffix = Number.isNaN(incremented) ? '01' : String(incremented).padStart(2, '0');
+
+                return `${datePrefix}${suffix}`;
+            };
+
+            const applyExistingSelection = async () => {
+                if (!existingSelect || !labelInput || !codeInput) {
+                    return;
+                }
+
+                const selectedOption = existingSelect.selectedOptions[0];
+                if (!selectedOption) {
+                    return;
+                }
+
+                const hasExisting = Boolean(existingSelect.value);
+
+                if (hasExisting) {
+                    if (selectedOption.dataset.libelle) {
+                        labelInput.value = selectedOption.dataset.libelle;
+                    }
+                    try {
+                        const response = await fetch(`${nextCodeUrl}?libelle=${encodeURIComponent(labelInput.value.trim())}&source=${existingSelect?.dataset.codeSource ?? 'donnees'}`);
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (data?.code) {
+                                codeInput.value = data.code;
+                            }
+                            else if (selectedOption.dataset.code) {
+                                codeInput.value = buildTodayIncrementedCode(selectedOption.dataset.code);
+                            }
+                        }
+                        else if (selectedOption.dataset.code) {
+                            codeInput.value = buildTodayIncrementedCode(selectedOption.dataset.code);
+                        }
+                    }
+                    catch {
+                        if (selectedOption.dataset.code) {
+                            codeInput.value = buildTodayIncrementedCode(selectedOption.dataset.code);
+                        }
+                    }
+                }
+                else {
+                    labelInput.value = '';
+                    codeInput.value = defaultCode;
+                }
+
+                labelInput.readOnly = hasExisting;
+                labelInput.classList.toggle('bg-light', hasExisting);
+                if (hasExisting) {
+                    labelInput.setAttribute('aria-readonly', 'true');
+                } else {
+                    labelInput.removeAttribute('aria-readonly');
+                }
+            };
 
             const updateCode = async () => {
-                if (!labelInput || !codeInput || !labelInput.value.trim()) {
+                if (!labelInput || !codeInput) {
+                    return;
+                }
+
+                if (existingSelect && existingSelect.value) {
+                    await applyExistingSelection();
+                    return;
+                }
+
+                if (!labelInput.value.trim()) {
+                    codeInput.value = defaultCode;
                     return;
                 }
 
                 try {
-                    const response = await fetch(`@Url.Action("NextCode", "Donnees")?libelle=${encodeURIComponent(labelInput.value.trim())}`);
+                    const response = await fetch(`${nextCodeUrl}?libelle=${encodeURIComponent(labelInput.value.trim())}&source=${existingSelect?.dataset.codeSource ?? 'donnees'}`);
                     if (!response.ok) {
                         return;
                     }
@@ -123,6 +221,17 @@
             if (labelInput) {
                 labelInput.addEventListener('blur', updateCode);
                 labelInput.addEventListener('change', updateCode);
+            }
+
+            if (existingSelect) {
+                existingSelect.addEventListener('change', async () => {
+                    await applyExistingSelection();
+                    if (!existingSelect.value) {
+                        await updateCode();
+                    }
+                });
+
+                applyExistingSelection();
             }
 
             if (fileInput && fileListDiv) {

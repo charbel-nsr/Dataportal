@@ -50,6 +50,11 @@ namespace Dataportal.ViewModels
 
         public IDictionary<string, string> QualiteDescriptions { get; set; } = new Dictionary<string, string>();
 
+        [Display(Name = "Base on existing data")]
+        public int? IdExistingMetadonnee { get; set; }
+
+        public List<ExistingLabelOption> ExistingLabelOptions { get; set; } = new();
+
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
             if (StartTimestamp > EndTimestamp)
