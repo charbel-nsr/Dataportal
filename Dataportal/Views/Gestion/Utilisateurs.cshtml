@@ -169,6 +169,20 @@
                                                 data-prenom="@u.Prenom">
                                             <i class="bi bi-pencil"></i>
                                         </button>
+                                        @if (!string.Equals(u.Role?.Libelle, "administrator", StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            <form asp-action="ToggleUtilisateurActif" method="post" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@u.Id" />
+                                                <button type="submit"
+                                                        class="btn btn-sm @(u.CompteActif ? "btn-outline-danger" : "btn-outline-success")"
+                                                        title="@(u.CompteActif ? "Deactivate account" : "Activate account")"
+                                                        aria-label="@(u.CompteActif ? "Deactivate account" : "Activate account")"
+                                                        onclick="return confirm('@(u.CompteActif ? "Are you sure you want to deactivate this account?" : "Are you sure you want to activate this account?")');">
+                                                    <i class="bi @(u.CompteActif ? "bi-person-dash" : "bi-person-check")"></i>
+                                                </button>
+                                            </form>
+                                        }
                                     }
                                 </td>
                             </tr>

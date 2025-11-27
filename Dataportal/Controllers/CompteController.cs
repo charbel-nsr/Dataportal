@@ -154,7 +154,7 @@ namespace Dataportal.Controllers
                     }
                     else
                     {
-                        ModelState.AddModelError(string.Empty, "The account is not active.");
+                        ModelState.AddModelError(string.Empty, "Your account has been deactivated. Please contact the platform manager.");
                         _logger.LogWarning("Login attempt on an inactive account: {Email}", model.Email);
                     }
                 }
