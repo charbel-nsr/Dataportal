@@ -1,7 +1,7 @@
-﻿@model Dataportal.ViewModels.MotDePasseOublieViewModel
+﻿@model Dataportal.ViewModels.ResetMotDePasseViewModel
 
 @{
-    ViewData["Title"] = "Forgot password";
+    ViewData["Title"] = "Reset password";
     ViewData["HideFooter"] = true;
     ViewData["DisableScroll"] = true;
 }
@@ -12,13 +12,6 @@
             <div class="col-md-6 d-flex align-items-center justify-content-center">
                 <div class="p-4 bg-white rounded shadow" style="max-width: 450px; width: 100%;">
                     <h2 class="mb-4 text-center">@ViewData["Title"]</h2>
-                    @if (TempData["Success"] != null)
-                    {
-                        <div class="alert alert-success alert-dismissible fade show" role="alert">
-                            @TempData["Success"]
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    }
                     @if (TempData["Error"] != null)
                     {
                         <div class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -26,19 +19,26 @@
                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                         </div>
                     }
-                    <form asp-action="MotDePasseOublie" method="post" novalidate>
+                    <form asp-action="ReinitialiserMotDePasse" method="post" novalidate>
                         @Html.AntiForgeryToken()
                         <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                        <input type="hidden" asp-for="Email" />
+                        <input type="hidden" asp-for="Token" />
                         <div class="form-floating mb-3">
-                            <input asp-for="Email" class="form-control" placeholder=" " />
-                            <label asp-for="Email" class="floatingInput"></label>
-                            <span asp-validation-for="Email" class="text-danger"></span>
+                            <input asp-for="NouveauMotDePasse" class="form-control" type="password" placeholder=" " />
+                            <label asp-for="NouveauMotDePasse" class="floatingInput"></label>
+                            <span asp-validation-for="NouveauMotDePasse" class="text-danger"></span>
+                        </div>
+                        <div class="form-floating mb-3">
+                            <input asp-for="ConfirmationMotDePasse" class="form-control" type="password" placeholder=" " />
+                            <label asp-for="ConfirmationMotDePasse" class="floatingInput"></label>
+                            <span asp-validation-for="ConfirmationMotDePasse" class="text-danger"></span>
                         </div>
                         <button type="submit" class="btn btn-primary w-100 mt-3">
-                            Reset password
+                            Save new password
                         </button>
                     </form>
-                    <a href="/Compte/SeConnecter" class="btn btn-outline-primary mt-2 w-100">Sign in</a>
+                    <a href="/Compte/SeConnecter" class="btn btn-outline-primary mt-2 w-100">Back to sign in</a>
                 </div>
             </div>
             <div class="col-md-6 d-flex flex-column justify-content-center align-items-center p-4 logo-fade">

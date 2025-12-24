@@ -10,6 +10,8 @@ using System.Globalization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Dataportal.Classes;
+using Dataportal.Services.Email;
+using IPortalEmailSender = Dataportal.Services.Email.IEmailSender;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -53,6 +55,13 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 
 // Register the password hasher for Utilisateur class
 builder.Services.AddScoped<IPasswordHasher<Utilisateur>, PasswordHasher<Utilisateur>>();
+
+builder.Services.Configure<MailOptions>(builder.Configuration.GetSection(MailOptions.SectionName));
+builder.Services.Configure<PortalOptions>(builder.Configuration.GetSection(PortalOptions.SectionName));
+builder.Services.AddScoped<IEmailTemplateRenderer, ThemedEmailTemplateRenderer>();
+builder.Services.AddScoped<IPortalEmailSender, MailKitEmailSender>();
+builder.Services.AddScoped<IAccountEmailService, AccountEmailService>();
+builder.Services.AddHostedService<PendingRequestReminderHostedService>();
 
 var app = builder.Build();
 

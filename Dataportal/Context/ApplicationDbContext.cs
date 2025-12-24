@@ -27,6 +27,7 @@ namespace Dataportal.Context
         public DbSet<Metadonnee> Metadonnee { get; set; }
         public DbSet<Metadonnee_Appareil> Metadonnee_Appareil { get; set; }
         public DbSet<Role> Role { get; set; }
+        public DbSet<RateLimitEntry> RateLimitEntries { get; set; }
         public DbSet<Site> Site { get; set; }
         public DbSet<StatutDeLaDemande> StatutDeLaDemande { get; set; }
         public DbSet<Utilisateur> Utilisateur { get; set; }
@@ -76,6 +77,10 @@ namespace Dataportal.Context
                       .HasMaxLength(1000);
                 entity.Property(d => d.DateCreation)
                       .HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(d => d.VerificationToken)
+                      .HasMaxLength(200);
+                entity.Property(d => d.VerificationTokenExpiration);
+                entity.Property(d => d.EmailVerifieLe);
                 entity.HasIndex(d => d.Email)
                       .IsUnique();
                 entity.HasOne(d => d.Entreprise)
@@ -85,6 +90,15 @@ namespace Dataportal.Context
                       .WithMany(s => s.DemandeDeComptes)
                       .HasForeignKey(d => d.IdStatutDeLaDemande)
                       .OnDelete(DeleteBehavior.Restrict);
+            });
+            modelBuilder.Entity<RateLimitEntry>(entity =>
+            {
+                entity.HasKey(r => r.Id);
+                entity.Property(r => r.Key)
+                      .IsRequired()
+                      .HasMaxLength(200);
+                entity.HasIndex(r => r.Key)
+                      .IsUnique();
             });
             modelBuilder.Entity<DomaineEmail>(entity =>
             {
@@ -329,6 +343,14 @@ namespace Dataportal.Context
                 entity.Property(u => u.DescriptionProfil)
                       .HasMaxLength(1000)
                       .HasDefaultValue(null);
+                entity.Property(u => u.MfaEnabled)
+                      .HasDefaultValue(false);
+                entity.Property(u => u.MfaCodeHash)
+                      .HasMaxLength(256);
+                entity.Property(u => u.PasswordResetTokenHash)
+                      .HasMaxLength(256);
+                entity.Property(u => u.MfaCodeExpiration);
+                entity.Property(u => u.PasswordResetTokenExpiration);
             });
             modelBuilder.Entity<Visibilite>(entity =>
             {

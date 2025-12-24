@@ -36,6 +36,13 @@ namespace Dataportal.Models
 
         public bool EmailVerifie { get; set; }
 
+        [MaxLength(200)]
+        public string? VerificationToken { get; set; }
+
+        public DateTime? VerificationTokenExpiration { get; set; }
+
+        public DateTime? EmailVerifieLe { get; set; }
+
         [Required]
         [StringLength(1000)]
         public string Commentaire { get; set; }

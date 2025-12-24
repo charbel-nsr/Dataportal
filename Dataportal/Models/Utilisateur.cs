@@ -54,5 +54,17 @@ namespace Dataportal.Models
 
         [StringLength(1000)]
         public string DescriptionProfil { get; set; }
+
+        public bool MfaEnabled { get; set; }
+
+        [StringLength(256)]
+        public string? MfaCodeHash { get; set; }
+
+        public DateTime? MfaCodeExpiration { get; set; }
+
+        [StringLength(256)]
+        public string? PasswordResetTokenHash { get; set; }
+
+        public DateTime? PasswordResetTokenExpiration { get; set; }
     }
 }

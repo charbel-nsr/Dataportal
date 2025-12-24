@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Linq;
+using Dataportal.Services.Email;
 
 //TODO: only allow rquestes from users who have verified there emails to be accepted
 //TODO: send emails to user accepting or rejecting there request
@@ -17,10 +18,12 @@ namespace Dataportal.Controllers
     public class GestionController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly IAccountEmailService _accountEmailService;
 
-        public GestionController(ApplicationDbContext context)
+        public GestionController(ApplicationDbContext context, IAccountEmailService accountEmailService)
         {
             _context = context;
+            _accountEmailService = accountEmailService;
         }
 
         // GET: /Gestion/DemandeDeCompte
@@ -101,9 +104,9 @@ namespace Dataportal.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "administrator")]
-        public IActionResult ApprouverDemande(int id, int idStatut, int idEntreprise, bool emailVerifie, string commentaire, int? idRole)
+        public async Task<IActionResult> ApprouverDemande(int id, int idStatut, int idEntreprise, bool emailVerifie, string commentaire, int? idRole)
         {
-            var demande = _context.DemandeDeCompte.FirstOrDefault(d => d.Id == id);
+            var demande = await _context.DemandeDeCompte.FirstOrDefaultAsync(d => d.Id == id);
             if (demande == null)
                 return NotFound();
 
@@ -119,6 +122,12 @@ namespace Dataportal.Controllers
 
             if (idStatut == StatutDeLaDemandeIds.Valider) // Approving
             {
+                if (!demande.EmailVerifie)
+                {
+                    TempData["Error"] = "The user's email must be verified before approval.";
+                    return RedirectToAction("DemandeDeCompte");
+                }
+
                 // Ensure role was selected
                 if (!idRole.HasValue)
                 {
@@ -127,7 +136,7 @@ namespace Dataportal.Controllers
                 }
 
                 // Check if role exists
-                var role = _context.Role.FirstOrDefault(r => r.Id == idRole.Value);
+                var role = await _context.Role.FirstOrDefaultAsync(r => r.Id == idRole.Value);
                 if (role == null)
                 {
                     TempData["Error"] = "Invalid role.";
@@ -135,9 +144,16 @@ namespace Dataportal.Controllers
                 }
 
                 // Check email doesn't exist
-                if (_context.Utilisateur.Any(u => u.Email == demande.Email))
+                if (await _context.Utilisateur.AnyAsync(u => u.Email == demande.Email))
                 {
                     TempData["Error"] = "A user with this email already exists.";
+                    return RedirectToAction("DemandeDeCompte");
+                }
+
+                var entreprise = await _context.Entreprise.FirstOrDefaultAsync(e => e.Id == idEntreprise);
+                if (entreprise == null)
+                {
+                    TempData["Error"] = "Invalid organization.";
                     return RedirectToAction("DemandeDeCompte");
                 }
 
@@ -157,15 +173,17 @@ namespace Dataportal.Controllers
                 };
 
                 _context.Utilisateur.Add(nouvelUtilisateur);
+
+                await _accountEmailService.SendAccountRequestApprovedAsync(demande.Email, role.Libelle, entreprise.Nom);
             }
 
             // Always update demande
             demande.IdStatutDeLaDemande = idStatut;
             demande.IdEntreprise = idEntreprise;
-            demande.EmailVerifie = emailVerifie;
+            demande.EmailVerifie = demande.EmailVerifie || emailVerifie;
             demande.Commentaire = commentaire;
 
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return RedirectToAction("DemandeDeCompte");
         }
@@ -537,12 +555,11 @@ namespace Dataportal.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "administrator")]
-        public IActionResult ToggleUtilisateurActif(int id)
+        public async Task<IActionResult> ToggleUtilisateurActif(int id)
         {
-            //TODO: send email on activation or deactivation of the user
-            var utilisateur = _context.Utilisateur
+            var utilisateur = await _context.Utilisateur
                 .Include(u => u.Role)
-                .FirstOrDefault(u => u.Id == id);
+                .FirstOrDefaultAsync(u => u.Id == id);
 
             if (utilisateur == null)
             {
@@ -566,7 +583,8 @@ namespace Dataportal.Controllers
             }
 
             utilisateur.DateModification = DateTime.Now;
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
+            await _accountEmailService.SendActivationChangeAsync(utilisateur, utilisateur.CompteActif);
 
             TempData["Success"] = "Account status updated.";
             return RedirectToAction("Utilisateurs");

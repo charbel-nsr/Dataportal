@@ -13,6 +13,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Dataportal.Services.Email;
+using Microsoft.Extensions.Options;
 
 //TODO: Add recaptcha for login and account request forms
 
@@ -23,16 +25,20 @@ namespace Dataportal.Controllers
         private readonly ApplicationDbContext _context;
         private readonly IPasswordHasher<Utilisateur> _passwordHasher;
         private readonly ILogger<CompteController> _logger;
+        private readonly IAccountEmailService _accountEmailService;
+        private readonly PortalOptions _portalOptions;
 
         // Configuration pour le verrouillage du compte
         private const int MaxFailedAccessAttempts = 10;
         private readonly TimeSpan LockoutTimeSpan = TimeSpan.FromMinutes(15);
 
-        public CompteController(ApplicationDbContext context, IPasswordHasher<Utilisateur> passwordHasher, ILogger<CompteController> logger)
+        public CompteController(ApplicationDbContext context, IPasswordHasher<Utilisateur> passwordHasher, ILogger<CompteController> logger, IAccountEmailService accountEmailService, IOptions<PortalOptions> portalOptions)
         {
             _context = context;
             _passwordHasher = passwordHasher;
             _logger = logger;
+            _accountEmailService = accountEmailService;
+            _portalOptions = portalOptions.Value;
         }
 
         // GET: /Compte/SeConnecter
@@ -90,50 +96,26 @@ namespace Dataportal.Controllers
                             utilisateur.NbrEchecsAcces = 0;
                             utilisateur.FinLockout = null;
 
-                            // TODO: MFA
-                            // Placez ici la logique d'authentification multifactorielle (MFA) si activée
-                            // if (utilisateur.EstMfaActive)
-                            // {
-                            //     // Implémentez ici l'envoi du code MFA et redirigez vers une page de vérification
-                            //     // Exemple: return RedirectToAction("VerifMfa", new { email = utilisateur.Email });
-                            // }
+                            if (utilisateur.MfaEnabled)
+                            {
+                                var code = SecurityTokenHelper.GenerateNumericCode();
+                                utilisateur.MfaCodeHash = SecurityTokenHelper.ComputeSha256(code);
+                                utilisateur.MfaCodeExpiration = DateTime.UtcNow.AddMinutes(10);
+                                await _context.SaveChangesAsync();
 
-                            // Mettre à jour la date du dernier login
+                                await _accountEmailService.SendMfaCodeAsync(utilisateur, code);
+
+                                HttpContext.Session.SetString("PendingMfaEmail", utilisateur.Email);
+                                HttpContext.Session.SetString("PendingMfaReturnUrl", returnUrl ?? string.Empty);
+                                HttpContext.Session.SetString("PendingMfaRememberMe", model.SeSouvenirDeMoi.ToString());
+                                TempData["Success"] = "A verification code has been sent to your email.";
+                                return RedirectToAction("VerifierMfa");
+                            }
+
                             utilisateur.DernierLogin = DateTime.Now;
                             await _context.SaveChangesAsync();
 
-                            // Créer des claims pour l'utilisateur
-                            var claims = new List<Claim>
-                            {
-                                new Claim(ClaimTypes.Name, utilisateur.Email),
-                                new Claim("NomComplet", $"{utilisateur.Prenom} {utilisateur.Nom}"),
-                                new Claim("UserId", utilisateur.Id.ToString()),
-                                new Claim(ClaimTypes.Role, utilisateur.Role != null ? utilisateur.Role.Libelle.ToString() : "Viewer")
-                            };
-
-                            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-                            var authProperties = new AuthenticationProperties
-                            {
-                                IsPersistent = model.SeSouvenirDeMoi,
-                            };
-
-                            if (model.SeSouvenirDeMoi)
-                            {
-                                authProperties.ExpiresUtc = DateTimeOffset.UtcNow.AddDays(14);
-                            }
-
-                            await HttpContext.SignInAsync(
-                                CookieAuthenticationDefaults.AuthenticationScheme,
-                                new ClaimsPrincipal(identity),
-                                authProperties);
-                            _logger.LogInformation("Utilisateur {Email} logged in successfully.", model.Email);
-
-                            if (!string.IsNullOrEmpty(returnUrl))
-                            {
-                                return Redirect(returnUrl);
-                            }
-
-                            return RedirectToAction("Index", "Accueil");
+                            return await SignInUserAsync(utilisateur, model.SeSouvenirDeMoi, returnUrl);
                         }
                         else
                         {
@@ -264,7 +246,6 @@ namespace Dataportal.Controllers
                 var existingRequest = await _context.DemandeDeCompte.FirstOrDefaultAsync(d => d.Email.ToLower() == model.Email.ToLower() && d.IdEntreprise == model.IdEntreprise);
                 if (existingRequest == null)
                 {
-                    //TODO: send verification email for user before creating his request
                     var demande = new DemandeDeCompte
                     {
                         Nom = model.Nom,
@@ -275,20 +256,37 @@ namespace Dataportal.Controllers
                         IdStatutDeLaDemande = statutEnAttenteId,
                         EmailVerifie = false,
                         Commentaire = model.Commentaire != null ? model.Commentaire : "_",
-                        DateCreation = DateTime.Now
+                        DateCreation = DateTime.UtcNow,
+                        VerificationToken = SecurityTokenHelper.GenerateSecureToken(),
+                        VerificationTokenExpiration = DateTime.UtcNow.AddHours(48)
                     };
                     _context.DemandeDeCompte.Add(demande);
                     await _context.SaveChangesAsync();
                     _logger.LogInformation("Account request created for {Email}", model.Email);
+
+                    var verificationLink = BuildAbsoluteUrl(Url.Action("VerifierEmailDemande", "Compte", new { token = demande.VerificationToken }, Request.Scheme));
+                    await _accountEmailService.SendAccountRequestVerificationAsync(demande, verificationLink);
                 }
                 else
                 {
-                    _logger.LogWarning("Account request already exists for {Email}", model.Email);
+                    // Refresh verification token if still pending and not verified
+                    if (!existingRequest.EmailVerifie)
+                    {
+                        existingRequest.VerificationToken = SecurityTokenHelper.GenerateSecureToken();
+                        existingRequest.VerificationTokenExpiration = DateTime.UtcNow.AddHours(48);
+                        await _context.SaveChangesAsync();
+
+                        var verificationLink = BuildAbsoluteUrl(Url.Action("VerifierEmailDemande", "Compte", new { token = existingRequest.VerificationToken }, Request.Scheme));
+                        await _accountEmailService.SendAccountRequestVerificationAsync(existingRequest, verificationLink);
+                        _logger.LogInformation("Resent verification email for existing request {Email}", model.Email);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Account request already exists for {Email}", model.Email);
+                    }
                 }
 
-                //TODO: Send email befor adding to tabel to user mail verification then page of mail verification then succes message
-                // For now, assume you will send a verification email next.
-                TempData["Success"] = "Your account request has been received. Please check your email for confirmation.";
+                TempData["Success"] = "Your account request has been received. Please check your email to verify your address.";
                 return RedirectToAction("SeConnecter");
 
                 //TODO: Send email to admin for approval
@@ -460,6 +458,7 @@ namespace Dataportal.Controllers
                 utilisateur.DateModification = DateTime.Now;
                 _context.Update(utilisateur);
                 await _context.SaveChangesAsync();
+                await _accountEmailService.SendPasswordChangedAsync(utilisateur);
 
                 //TODO: Send email to user for password change Notification
                 _logger.LogInformation("Password updated successfully for {Email}.", userEmail);
@@ -478,14 +477,302 @@ namespace Dataportal.Controllers
             return View();
         }
 
+        [HttpGet]
+        public IActionResult VerifierMfa()
+        {
+            var email = HttpContext.Session.GetString("PendingMfaEmail");
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                return RedirectToAction("SeConnecter");
+            }
+
+            bool.TryParse(HttpContext.Session.GetString("PendingMfaRememberMe"), out var rememberMe);
+            var returnUrl = HttpContext.Session.GetString("PendingMfaReturnUrl");
+
+            var vm = new VerifierMfaViewModel
+            {
+                Email = email,
+                SeSouvenirDeMoi = rememberMe,
+                ReturnUrl = string.IsNullOrWhiteSpace(returnUrl) ? null : returnUrl
+            };
+
+            return View(vm);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> VerifierMfa(VerifierMfaViewModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+
+            var sessionEmail = HttpContext.Session.GetString("PendingMfaEmail");
+            if (!string.Equals(sessionEmail, model.Email, StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["Error"] = "The verification session has expired. Please sign in again.";
+                ClearMfaSession();
+                return RedirectToAction("SeConnecter");
+            }
+
+            if (await IsRateLimitedAsync($"mfa-verify:{model.Email.ToLowerInvariant()}", 5, TimeSpan.FromMinutes(10)))
+            {
+                TempData["Error"] = "Too many verification attempts. Please sign in again to request a new code.";
+                ClearMfaSession();
+                return RedirectToAction("SeConnecter");
+            }
+
+            var utilisateur = await _context.Utilisateur.Include(u => u.Role).FirstOrDefaultAsync(u => u.Email == model.Email);
+            if (utilisateur == null || string.IsNullOrWhiteSpace(utilisateur.MfaCodeHash) || !utilisateur.MfaCodeExpiration.HasValue)
+            {
+                TempData["Error"] = "Verification code invalid or expired. Please sign in again.";
+                ClearMfaSession();
+                return RedirectToAction("SeConnecter");
+            }
+
+            if (utilisateur.MfaCodeExpiration.Value < DateTime.UtcNow)
+            {
+                ModelState.AddModelError(string.Empty, "The verification code has expired. Please request a new one by signing in again.");
+                return View(model);
+            }
+
+            var providedHash = SecurityTokenHelper.ComputeSha256(model.Code);
+            if (!string.Equals(providedHash, utilisateur.MfaCodeHash, StringComparison.OrdinalIgnoreCase))
+            {
+                ModelState.AddModelError(string.Empty, "The verification code is incorrect.");
+                return View(model);
+            }
+
+            utilisateur.MfaCodeHash = null;
+            utilisateur.MfaCodeExpiration = null;
+            utilisateur.DernierLogin = DateTime.Now;
+            await _context.SaveChangesAsync();
+            ClearMfaSession();
+
+            return await SignInUserAsync(utilisateur, model.SeSouvenirDeMoi, model.ReturnUrl);
+        }
+
         // POST: /Compte/MotDePasseOublie
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> MotDePasseOublie(MotDePasseOublieViewModel model)
         {
-            //TOD: Send email to user for password reset
-            ModelState.AddModelError(string.Empty, "You should receive an email shortly allowing you to reset your password.");
-            return View(model);
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+
+            if (await IsRateLimitedAsync($"pwd-reset-req:{model.Email.ToLowerInvariant()}", 3, TimeSpan.FromMinutes(60)))
+            {
+                TempData["Error"] = "Too many reset requests. Please try again in a little while.";
+                return RedirectToAction("MotDePasseOublie");
+            }
+
+            var utilisateur = await _context.Utilisateur.FirstOrDefaultAsync(u => u.Email == model.Email && u.CompteActif);
+            if (utilisateur != null)
+            {
+                var token = SecurityTokenHelper.GenerateSecureToken();
+                utilisateur.PasswordResetTokenHash = SecurityTokenHelper.ComputeSha256(token);
+                utilisateur.PasswordResetTokenExpiration = DateTime.UtcNow.AddHours(1);
+                await _context.SaveChangesAsync();
+
+                var resetLink = BuildAbsoluteUrl(Url.Action("ReinitialiserMotDePasse", "Compte", new { email = utilisateur.Email, token }, Request.Scheme));
+                await _accountEmailService.SendForgotPasswordAsync(utilisateur, resetLink);
+            }
+
+            TempData["Success"] = "If an account exists for this email, you will receive a reset link shortly.";
+            return RedirectToAction("MotDePasseOublie");
+        }
+
+        [HttpGet]
+        public IActionResult ReinitialiserMotDePasse(string email, string token)
+        {
+            if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(token))
+            {
+                TempData["Error"] = "Invalid password reset link.";
+                return RedirectToAction("SeConnecter");
+            }
+
+            return View(new ResetMotDePasseViewModel
+            {
+                Email = email,
+                Token = token
+            });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ReinitialiserMotDePasse(ResetMotDePasseViewModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+
+            var utilisateur = await _context.Utilisateur.FirstOrDefaultAsync(u => u.Email == model.Email);
+            if (utilisateur == null || string.IsNullOrWhiteSpace(utilisateur.PasswordResetTokenHash) || !utilisateur.PasswordResetTokenExpiration.HasValue)
+            {
+                TempData["Error"] = "Invalid password reset token.";
+                return RedirectToAction("SeConnecter");
+            }
+
+            if (utilisateur.PasswordResetTokenExpiration.Value < DateTime.UtcNow)
+            {
+                TempData["Error"] = "This password reset link has expired.";
+                return RedirectToAction("MotDePasseOublie");
+            }
+
+            var providedHash = SecurityTokenHelper.ComputeSha256(model.Token);
+            if (!string.Equals(providedHash, utilisateur.PasswordResetTokenHash, StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["Error"] = "Invalid password reset token.";
+                return RedirectToAction("SeConnecter");
+            }
+
+            if (!IsPasswordSecure(model.NouveauMotDePasse))
+            {
+                ModelState.AddModelError(nameof(model.NouveauMotDePasse), "Password must contain at least 8 characters, including an uppercase letter, a lowercase letter, a digit, and a special character.");
+                return View(model);
+            }
+
+            utilisateur.MotDePasseHash = _passwordHasher.HashPassword(utilisateur, model.NouveauMotDePasse);
+            utilisateur.PasswordResetTokenHash = null;
+            utilisateur.PasswordResetTokenExpiration = null;
+            utilisateur.DateModification = DateTime.Now;
+            await _context.SaveChangesAsync();
+            await _accountEmailService.SendPasswordChangedAsync(utilisateur);
+
+            TempData["Success"] = "Your password has been reset. You can now sign in.";
+            return RedirectToAction("SeConnecter");
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> VerifierEmailDemande(string token)
+        {
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                TempData["Error"] = "Invalid verification link.";
+                return RedirectToAction("SeConnecter");
+            }
+
+            var demande = await _context.DemandeDeCompte.FirstOrDefaultAsync(d => d.VerificationToken == token);
+            if (demande == null || (demande.VerificationTokenExpiration.HasValue && demande.VerificationTokenExpiration.Value < DateTime.UtcNow))
+            {
+                TempData["Error"] = "This verification link is invalid or has expired.";
+                return RedirectToAction("SeConnecter");
+            }
+
+            demande.EmailVerifie = true;
+            demande.EmailVerifieLe = DateTime.UtcNow;
+            demande.VerificationToken = null;
+            demande.VerificationTokenExpiration = null;
+
+            await _context.SaveChangesAsync();
+            TempData["Success"] = "Your email has been verified. An administrator will review your request shortly.";
+            return RedirectToAction("SeConnecter");
+        }
+
+        private async Task<IActionResult> SignInUserAsync(Utilisateur utilisateur, bool rememberMe, string? returnUrl)
+        {
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, utilisateur.Email),
+                new Claim("NomComplet", $"{utilisateur.Prenom} {utilisateur.Nom}"),
+                new Claim("UserId", utilisateur.Id.ToString()),
+                new Claim(ClaimTypes.Role, utilisateur.Role != null ? utilisateur.Role.Libelle : "Viewer")
+            };
+
+            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var authProperties = new AuthenticationProperties
+            {
+                IsPersistent = rememberMe,
+            };
+
+            if (rememberMe)
+            {
+                authProperties.ExpiresUtc = DateTimeOffset.UtcNow.AddDays(14);
+            }
+
+            await HttpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                new ClaimsPrincipal(identity),
+                authProperties);
+            _logger.LogInformation("Utilisateur {Email} logged in successfully.", utilisateur.Email);
+
+            if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+            {
+                return Redirect(returnUrl);
+            }
+
+            return RedirectToAction("Index", "Accueil");
+        }
+
+        private void ClearMfaSession()
+        {
+            HttpContext.Session.Remove("PendingMfaEmail");
+            HttpContext.Session.Remove("PendingMfaReturnUrl");
+            HttpContext.Session.Remove("PendingMfaRememberMe");
+        }
+
+        private string BuildAbsoluteUrl(string? url)
+        {
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                return string.Empty;
+            }
+
+            if (Uri.TryCreate(url, UriKind.Absolute, out var absoluteUri))
+            {
+                return absoluteUri.ToString();
+            }
+
+            var baseUrl = !string.IsNullOrWhiteSpace(_portalOptions.PublicBaseUrl)
+                ? _portalOptions.PublicBaseUrl.TrimEnd('/')
+                : $"{Request.Scheme}://{Request.Host}";
+
+            if (!url.StartsWith("/"))
+            {
+                url = "/" + url;
+            }
+
+            return $"{baseUrl}{url}";
+        }
+
+        private async Task<bool> IsRateLimitedAsync(string key, int limit, TimeSpan window)
+        {
+            var normalizedKey = key.ToLowerInvariant();
+            var now = DateTime.UtcNow;
+            var windowEnd = now.Add(window);
+
+            var entry = await _context.RateLimitEntries.FirstOrDefaultAsync(r => r.Key == normalizedKey);
+            if (entry == null || entry.WindowEndUtc < now)
+            {
+                if (entry == null)
+                {
+                    entry = new RateLimitEntry
+                    {
+                        Key = normalizedKey,
+                        Count = 1,
+                        WindowEndUtc = windowEnd
+                    };
+                    _context.RateLimitEntries.Add(entry);
+                }
+                else
+                {
+                    entry.Count = 1;
+                    entry.WindowEndUtc = windowEnd;
+                    _context.RateLimitEntries.Update(entry);
+                }
+                await _context.SaveChangesAsync();
+                return false;
+            }
+
+            entry.Count++;
+            entry.WindowEndUtc = windowEnd;
+            _context.RateLimitEntries.Update(entry);
+            await _context.SaveChangesAsync();
+            return entry.Count > limit;
         }
     }
 }
