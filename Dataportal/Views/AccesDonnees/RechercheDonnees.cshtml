@@ -297,6 +297,12 @@
                                         </a>
                                         @if (User.IsInRole("administrator") || (User.Identity.IsAuthenticated && User.FindFirst("UserId")?.Value == m.IdUtilisateur.ToString()))
                                         {
+                                            <a class="btn btn-sm btn-outline-primary ms-1" href="@Url.Action("EditStep1", "ModifDonnees", new { id = m.Id })" title="Edit data">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                        }
+                                        @if (User.IsInRole("administrator") || (User.Identity.IsAuthenticated && User.FindFirst("UserId")?.Value == m.IdUtilisateur.ToString()))
+                                        {
                                             <button type="button" class="btn btn-sm btn-outline-danger ms-1" data-bs-toggle="modal" data-bs-target="#deleteModal" data-id="@m.Id" title="Delete">
                                                 <i class="bi bi-trash"></i>
                                             </button>

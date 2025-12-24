@@ -1,0 +1,89 @@
+﻿@model Dataportal.ViewModels.DonneesEditStep2ViewModel
+@using System.Text.Json
+
+@{
+    ViewData["Title"] = "Edit dataset - Step 2";
+    ViewData["CurrentStep"] = 2;
+}
+
+<div class="container">
+    <h2 class="mb-4">Edit data (Step 2/5)</h2>
+    @await Html.PartialAsync("_CreationProgress")
+    <form method="post" class="bg-light p-4 rounded shadow-sm">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="IdMetadonnee" />
+
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
+
+        <div class="form-floating mb-3">
+            <input asp-for="Libelle" class="form-control bg-light" placeholder="Label" readonly />
+            <label asp-for="Libelle">
+                <span>@Html.DisplayNameFor(m => m.Libelle)</span>
+            </label>
+            <span asp-validation-for="Libelle" class="text-danger"></span>
+        </div>
+
+        <div class="form-floating mb-3">
+            <input asp-for="Code" class="form-control bg-light" placeholder="Code" readonly />
+            <label asp-for="Code"></label>
+            <span asp-validation-for="Code" class="text-danger"></span>
+        </div>
+
+        <div class="form-floating mb-3">
+            <textarea asp-for="Description" class="form-control" placeholder="Description" style="height: 100px;"></textarea>
+            <label asp-for="Description"></label>
+            <span asp-validation-for="Description" class="text-danger"></span>
+        </div>
+
+        <div class="form-floating mb-3">
+            <select asp-for="IdQualiteDonnees"
+                    class="form-select data-quality-select"
+                    asp-items="Model.QualiteOptions"
+                    data-descriptions='@Html.Raw(JsonSerializer.Serialize(Model.QualiteDescriptions))'></select>
+            <label asp-for="IdQualiteDonnees"></label>
+            <span asp-validation-for="IdQualiteDonnees" class="text-danger"></span>
+            <div class="form-text text-muted mt-1 data-quality-description d-none" data-quality-description></div>
+        </div>
+
+        <div class="form-floating mb-3">
+            <input asp-for="NombreDeCapteurs" type="number" class="form-control" placeholder="Number of sensors" required />
+            <label asp-for="NombreDeCapteurs"></label>
+            <span asp-validation-for="NombreDeCapteurs" class="text-danger"></span>
+        </div>
+
+        <div class="form-floating mb-3">
+            <input asp-for="FrequenceDeCollect" class="form-control" placeholder="Collection frequency" />
+            <label asp-for="FrequenceDeCollect"></label>
+            <span asp-validation-for="FrequenceDeCollect" class="text-danger"></span>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label asp-for="StartTimestamp" class="form-label"></label>
+                <input asp-for="StartTimestamp" type="datetime-local" class="form-control" required />
+                <span asp-validation-for="StartTimestamp" class="text-danger"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="EndTimestamp" class="form-label"></label>
+                <input asp-for="EndTimestamp" type="datetime-local" class="form-control" required />
+                <span asp-validation-for="EndTimestamp" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between">
+            <button type="submit"
+                    class="btn btn-outline-secondary"
+                    formaction="@Url.Action("SkipStep2", "ModifDonnees", new { id = Model.IdMetadonnee })"
+                    formmethod="post"
+                    formnovalidate>
+                Skip changes
+            </button>
+            <button type="submit" class="btn btn-primary">Save changes</button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/dataQualityDescription.js" asp-append-version="true"></script>
+}

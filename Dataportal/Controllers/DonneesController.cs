@@ -1015,7 +1015,7 @@ namespace Dataportal.Controllers
 
         [HttpGet]
         [AllowAnonymous]
-        public async Task<IActionResult> Details(int id, bool? creation, string? returnUrl)
+        public async Task<IActionResult> Details(int id, bool? creation, bool? modification, string? returnUrl)
         {
             // 1️⃣ Load Metadonnee + navigation
             var metadonnee = await _context.Metadonnee
@@ -1043,6 +1043,13 @@ namespace Dataportal.Controllers
                 HttpContext.Session.Remove(SessionKeys.CreationNextStep);
             }
 
+            var modificationResumeId = HttpContext.Session.GetInt32(SessionKeys.ModificationMetadonneeId);
+            if (modification == true && modificationResumeId.HasValue && modificationResumeId.Value == metadonnee.Id)
+            {
+                HttpContext.Session.Remove(SessionKeys.ModificationMetadonneeId);
+                HttpContext.Session.Remove(SessionKeys.ModificationNextStep);
+            }
+
             //Load Donnees / EventLogs / Contexte
             var donnees = await _context.Donnees
                 .Include(d => d.QualiteDonnees)
@@ -1054,7 +1061,7 @@ namespace Dataportal.Controllers
                 .Include(c => c.QualiteDonnees)
                 .FirstOrDefaultAsync(c => c.Id == metadonnee.IdDonneesContexteEnvironnemental);
 
-            if (creation == true)
+            if (creation == true || modification == true)
             {
                 ViewData["CurrentStep"] = 5;
             }
@@ -1070,10 +1077,11 @@ namespace Dataportal.Controllers
                 ? await GetTablePreviewRows(contexteTarget!)
                 : null;
 
-            var fallbackReturnUrl = creation == true
+            var useCreationFallback = creation == true || modification == true;
+            var fallbackReturnUrl = useCreationFallback
                 ? Url.Action("RechercheDonnees", "AccesDonnees")
                 : Url.Action("Index", "Accueil");
-            var resolvedReturnUrl = creation == true
+            var resolvedReturnUrl = useCreationFallback
                 ? fallbackReturnUrl
                 : ResolveReturnUrl(returnUrl, fallbackReturnUrl);
 

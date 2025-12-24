@@ -1,0 +1,147 @@
+﻿@model Dataportal.ViewModels.DonneesEventLogsEditStep3ViewModel
+@using System.Text.Json
+@using Dataportal.Classes
+
+@{
+    ViewData["Title"] = "Edit event logs - Step 3";
+    ViewData["CurrentStep"] = 3;
+}
+
+<div class="container">
+    <h2 class="mb-4">Edit event logs (Step 3/5)</h2>
+    @await Html.PartialAsync("_CreationProgress")
+
+    <div class="alert alert-info">
+        <p>⚠️ This step is <strong>optional</strong>. You can update event log metadata, or skip to continue.</p>
+    </div>
+
+    <form asp-action="EditStep3" method="post" enctype="multipart/form-data" class="bg-light p-4 rounded shadow-sm upload-overlay-form">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="IdMetadonnee" />
+
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
+
+        <div class="form-floating mb-3">
+            <input asp-for="Libelle" class="form-control bg-light" placeholder="Label" readonly>
+            <label asp-for="Libelle"></label>
+            <span asp-validation-for="Libelle" class="text-danger"></span>
+        </div>
+
+        <div class="form-floating mb-3">
+            <input asp-for="Code" class="form-control bg-light" placeholder="Code" readonly />
+            <label asp-for="Code"></label>
+            <span asp-validation-for="Code" class="text-danger"></span>
+        </div>
+
+        <div class="form-floating mb-3">
+            <textarea asp-for="Description" class="form-control" placeholder="Description" style="height: 100px;"></textarea>
+            <label asp-for="Description"></label>
+            <span asp-validation-for="Description" class="text-danger"></span>
+        </div>
+
+        <div class="form-floating mb-3">
+            <select asp-for="IdQualiteDonnees"
+                    class="form-select data-quality-select"
+                    asp-items="Model.QualiteOptions"
+                    data-descriptions='@Html.Raw(JsonSerializer.Serialize(Model.QualiteDescriptions))'></select>
+            <label asp-for="IdQualiteDonnees"></label>
+            <span asp-validation-for="IdQualiteDonnees" class="text-danger"></span>
+            <div class="form-text text-muted mt-1 data-quality-description d-none" data-quality-description></div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="form-floating">
+                    <input asp-for="StartTimestamp" type="datetime-local" class="form-control" required>
+                    <label asp-for="StartTimestamp"></label>
+                    <span asp-validation-for="StartTimestamp" class="text-danger"></span>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-floating">
+                    <input asp-for="EndTimestamp" type="datetime-local" class="form-control" required>
+                    <label asp-for="EndTimestamp"></label>
+                    <span asp-validation-for="EndTimestamp" class="text-danger"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-floating mb-3">
+            <input asp-for="NombreDEvents" type="number" class="form-control">
+            <label asp-for="NombreDEvents"></label>
+            <span asp-validation-for="NombreDEvents" class="text-danger"></span>
+        </div>
+
+        @if (Model.CanUploadFiles)
+        {
+            <div class="mb-3">
+                <label asp-for="UploadedFiles" class="form-label">CSV, XLSX, Parquet, or CSV.zip files (optional)</label>
+                <input asp-for="UploadedFiles" class="form-control" type="file" multiple accept=".csv,.xlsx,.parquet,.zip">
+                <small class="form-text text-muted">All uploaded files must share the same format. Maximum total size per step: @UploadSizeLimits.StepUploadLimitDisplay.</small>
+                <span asp-validation-for="UploadedFiles" class="text-danger"></span>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-secondary">
+                Event logs already exist, so new files cannot be uploaded.
+            </div>
+        }
+
+        <div id="fileList" class="mb-3"></div>
+
+        <div class="d-flex justify-content-between">
+            <button type="submit"
+                    class="btn btn-outline-secondary"
+                    formaction="@Url.Action("SkipStep3", "ModifDonnees", new { id = Model.IdMetadonnee })"
+                    formmethod="post"
+                    formnovalidate
+                    data-upload-overlay-bypass="true">
+                Skip changes
+            </button>
+            <button type="submit" class="btn btn-primary">Save changes</button>
+        </div>
+    </form>
+</div>
+
+@await Html.PartialAsync("_UploadOverlay")
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/upload-overlay.js" asp-append-version="true"></script>
+    <script src="~/js/dataQualityDescription.js" asp-append-version="true"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const fileInput = document.querySelector('input[type="file"][multiple]');
+            const fileListDiv = document.getElementById('fileList');
+            const form = document.querySelector('form.upload-overlay-form');
+
+            initUploadOverlay(form, {
+                confirmMessage: 'Once this step is confirmed, the data will be created temporarily. Do you want to continue?'
+            });
+
+            if (fileInput && fileListDiv) {
+                fileInput.addEventListener('change', () => {
+                    fileListDiv.innerHTML = '';
+                    if (fileInput.files.length > 0) {
+                        const table = document.createElement('table');
+                        table.className = 'table table-sm table-bordered';
+                        const thead = document.createElement('thead');
+                        thead.innerHTML = '<tr><th>Name</th><th>Size</th><th>Type</th></tr>';
+                        table.appendChild(thead);
+
+                        const tbody = document.createElement('tbody');
+                        Array.from(fileInput.files).forEach(file => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `<td>${file.name}</td><td>${(file.size / 1024).toFixed(2)} KB</td><td>${file.type}</td>`;
+                            tbody.appendChild(row);
+                        });
+                        table.appendChild(tbody);
+                        fileListDiv.appendChild(table);
+                    }
+                });
+            }
+        });
+    </script>
+}

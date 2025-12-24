@@ -15,5 +15,7 @@
     {
         public const string CreationMetadonneeId = "CreationMetadonneeId";
         public const string CreationNextStep = "CreationNextStep";
+        public const string ModificationMetadonneeId = "ModificationMetadonneeId";
+        public const string ModificationNextStep = "ModificationNextStep";
     }
 }
