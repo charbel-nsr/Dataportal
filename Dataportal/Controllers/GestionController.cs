@@ -168,6 +168,9 @@ namespace Dataportal.Controllers
                     IdRole = idRole.Value,
                     CompteActif = true,
                     DateApprobation = DateTime.Now,
+                    MfaEnabled = true,
+                    MfaCodeHash = null,
+                    MfaCodeExpiration = null,
                     LienLinkedIn = string.Empty,
                     DescriptionProfil = string.Empty
                 };

@@ -246,6 +246,8 @@ namespace Dataportal.Controllers
                 var existingRequest = await _context.DemandeDeCompte.FirstOrDefaultAsync(d => d.Email.ToLower() == model.Email.ToLower() && d.IdEntreprise == model.IdEntreprise);
                 if (existingRequest == null)
                 {
+                    var verificationToken = SecurityTokenHelper.GenerateSecureToken();
+                    var verificationTokenHash = SecurityTokenHelper.ComputeSha256(verificationToken);
                     var demande = new DemandeDeCompte
                     {
                         Nom = model.Nom,
@@ -257,14 +259,14 @@ namespace Dataportal.Controllers
                         EmailVerifie = false,
                         Commentaire = model.Commentaire != null ? model.Commentaire : "_",
                         DateCreation = DateTime.UtcNow,
-                        VerificationToken = SecurityTokenHelper.GenerateSecureToken(),
+                        VerificationToken = verificationTokenHash,
                         VerificationTokenExpiration = DateTime.UtcNow.AddHours(48)
                     };
                     _context.DemandeDeCompte.Add(demande);
                     await _context.SaveChangesAsync();
                     _logger.LogInformation("Account request created for {Email}", model.Email);
 
-                    var verificationLink = BuildAbsoluteUrl(Url.Action("VerifierEmailDemande", "Compte", new { token = demande.VerificationToken }, Request.Scheme));
+                    var verificationLink = BuildAbsoluteUrl(Url.Action("VerifierEmailDemande", "Compte", new { token = verificationToken }, Request.Scheme));
                     await _accountEmailService.SendAccountRequestVerificationAsync(demande, verificationLink);
                 }
                 else
@@ -272,11 +274,12 @@ namespace Dataportal.Controllers
                     // Refresh verification token if still pending and not verified
                     if (!existingRequest.EmailVerifie)
                     {
-                        existingRequest.VerificationToken = SecurityTokenHelper.GenerateSecureToken();
+                        var verificationToken = SecurityTokenHelper.GenerateSecureToken();
+                        existingRequest.VerificationToken = SecurityTokenHelper.ComputeSha256(verificationToken);
                         existingRequest.VerificationTokenExpiration = DateTime.UtcNow.AddHours(48);
                         await _context.SaveChangesAsync();
 
-                        var verificationLink = BuildAbsoluteUrl(Url.Action("VerifierEmailDemande", "Compte", new { token = existingRequest.VerificationToken }, Request.Scheme));
+                        var verificationLink = BuildAbsoluteUrl(Url.Action("VerifierEmailDemande", "Compte", new { token = verificationToken }, Request.Scheme));
                         await _accountEmailService.SendAccountRequestVerificationAsync(existingRequest, verificationLink);
                         _logger.LogInformation("Resent verification email for existing request {Email}", model.Email);
                     }
@@ -656,7 +659,9 @@ namespace Dataportal.Controllers
                 return RedirectToAction("SeConnecter");
             }
 
-            var demande = await _context.DemandeDeCompte.FirstOrDefaultAsync(d => d.VerificationToken == token);
+            var tokenHash = SecurityTokenHelper.ComputeSha256(token);
+            var demande = await _context.DemandeDeCompte.FirstOrDefaultAsync(d =>
+                d.VerificationToken == tokenHash || d.VerificationToken == token);
             if (demande == null || (demande.VerificationTokenExpiration.HasValue && demande.VerificationTokenExpiration.Value < DateTime.UtcNow))
             {
                 TempData["Error"] = "This verification link is invalid or has expired.";
