@@ -1,0 +1,48 @@
+﻿@model Dataportal.ViewModels.MessageAccueilViewModel
+@{
+    ViewData["Title"] = "Home message";
+}
+
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="fw-bold">Home message</h2>
+            <p class="text-muted mb-0">Edit the message shown on the home page. Leave it empty to hide the card.</p>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">@TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["Error"]</div>
+    }
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form asp-action="MessageAccueil" method="post">
+                @Html.AntiForgeryToken()
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                <div class="mb-3">
+                    <label asp-for="Contenu" class="form-label"></label>
+                    <textarea asp-for="Contenu" class="form-control" rows="8" placeholder="Enter the message to display on the home page"></textarea>
+                    <span asp-validation-for="Contenu" class="text-danger"></span>
+                </div>
+
+                <div class="form-check mb-4">
+                    <input asp-for="VisibleAuxInvites" class="form-check-input" type="checkbox" />
+                    <label asp-for="VisibleAuxInvites" class="form-check-label"></label>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Save message</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

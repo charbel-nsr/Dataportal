@@ -34,6 +34,7 @@ namespace Dataportal.Context
         public DbSet<Visibilite> Visibilite { get; set; }
         public DbSet<QualiteDonnees> QualiteDonnees { get; set; }
         public DbSet<TypeEnergieRenouvelable> TypeEnergieRenouvelable { get; set; }
+        public DbSet<MessageAccueil> MessageAccueil { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -379,6 +380,16 @@ namespace Dataportal.Context
                       .WithOne(m => m.TypeEnergieRenouvelable)
                       .HasForeignKey(m => m.IdTypeEnergieRenouvelable)
                       .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<MessageAccueil>(entity =>
+            {
+                entity.HasKey(m => m.Id);
+                entity.Property(m => m.Contenu)
+                      .IsRequired()
+                      .HasMaxLength(4000);
+                entity.Property(m => m.DateDerniereModification)
+                      .IsRequired();
             });
         }
     }

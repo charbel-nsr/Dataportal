@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
@@ -63,6 +63,15 @@ public class AccueilController : Controller
             .Take(6)
             .ToListAsync();
 
+        var messageAccueil = await _context.MessageAccueil
+            .AsNoTracking()
+            .OrderByDescending(m => m.DateDerniereModification)
+            .FirstOrDefaultAsync();
+
+        var shouldShowMessage = messageAccueil != null &&
+            !string.IsNullOrWhiteSpace(messageAccueil.Contenu) &&
+            ((User.Identity?.IsAuthenticated ?? false) || messageAccueil.VisibleAuxInvites);
+
         var viewModel = new AccueilIndexViewModel
         {
             LatestDatasets = latestMetadonnees
@@ -73,7 +82,12 @@ public class AccueilController : Controller
                     EnergyType = m.TypeEnergieRenouvelable?.Libelle,
                     IconName = ResolveIconName(m.TypeEnergieRenouvelable?.Libelle)
                 })
-                .ToList()
+                .ToList(),
+            MessageAccueil = shouldShowMessage ? new AccueilMessageViewModel
+            {
+                Contenu = messageAccueil!.Contenu,
+                VisibleAuxInvites = messageAccueil.VisibleAuxInvites
+            } : null
         };
 
         return View(viewModel);
@@ -110,7 +124,7 @@ public class AccueilController : Controller
 
         var normalized = energyType.Trim().ToLowerInvariant();
 
-        if (normalized.Contains("wind") || normalized.Contains("éolien") || normalized.Contains("eolien"))
+        if (normalized.Contains("wind") || normalized.Contains("Ã©olien") || normalized.Contains("eolien"))
         {
             return "wind_power";
         }
@@ -120,7 +134,7 @@ public class AccueilController : Controller
             return "solar_power";
         }
 
-        if (normalized.Contains("hydro") || normalized.Contains("water") || normalized.Contains("hydroé") || normalized.Contains("hydroe"))
+        if (normalized.Contains("hydro") || normalized.Contains("water") || normalized.Contains("hydroÃ©") || normalized.Contains("hydroe"))
         {
             return "water_ec";
         }

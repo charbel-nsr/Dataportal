@@ -42,6 +42,18 @@
     </div>
 </div>
 
+@if (Model?.MessageAccueil != null)
+{
+    <div class="container my-5">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h3 class="card-title mb-3">Information</h3>
+                <div class="card-text" style="white-space: pre-wrap;">@Model.MessageAccueil.Contenu</div>
+            </div>
+        </div>
+    </div>
+}
+
 @if (Model?.LatestDatasets?.Count > 0)
 {
     <section class="latest-datasets py-5">

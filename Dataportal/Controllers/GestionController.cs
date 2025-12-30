@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 using Dataportal.Services.Email;
 
 //TODO: only allow rquestes from users who have verified there emails to be accepted
@@ -617,6 +618,56 @@ namespace Dataportal.Controllers
 
             TempData["Success"] = "User role updated.";
             return RedirectToAction("Utilisateurs");
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "administrator")]
+        public async Task<IActionResult> MessageAccueil()
+        {
+            var message = await _context.MessageAccueil.FirstOrDefaultAsync();
+            var viewModel = new MessageAccueilViewModel
+            {
+                Contenu = message?.Contenu ?? string.Empty,
+                VisibleAuxInvites = message?.VisibleAuxInvites ?? false
+            };
+
+            return View(viewModel);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "administrator")]
+        public async Task<IActionResult> MessageAccueil(MessageAccueilViewModel viewModel)
+        {
+            if (!ModelState.IsValid)
+            {
+                return View(viewModel);
+            }
+
+            var message = await _context.MessageAccueil.FirstOrDefaultAsync();
+
+            if (message == null)
+            {
+                message = new MessageAccueil
+                {
+                    Contenu = viewModel.Contenu,
+                    VisibleAuxInvites = viewModel.VisibleAuxInvites,
+                    DateDerniereModification = DateTime.UtcNow
+                };
+
+                _context.MessageAccueil.Add(message);
+            }
+            else
+            {
+                message.Contenu = viewModel.Contenu;
+                message.VisibleAuxInvites = viewModel.VisibleAuxInvites;
+                message.DateDerniereModification = DateTime.UtcNow;
+            }
+
+            await _context.SaveChangesAsync();
+            TempData["Success"] = "Home message updated.";
+
+            return RedirectToAction(nameof(MessageAccueil));
         }
     }
 }
