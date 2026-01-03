@@ -1,6 +1,8 @@
 @model Dataportal.ViewModels.DonneesCreateStep2ViewModel
 @using System.Text.Json
 @using Dataportal.Classes
+@using Dataportal.Services
+@using System.Linq
 @{
     ViewData["Title"] = "Create a dataset - Step 2";
     ViewData["CurrentStep"] = 2;
@@ -11,8 +13,53 @@
     @await Html.PartialAsync("_CreationProgress")
     <form method="post" enctype="multipart/form-data" class="bg-light p-4 rounded shadow-sm upload-overlay-form">
         @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="UploadSessionId" />
+        <input type="hidden" asp-for="ColumnTypesConfirmed" />
+        <input type="hidden" asp-for="ProceedAfterImportErrors" />
 
         <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
+
+        @if (Model.ColumnTypesConfirmed && Model.ColumnTypes?.Any() == true)
+        {
+            <div class="d-flex flex-column gap-2 mb-3">
+                @if (Model.ImportErrors?.Any() == true)
+                {
+                    <div class="alert alert-warning d-flex flex-column gap-2" role="alert">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <p class="mb-2">Some values could not be parsed with the selected types. Update your files or column types, then re-run the import, or continue to the next step with invalid values stored as <strong>NULL</strong>.</p>
+                            </div>
+                            <div>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-download-errors data-errors='@JsonSerializer.Serialize(Model.ImportErrors)'>Download log</button>
+                            </div>
+                        </div>
+                        <ul class="mb-0">
+                            @{
+                                var errorPreview = Model.ImportErrors.Take(5).ToList();
+                                var hasMore = Model.ImportErrors.Count > 5;
+                            }
+                            @foreach (var issue in errorPreview)
+                            {
+                                <li>
+                                    <strong>@issue.ColumnName</strong> (row @issue.RowNumber, file @issue.FileName): @issue.Message
+                                    @if (!string.IsNullOrWhiteSpace(issue.RawValue))
+                                    {
+                                        <span class="text-muted">Value: @issue.RawValue</span>
+                                    }
+                                </li>
+                            }
+                            @if (hasMore)
+                            {
+                                <li>...</li>
+                            }
+                        </ul>
+                    </div>
+                }
+                <div class="alert alert-info" role="status">
+                    Review the detected column types before creating the table. You can adjust them to avoid conversion errors during import.
+                </div>
+            </div>
+        }
 
         <div class="form-floating mb-3">
             <select asp-for="IdExistingMetadonnee" class="form-select" data-existing-select data-default-code="@Model.Code" data-code-source="donnees">
@@ -95,14 +142,122 @@
 
         <div class="mb-4">
             <label asp-for="UploadedFiles" class="form-label">Upload CSV, XLSX, Parquet, or CSV.zip files</label>
-            <input asp-for="UploadedFiles" type="file" multiple class="form-control" accept=".csv,.xlsx,.parquet,.zip" required />
+            @if (string.IsNullOrEmpty(Model.UploadSessionId))
+            {
+                <input asp-for="UploadedFiles" type="file" multiple class="form-control" accept=".csv,.xlsx,.parquet,.zip" required />
+            }
+            else
+            {
+                <input asp-for="UploadedFiles" type="file" multiple class="form-control" accept=".csv,.xlsx,.parquet,.zip" />
+            }
             <small class="form-text text-muted">All files uploaded in this step must share the same format. Maximum total size per step: @UploadSizeLimits.StepUploadLimitDisplay.</small>
             <span asp-validation-for="UploadedFiles" class="text-danger"></span>
         </div>
 
         <div id="fileList" class="mb-3"></div>
 
-        <button type="submit" class="btn btn-primary w-100">Next</button>
+        @if (Model.PersistedFiles?.Any() == true)
+        {
+            <div class="mb-3">
+                <h5 class="h6">Uploaded files</h5>
+                <table class="table table-sm table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">Name</th>
+                            <th scope="col">Size</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var file in Model.PersistedFiles)
+                        {
+                            <tr>
+                                <td>@file.Name</td>
+                                <td>@string.Format("{0:N2} KB", file.SizeBytes / 1024.0)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        @if (Model.ColumnTypesConfirmed && Model.ColumnTypes?.Any() == true)
+        {
+            <div class="table-responsive mb-4">
+                <table class="table table-sm table-bordered align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">Column</th>
+                            <th scope="col">Type</th>
+                            <th scope="col">NVARCHAR length (if applicable)</th>
+                            <th scope="col">Inference</th>
+                            <th scope="col">Type description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < Model.ColumnTypes.Count; i++)
+                        {
+                            var column = Model.ColumnTypes[i];
+                            <tr>
+                                <td>
+                                    @column.ColumnName
+                                    <input type="hidden" asp-for="ColumnTypes[@i].ColumnName" />
+                                    <input type="hidden" asp-for="ColumnTypes[@i].InferredType" />
+                                    <input type="hidden" asp-for="ColumnTypes[@i].InferredLength" />
+                                </td>
+                                <td>
+                                    <select class="form-select column-type-select" asp-for="ColumnTypes[@i].SelectedType" data-length-target="length-@i">
+                                        @foreach (TabularColumnType type in Enum.GetValues(typeof(TabularColumnType)))
+                                        {
+                                            <option value="@type">@type</option>
+                                        }
+                                    </select>
+                                    <span asp-validation-for="ColumnTypes[@i].SelectedType" class="text-danger"></span>
+                                </td>
+                                <td>
+                                    <input asp-for="ColumnTypes[@i].MaxLength" id="length-@i" type="number" class="form-control column-length-input @(column.SelectedType == TabularColumnType.NVarChar.ToString() ? "" : "d-none")" min="1" />
+                                    <span class="form-text text-muted">Used only when NVARCHAR is selected.</span>
+                                    <span asp-validation-for="ColumnTypes[@i].MaxLength" class="text-danger"></span>
+                                </td>
+                                <td>
+                                    <div class="small text-muted">
+                                        Inferred: @column.InferredType
+                                        @if (column.InferredLength.HasValue)
+                                        {
+                                            <span>(length @column.InferredLength)</span>
+                                        }
+                                    </div>
+                                </td>
+                                <td>
+                                    @{
+                                        string Describe(TabularColumnType t) => t switch
+                                        {
+                                            TabularColumnType.Bit => "Boolean (true/false, 0/1, yes/no).",
+                                            TabularColumnType.Int => "32-bit integer numbers.",
+                                            TabularColumnType.BigInt => "64-bit integer numbers.",
+                                            TabularColumnType.Decimal => "High-precision decimal numbers.",
+                                            TabularColumnType.Float => "Floating point numbers.",
+                                            TabularColumnType.DateTime2 => "Date/time values (datetime2).",
+                                            TabularColumnType.NVarChar => "Text values (NVARCHAR, length as specified).",
+                                            _ => "Text values."
+                                        };
+                                        var parsed = Enum.TryParse<TabularColumnType>(column.SelectedType, out var parsedType) ? parsedType : TabularColumnType.NVarChar;
+                                    }
+                                    <div class="small text-muted">@Describe(parsed)</div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        <div class="d-flex flex-wrap gap-2">
+            <button type="submit" class="btn btn-primary @(Model.ImportErrors?.Any() == true ? string.Empty : "w-100")" data-reset-proceed>Next</button>
+            @if (Model.ImportErrors?.Any() == true)
+            {
+                <button type="submit" class="btn btn-outline-secondary" data-proceed-errors>Continue to next step with NULL replacements</button>
+            }
+        </div>
     </form>
 </div>
 
@@ -123,8 +278,11 @@
             const existingSelect = document.querySelector('[data-existing-select]');
             const defaultCode = existingSelect?.dataset.defaultCode || codeInput?.value || '';
             const nextCodeUrl = '@Url.Action("NextCode", "Donnees")';
+            const overlayMessage = @Html.Raw(JsonSerializer.Serialize(Model.ColumnTypesConfirmed
+            ? "We will create the typed table and import your data. Do you want to continue?"
+            : "We will analyze your files to infer column types. Do you want to continue?"));
 
-            initUploadOverlay(form, {confirmMessage: 'Once this step is confirmed, the data will be created temporarily. Do you want to continue?'});
+            initUploadOverlay(form, {confirmMessage: overlayMessage});
 
             const buildTodayIncrementedCode = (baseCode) => {
                 const today = new Date();
@@ -174,8 +332,10 @@
                     }
                 }
                 else {
-                    labelInput.value = '';
-                    codeInput.value = defaultCode;
+                    // Keep the user's existing label/code if already entered.
+                    if (!codeInput.value) {
+                        codeInput.value = defaultCode;
+                    }
                 }
 
                 labelInput.readOnly = hasExisting;
@@ -255,6 +415,74 @@
                     }
                 });
             }
+
+            const proceedField = document.querySelector('input[name="ProceedAfterImportErrors"]');
+            document.querySelectorAll('[data-proceed-errors]').forEach(button => {
+                button.addEventListener('click', () => {
+                    if (proceedField) {
+                        proceedField.value = 'true';
+                    }
+                });
+            });
+
+            document.querySelectorAll('[data-reset-proceed]').forEach(button => {
+                button.addEventListener('click', () => {
+                    if (proceedField) {
+                        proceedField.value = 'false';
+                    }
+                });
+            });
+
+            document.querySelectorAll('.column-type-select').forEach(select => {
+                const targetId = select.dataset.lengthTarget;
+                const lengthInput = targetId ? document.getElementById(targetId) : null;
+
+                const toggleLength = () => {
+                    if (!lengthInput) {
+                        return;
+                    }
+
+                    if (select.value === 'NVarChar') {
+                        lengthInput.classList.remove('d-none');
+                    } else {
+                        lengthInput.classList.add('d-none');
+                        lengthInput.value = '';
+                    }
+                };
+
+                select.addEventListener('change', toggleLength);
+                toggleLength();
+            });
+
+            document.querySelectorAll('[data-download-errors]').forEach(button => {
+                button.addEventListener('click', () => {
+                    const raw = button.getAttribute('data-errors');
+                    if (!raw) return;
+                    try {
+                        const errors = JSON.parse(raw);
+                        if (!Array.isArray(errors) || errors.length === 0) return;
+                        const lines = errors.map(err => {
+                            const fileName = err.FileName || err.fileName || 'unknown file';
+                            const column = err.ColumnName || err.columnName || 'unknown column';
+                            const row = err.RowNumber || err.rowNumber || '?';
+                            const value = (err.RawValue || err.rawValue) ? ` | Value: ${err.RawValue || err.rawValue}` : '';
+                            const message = err.Message || err.message || '';
+                            return `${fileName} | Row ${row} | Column ${column} | ${message}${value}`;
+                        });
+                        const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = 'import-errors.txt';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(url);
+                    } catch {
+                        // ignore
+                    }
+                });
+            });
         });
     </script>
 }
