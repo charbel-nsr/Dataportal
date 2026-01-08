@@ -186,34 +186,34 @@ namespace Dataportal.Controllers
             return (options, descriptions);
         }
 
-        private async Task<UploadSession> EnsureUploadSessionAsync(DonneesCreateStep2ViewModel model)
+        private async Task<UploadSession?> EnsureUploadSessionAsync(ICollection<IFormFile>? uploadedFiles, string? uploadSessionId, bool requireFiles)
         {
-            if (model.UploadedFiles != null && model.UploadedFiles.Any())
+            if (uploadedFiles != null && uploadedFiles.Any())
             {
-                if (!string.IsNullOrWhiteSpace(model.UploadSessionId))
+                if (!string.IsNullOrWhiteSpace(uploadSessionId))
                 {
-                    DeleteUploadSession(model.UploadSessionId);
+                    DeleteUploadSession(uploadSessionId);
                 }
 
-                var sessionId = await PersistUploadsAsync(model.UploadedFiles);
+                var sessionId = await PersistUploadsAsync(uploadedFiles);
                 var persistedFiles = LoadPersistedUploads(sessionId);
                 var dataSize = persistedFiles.Sum(f => f.Length);
                 return new UploadSession(sessionId, persistedFiles, dataSize);
             }
 
-            if (!string.IsNullOrWhiteSpace(model.UploadSessionId))
+            if (!string.IsNullOrWhiteSpace(uploadSessionId))
             {
-                var existingFiles = LoadPersistedUploads(model.UploadSessionId);
+                var existingFiles = LoadPersistedUploads(uploadSessionId);
                 var existingSize = existingFiles.Sum(f => f.Length);
-                return new UploadSession(model.UploadSessionId, existingFiles, existingSize);
+                return new UploadSession(uploadSessionId, existingFiles, existingSize);
             }
 
-            if (model.UploadedFiles == null || !model.UploadedFiles.Any())
+            if (requireFiles)
             {
                 throw new InvalidOperationException("You must upload at least one data file (CSV, XLSX, Parquet, or CSV.zip).");
             }
 
-            throw new InvalidOperationException("You must upload at least one data file (CSV, XLSX, Parquet, or CSV.zip).");
+            return null;
         }
 
         private async Task<string> PersistUploadsAsync(IEnumerable<IFormFile> files)
@@ -315,9 +315,9 @@ namespace Dataportal.Controllers
             }
         }
 
-        private static void PopulatePersistedFiles(DonneesCreateStep2ViewModel model, UploadSession session)
+        private static List<PersistedFileSummary> BuildPersistedFileSummaries(UploadSession session)
         {
-            model.PersistedFiles = session.Files
+            return session.Files
                 .Select(f => new PersistedFileSummary
                 {
                     Name = f.FileName ?? string.Empty,
@@ -326,9 +326,9 @@ namespace Dataportal.Controllers
                 .ToList();
         }
 
-        private static List<TabularColumnDefinition> BuildSelectedColumns(DonneesCreateStep2ViewModel model)
+        private static List<TabularColumnDefinition> BuildSelectedColumns(IReadOnlyCollection<ColumnTypeSelectionViewModel> columnTypes)
         {
-            if (model.ColumnTypes == null || model.ColumnTypes.Count == 0)
+            if (columnTypes == null || columnTypes.Count == 0)
             {
                 throw new InvalidOperationException("Column types are required to create the table.");
             }
@@ -336,7 +336,7 @@ namespace Dataportal.Controllers
             var columns = new List<TabularColumnDefinition>();
             var fallbackLength = 255;
 
-            foreach (var column in model.ColumnTypes)
+            foreach (var column in columnTypes)
             {
                 if (!Enum.TryParse<TabularColumnType>(column.SelectedType, out var columnType))
                 {
@@ -670,12 +670,17 @@ namespace Dataportal.Controllers
                 model.ProceedAfterImportErrors = false;
             }
 
-            UploadSession uploadSession;
+            UploadSession? uploadSession;
             try
             {
-                uploadSession = await EnsureUploadSessionAsync(model);
+                uploadSession = await EnsureUploadSessionAsync(model.UploadedFiles, model.UploadSessionId, true);
+                if (uploadSession == null)
+                {
+                    throw new InvalidOperationException("You must upload at least one data file (CSV, XLSX, Parquet, or CSV.zip).");
+                }
+
                 model.UploadSessionId = uploadSession.SessionId;
-                PopulatePersistedFiles(model, uploadSession);
+                model.PersistedFiles = BuildPersistedFileSummaries(uploadSession);
             }
             catch (InvalidOperationException ex)
             {
@@ -718,7 +723,7 @@ namespace Dataportal.Controllers
                 return View(model);
             }
 
-            var selectedColumns = BuildSelectedColumns(model);
+            var selectedColumns = BuildSelectedColumns(model.ColumnTypes);
             TabularImportResult importResult;
             try
             {
@@ -935,7 +940,7 @@ namespace Dataportal.Controllers
             }
 
             // Handle skip: if no file uploaded, user wants to skip
-            if (model.UploadedFiles == null || !model.UploadedFiles.Any())
+            if ((model.UploadedFiles == null || !model.UploadedFiles.Any()) && string.IsNullOrWhiteSpace(model.UploadSessionId))
             {
                 HttpContext.Session.SetInt32(SessionKeys.CreationNextStep, 4);
                 return RedirectToAction("CreateStep4", new { id = model.IdMetadonnee });
@@ -966,6 +971,62 @@ namespace Dataportal.Controllers
                 return View(model);
             }
 
+            var hasNewUploads = model.UploadedFiles != null && model.UploadedFiles.Any();
+            if (hasNewUploads)
+            {
+                model.ColumnTypesConfirmed = false;
+                model.ColumnTypes?.Clear();
+                model.ImportErrors?.Clear();
+                model.ProceedAfterImportErrors = false;
+            }
+
+            UploadSession? uploadSession;
+            try
+            {
+                uploadSession = await EnsureUploadSessionAsync(model.UploadedFiles, model.UploadSessionId, false);
+                if (uploadSession == null)
+                {
+                    HttpContext.Session.SetInt32(SessionKeys.CreationNextStep, 4);
+                    return RedirectToAction("CreateStep4", new { id = model.IdMetadonnee });
+                }
+
+                model.UploadSessionId = uploadSession.SessionId;
+                model.PersistedFiles = BuildPersistedFileSummaries(uploadSession);
+            }
+            catch (InvalidOperationException ex)
+            {
+                ModelState.AddModelError(nameof(model.UploadedFiles), ex.Message);
+                RepopulateQualiteSelections();
+                return View(model);
+            }
+
+            if (uploadSession.TotalSize > UploadSizeLimits.StepUploadLimitBytes)
+            {
+                ModelState.AddModelError(nameof(model.UploadedFiles), $"The total size of the uploaded files exceeds the {UploadSizeLimits.StepUploadLimitDisplay} limit for this step.");
+                RepopulateQualiteSelections();
+                return View(model);
+            }
+
+            if (!model.ColumnTypesConfirmed)
+            {
+                var inferredColumns = await _fileImporter.InferColumnsAsync(uploadSession.Files);
+                model.ColumnTypes = inferredColumns
+                    .Select(c => new ColumnTypeSelectionViewModel
+                    {
+                        ColumnName = c.Name,
+                        SelectedType = c.ColumnType.ToString(),
+                        InferredType = c.ColumnType.ToString(),
+                        InferredLength = c.MaxLength,
+                        MaxLength = c.MaxLength
+                    })
+                    .ToList();
+
+                model.ColumnTypesConfirmed = true;
+                RepopulateQualiteSelections();
+                ModelState.Clear();
+                return View(model);
+            }
+
             // Update data size with uploaded files
             long existingDataSize = 0;
             var sizeValue = TempData.Peek(DataSizeTempDataKey);
@@ -973,20 +1034,18 @@ namespace Dataportal.Controllers
             {
                 existingDataSize = ParseDataSize(sizeValue);
             }
-            long stepSize = model.UploadedFiles.Sum(f => f.Length);
-            if (stepSize > UploadSizeLimits.StepUploadLimitBytes)
-            {
-                ModelState.AddModelError(nameof(model.UploadedFiles), $"The total size of the uploaded files exceeds the {UploadSizeLimits.StepUploadLimitDisplay} limit for this step.");
-                RepopulateQualiteSelections();
-                return View(model);
-            }
+            long stepSize = uploadSession.TotalSize;
             long totalDataSize = existingDataSize + stepSize;
 
             var baseTableName = BuildBaseTableName(model.Libelle, model.Code);
             var tableName = BuildSchemaQualifiedName(TableImportSchemas.DonneesEventLogs, baseTableName);
+            var target = new TableImportTarget(TableImportSchemas.DonneesEventLogs, baseTableName);
+            var selectedColumns = BuildSelectedColumns(model.ColumnTypes);
+            TabularImportResult importResult;
             try
             {
-                await _fileImporter.ImportAsync(new TableImportTarget(TableImportSchemas.DonneesEventLogs, baseTableName), model.UploadedFiles);
+                await _fileImporter.DropTableAsync(target);
+                importResult = await _fileImporter.ImportAsync(target, uploadSession.Files, selectedColumns);
             }
             catch (InvalidOperationException ex)
             {
@@ -1005,6 +1064,21 @@ namespace Dataportal.Controllers
                 ModelState.AddModelError(nameof(model.UploadedFiles), "An unexpected error occurred while importing the data.");
                 RepopulateQualiteSelections();
                 return View(model);
+            }
+
+            if (importResult.Errors.Any() && !model.ProceedAfterImportErrors)
+            {
+                model.ImportErrors = importResult.Errors;
+                model.ProceedAfterImportErrors = false;
+                RepopulateQualiteSelections();
+                ModelState.Clear();
+                return View(model);
+            }
+
+            TempData[DataSizeTempDataKey] = totalDataSize.ToString(CultureInfo.InvariantCulture);
+            if (importResult.Errors.Any())
+            {
+                TempData["ImportWarnings"] = $"Imported with {importResult.Errors.Count} parsing issue(s). Invalid values were stored as NULL.";
             }
 
             // Create DonneesEventLogs
@@ -1031,9 +1105,10 @@ namespace Dataportal.Controllers
             _context.Update(metadonnee);
             await _context.SaveChangesAsync();
 
-            TempData[DataSizeTempDataKey] = totalDataSize.ToString(CultureInfo.InvariantCulture);
-
             HttpContext.Session.SetInt32(SessionKeys.CreationNextStep, 4);
+
+            DeleteUploadSession(model.UploadSessionId);
+            model.UploadSessionId = null;
 
             return RedirectToAction("CreateStep4", new { id = model.IdMetadonnee });
         }
@@ -1157,7 +1232,7 @@ namespace Dataportal.Controllers
                 return Forbid();
             }
 
-            if (model.UploadedFiles == null || !model.UploadedFiles.Any())
+            if ((model.UploadedFiles == null || !model.UploadedFiles.Any()) && string.IsNullOrWhiteSpace(model.UploadSessionId))
             {
                 // User skipped uploading: go straight to next step
                 HttpContext.Session.SetInt32(SessionKeys.CreationNextStep, 5);
@@ -1190,6 +1265,63 @@ namespace Dataportal.Controllers
                 return View(model);
             }
 
+            var hasNewUploads = model.UploadedFiles != null && model.UploadedFiles.Any();
+            if (hasNewUploads)
+            {
+                model.ColumnTypesConfirmed = false;
+                model.ColumnTypes?.Clear();
+                model.ImportErrors?.Clear();
+                model.ProceedAfterImportErrors = false;
+            }
+
+            UploadSession? uploadSession;
+            try
+            {
+                uploadSession = await EnsureUploadSessionAsync(model.UploadedFiles, model.UploadSessionId, false);
+                if (uploadSession == null)
+                {
+                    HttpContext.Session.SetInt32(SessionKeys.CreationNextStep, 5);
+                    TempData.Remove(DataSizeTempDataKey);
+                    return RedirectToAction("Details", new { id = metadonnee.Id, creation = true });
+                }
+
+                model.UploadSessionId = uploadSession.SessionId;
+                model.PersistedFiles = BuildPersistedFileSummaries(uploadSession);
+            }
+            catch (InvalidOperationException ex)
+            {
+                ModelState.AddModelError(nameof(model.UploadedFiles), ex.Message);
+                RepopulateQualiteSelections();
+                return View(model);
+            }
+
+            if (uploadSession.TotalSize > UploadSizeLimits.StepUploadLimitBytes)
+            {
+                ModelState.AddModelError(nameof(model.UploadedFiles), $"The total size of the uploaded files exceeds the {UploadSizeLimits.StepUploadLimitDisplay} limit for this step.");
+                RepopulateQualiteSelections();
+                return View(model);
+            }
+
+            if (!model.ColumnTypesConfirmed)
+            {
+                var inferredColumns = await _fileImporter.InferColumnsAsync(uploadSession.Files);
+                model.ColumnTypes = inferredColumns
+                    .Select(c => new ColumnTypeSelectionViewModel
+                    {
+                        ColumnName = c.Name,
+                        SelectedType = c.ColumnType.ToString(),
+                        InferredType = c.ColumnType.ToString(),
+                        InferredLength = c.MaxLength,
+                        MaxLength = c.MaxLength
+                    })
+                    .ToList();
+
+                model.ColumnTypesConfirmed = true;
+                RepopulateQualiteSelections();
+                ModelState.Clear();
+                return View(model);
+            }
+
             // Update data size with uploaded files
             long existingDataSize = 0;
             var sizeValue = TempData.Peek(DataSizeTempDataKey);
@@ -1197,20 +1329,18 @@ namespace Dataportal.Controllers
             {
                 existingDataSize = ParseDataSize(sizeValue);
             }
-            long stepSize = model.UploadedFiles.Sum(f => f.Length);
-            if (stepSize > UploadSizeLimits.StepUploadLimitBytes)
-            {
-                ModelState.AddModelError(nameof(model.UploadedFiles), $"The total size of the uploaded files exceeds the {UploadSizeLimits.StepUploadLimitDisplay} limit for this step.");
-                RepopulateQualiteSelections();
-                return View(model);
-            }
+            long stepSize = uploadSession.TotalSize;
             long totalDataSize = existingDataSize + stepSize;
 
             var baseTableName = BuildBaseTableName(model.Libelle, model.Code);
             var tableName = BuildSchemaQualifiedName(TableImportSchemas.DonneesContexteEnvironnemental, baseTableName);
+            var target = new TableImportTarget(TableImportSchemas.DonneesContexteEnvironnemental, baseTableName);
+            var selectedColumns = BuildSelectedColumns(model.ColumnTypes);
+            TabularImportResult importResult;
             try
             {
-                await _fileImporter.ImportAsync(new TableImportTarget(TableImportSchemas.DonneesContexteEnvironnemental, baseTableName), model.UploadedFiles);
+                await _fileImporter.DropTableAsync(target);
+                importResult = await _fileImporter.ImportAsync(target, uploadSession.Files, selectedColumns);
             }
             catch (InvalidOperationException ex)
             {
@@ -1229,6 +1359,21 @@ namespace Dataportal.Controllers
                 ModelState.AddModelError(nameof(model.UploadedFiles), "An unexpected error occurred while importing the data.");
                 RepopulateQualiteSelections();
                 return View(model);
+            }
+
+            if (importResult.Errors.Any() && !model.ProceedAfterImportErrors)
+            {
+                model.ImportErrors = importResult.Errors;
+                model.ProceedAfterImportErrors = false;
+                RepopulateQualiteSelections();
+                ModelState.Clear();
+                return View(model);
+            }
+
+            TempData[DataSizeTempDataKey] = totalDataSize.ToString(CultureInfo.InvariantCulture);
+            if (importResult.Errors.Any())
+            {
+                TempData["ImportWarnings"] = $"Imported with {importResult.Errors.Count} parsing issue(s). Invalid values were stored as NULL.";
             }
 
             // Save DonneesContexteEnvironnemental
@@ -1256,6 +1401,9 @@ namespace Dataportal.Controllers
             TempData.Remove(DataSizeTempDataKey);
 
             HttpContext.Session.SetInt32(SessionKeys.CreationNextStep, 5);
+
+            DeleteUploadSession(model.UploadSessionId);
+            model.UploadSessionId = null;
 
             // Proceed to next step
             return RedirectToAction("Details", new { id = metadonnee.Id, creation = true });

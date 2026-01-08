@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Dataportal.Classes;
 using Dataportal.Context;
+using Dataportal.Helpers;
 using Dataportal.Models;
 using Dataportal.Services;
 using Dataportal.ViewModels;
@@ -15,6 +17,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using SystemTextJson = System.Text.Json.JsonSerializer;
 
 namespace Dataportal.Controllers
 {
@@ -23,6 +26,8 @@ namespace Dataportal.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ITabularFileImporter _fileImporter;
+        private const string UploadCacheFolderName = "dataportal-upload-cache";
+        private const string UploadMetadataFileName = "metadata.json";
 
         private enum ExistingLabelSource
         {
@@ -412,25 +417,77 @@ namespace Dataportal.Controllers
                 return RedirectToAction("EditStep4", new { id = model.IdMetadonnee });
             }
 
-            if (model.UploadedFiles == null || !model.UploadedFiles.Any())
+            if ((model.UploadedFiles == null || !model.UploadedFiles.Any()) && string.IsNullOrWhiteSpace(model.UploadSessionId))
             {
                 HttpContext.Session.SetInt32(SessionKeys.ModificationNextStep, 4);
                 return RedirectToAction("EditStep4", new { id = model.IdMetadonnee });
             }
 
-            long stepSize = model.UploadedFiles.Sum(f => f.Length);
-            if (stepSize > UploadSizeLimits.StepUploadLimitBytes)
+            var hasNewUploads = model.UploadedFiles != null && model.UploadedFiles.Any();
+            if (hasNewUploads)
+            {
+                model.ColumnTypesConfirmed = false;
+                model.ColumnTypes?.Clear();
+                model.ImportErrors?.Clear();
+                model.ProceedAfterImportErrors = false;
+            }
+
+            UploadSession? uploadSession;
+            try
+            {
+                uploadSession = await EnsureUploadSessionAsync(model.UploadedFiles, model.UploadSessionId, false);
+                if (uploadSession == null)
+                {
+                    HttpContext.Session.SetInt32(SessionKeys.ModificationNextStep, 4);
+                    return RedirectToAction("EditStep4", new { id = model.IdMetadonnee });
+                }
+
+                model.UploadSessionId = uploadSession.SessionId;
+                model.PersistedFiles = BuildPersistedFileSummaries(uploadSession);
+            }
+            catch (InvalidOperationException ex)
+            {
+                ModelState.AddModelError(nameof(model.UploadedFiles), ex.Message);
+                model.CanUploadFiles = true;
+                return View(model);
+            }
+
+            if (uploadSession.TotalSize > UploadSizeLimits.StepUploadLimitBytes)
             {
                 ModelState.AddModelError(nameof(model.UploadedFiles), $"The total size of the uploaded files exceeds the {UploadSizeLimits.StepUploadLimitDisplay} limit for this step.");
                 model.CanUploadFiles = true;
                 return View(model);
             }
 
+            if (!model.ColumnTypesConfirmed)
+            {
+                var inferredColumns = await _fileImporter.InferColumnsAsync(uploadSession.Files);
+                model.ColumnTypes = inferredColumns
+                    .Select(c => new ColumnTypeSelectionViewModel
+                    {
+                        ColumnName = c.Name,
+                        SelectedType = c.ColumnType.ToString(),
+                        InferredType = c.ColumnType.ToString(),
+                        InferredLength = c.MaxLength,
+                        MaxLength = c.MaxLength
+                    })
+                    .ToList();
+
+                model.ColumnTypesConfirmed = true;
+                model.CanUploadFiles = true;
+                ModelState.Clear();
+                return View(model);
+            }
+
             var baseTableName = BuildBaseTableName(model.Libelle, model.Code);
             var tableName = BuildSchemaQualifiedName(TableImportSchemas.DonneesEventLogs, baseTableName);
+            var target = new TableImportTarget(TableImportSchemas.DonneesEventLogs, baseTableName);
+            var selectedColumns = BuildSelectedColumns(model.ColumnTypes);
+            TabularImportResult importResult;
             try
             {
-                await _fileImporter.ImportAsync(new TableImportTarget(TableImportSchemas.DonneesEventLogs, baseTableName), model.UploadedFiles);
+                await _fileImporter.DropTableAsync(target);
+                importResult = await _fileImporter.ImportAsync(target, uploadSession.Files, selectedColumns);
             }
             catch (InvalidOperationException ex)
             {
@@ -448,6 +505,15 @@ namespace Dataportal.Controllers
             {
                 ModelState.AddModelError(nameof(model.UploadedFiles), "An unexpected error occurred while importing the data.");
                 model.CanUploadFiles = true;
+                return View(model);
+            }
+
+            if (importResult.Errors.Any() && !model.ProceedAfterImportErrors)
+            {
+                model.ImportErrors = importResult.Errors;
+                model.ProceedAfterImportErrors = false;
+                model.CanUploadFiles = true;
+                ModelState.Clear();
                 return View(model);
             }
 
@@ -469,12 +535,15 @@ namespace Dataportal.Controllers
             await _context.SaveChangesAsync();
 
             metadonnee.IdDonneesEventLogs = eventLogs.Id;
-            metadonnee.TailleDesDonnees = FormatDataSize(ParseFormattedDataSize(metadonnee.TailleDesDonnees) + stepSize);
+            metadonnee.TailleDesDonnees = FormatDataSize(ParseFormattedDataSize(metadonnee.TailleDesDonnees) + uploadSession.TotalSize);
             metadonnee.DernierMiseAJour = DateTime.Now;
             _context.Update(metadonnee);
             await _context.SaveChangesAsync();
 
             HttpContext.Session.SetInt32(SessionKeys.ModificationNextStep, 4);
+
+            DeleteUploadSession(model.UploadSessionId);
+            model.UploadSessionId = null;
 
             return RedirectToAction("EditStep4", new { id = model.IdMetadonnee });
         }
@@ -614,25 +683,77 @@ namespace Dataportal.Controllers
                 return RedirectToAction("Details", "Donnees", new { id = model.IdMetadonnee, modification = true });
             }
 
-            if (model.UploadedFiles == null || !model.UploadedFiles.Any())
+            if ((model.UploadedFiles == null || !model.UploadedFiles.Any()) && string.IsNullOrWhiteSpace(model.UploadSessionId))
             {
                 HttpContext.Session.SetInt32(SessionKeys.ModificationNextStep, 5);
                 return RedirectToAction("Details", "Donnees", new { id = model.IdMetadonnee, modification = true });
             }
 
-            long stepSize = model.UploadedFiles.Sum(f => f.Length);
-            if (stepSize > UploadSizeLimits.StepUploadLimitBytes)
+            var hasNewUploads = model.UploadedFiles != null && model.UploadedFiles.Any();
+            if (hasNewUploads)
+            {
+                model.ColumnTypesConfirmed = false;
+                model.ColumnTypes?.Clear();
+                model.ImportErrors?.Clear();
+                model.ProceedAfterImportErrors = false;
+            }
+
+            UploadSession? uploadSession;
+            try
+            {
+                uploadSession = await EnsureUploadSessionAsync(model.UploadedFiles, model.UploadSessionId, false);
+                if (uploadSession == null)
+                {
+                    HttpContext.Session.SetInt32(SessionKeys.ModificationNextStep, 5);
+                    return RedirectToAction("Details", "Donnees", new { id = model.IdMetadonnee, modification = true });
+                }
+
+                model.UploadSessionId = uploadSession.SessionId;
+                model.PersistedFiles = BuildPersistedFileSummaries(uploadSession);
+            }
+            catch (InvalidOperationException ex)
+            {
+                ModelState.AddModelError(nameof(model.UploadedFiles), ex.Message);
+                model.CanUploadFiles = true;
+                return View(model);
+            }
+
+            if (uploadSession.TotalSize > UploadSizeLimits.StepUploadLimitBytes)
             {
                 ModelState.AddModelError(nameof(model.UploadedFiles), $"The total size of the uploaded files exceeds the {UploadSizeLimits.StepUploadLimitDisplay} limit for this step.");
                 model.CanUploadFiles = true;
                 return View(model);
             }
 
+            if (!model.ColumnTypesConfirmed)
+            {
+                var inferredColumns = await _fileImporter.InferColumnsAsync(uploadSession.Files);
+                model.ColumnTypes = inferredColumns
+                    .Select(c => new ColumnTypeSelectionViewModel
+                    {
+                        ColumnName = c.Name,
+                        SelectedType = c.ColumnType.ToString(),
+                        InferredType = c.ColumnType.ToString(),
+                        InferredLength = c.MaxLength,
+                        MaxLength = c.MaxLength
+                    })
+                    .ToList();
+
+                model.ColumnTypesConfirmed = true;
+                model.CanUploadFiles = true;
+                ModelState.Clear();
+                return View(model);
+            }
+
             var baseTableName = BuildBaseTableName(model.Libelle, model.Code);
             var tableName = BuildSchemaQualifiedName(TableImportSchemas.DonneesContexteEnvironnemental, baseTableName);
+            var target = new TableImportTarget(TableImportSchemas.DonneesContexteEnvironnemental, baseTableName);
+            var selectedColumns = BuildSelectedColumns(model.ColumnTypes);
+            TabularImportResult importResult;
             try
             {
-                await _fileImporter.ImportAsync(new TableImportTarget(TableImportSchemas.DonneesContexteEnvironnemental, baseTableName), model.UploadedFiles);
+                await _fileImporter.DropTableAsync(target);
+                importResult = await _fileImporter.ImportAsync(target, uploadSession.Files, selectedColumns);
             }
             catch (InvalidOperationException ex)
             {
@@ -653,6 +774,15 @@ namespace Dataportal.Controllers
                 return View(model);
             }
 
+            if (importResult.Errors.Any() && !model.ProceedAfterImportErrors)
+            {
+                model.ImportErrors = importResult.Errors;
+                model.ProceedAfterImportErrors = false;
+                model.CanUploadFiles = true;
+                ModelState.Clear();
+                return View(model);
+            }
+
             var donneesContext = new DonneesContexteEnvironnemental
             {
                 Libelle = model.Libelle.Trim(),
@@ -670,12 +800,15 @@ namespace Dataportal.Controllers
             await _context.SaveChangesAsync();
 
             metadonnee.IdDonneesContexteEnvironnemental = donneesContext.Id;
-            metadonnee.TailleDesDonnees = FormatDataSize(ParseFormattedDataSize(metadonnee.TailleDesDonnees) + stepSize);
+            metadonnee.TailleDesDonnees = FormatDataSize(ParseFormattedDataSize(metadonnee.TailleDesDonnees) + uploadSession.TotalSize);
             metadonnee.DernierMiseAJour = DateTime.Now;
             _context.Update(metadonnee);
             await _context.SaveChangesAsync();
 
             HttpContext.Session.SetInt32(SessionKeys.ModificationNextStep, 5);
+
+            DeleteUploadSession(model.UploadSessionId);
+            model.UploadSessionId = null;
 
             return RedirectToAction("Details", "Donnees", new { id = model.IdMetadonnee, modification = true });
         }
@@ -749,6 +882,195 @@ namespace Dataportal.Controllers
 
             return (options, descriptions);
         }
+
+        private async Task<UploadSession?> EnsureUploadSessionAsync(ICollection<IFormFile>? uploadedFiles, string? uploadSessionId, bool requireFiles)
+        {
+            if (uploadedFiles != null && uploadedFiles.Any())
+            {
+                if (!string.IsNullOrWhiteSpace(uploadSessionId))
+                {
+                    DeleteUploadSession(uploadSessionId);
+                }
+
+                var sessionId = await PersistUploadsAsync(uploadedFiles);
+                var persistedFiles = LoadPersistedUploads(sessionId);
+                var dataSize = persistedFiles.Sum(f => f.Length);
+                return new UploadSession(sessionId, persistedFiles, dataSize);
+            }
+
+            if (!string.IsNullOrWhiteSpace(uploadSessionId))
+            {
+                var existingFiles = LoadPersistedUploads(uploadSessionId);
+                var existingSize = existingFiles.Sum(f => f.Length);
+                return new UploadSession(uploadSessionId, existingFiles, existingSize);
+            }
+
+            if (requireFiles)
+            {
+                throw new InvalidOperationException("You must upload at least one data file (CSV, XLSX, Parquet, or CSV.zip).");
+            }
+
+            return null;
+        }
+
+        private async Task<string> PersistUploadsAsync(IEnumerable<IFormFile> files)
+        {
+            var sessionId = Guid.NewGuid().ToString("N");
+            var sessionPath = GetUploadSessionPath(sessionId);
+            Directory.CreateDirectory(sessionPath);
+
+            var metadata = new List<PersistedFileMetadata>();
+
+            foreach (var file in files)
+            {
+                if (file == null || file.Length == 0)
+                {
+                    continue;
+                }
+
+                var safeName = Path.GetFileName(file.FileName);
+                var storedName = $"{Guid.NewGuid():N}_{safeName}";
+                var destination = Path.Combine(sessionPath, storedName);
+
+                await using (var target = System.IO.File.Create(destination))
+                {
+                    await file.CopyToAsync(target);
+                }
+
+                metadata.Add(new PersistedFileMetadata(storedName, safeName, file.ContentType ?? "application/octet-stream"));
+            }
+
+            if (metadata.Count == 0)
+            {
+                throw new InvalidOperationException("You must upload at least one data file (CSV, XLSX, Parquet, or CSV.zip).");
+            }
+
+            var metadataPath = Path.Combine(sessionPath, UploadMetadataFileName);
+            await System.IO.File.WriteAllTextAsync(metadataPath, SystemTextJson.Serialize(metadata));
+
+            return sessionId;
+        }
+
+        private List<IFormFile> LoadPersistedUploads(string sessionId)
+        {
+            var sessionPath = GetUploadSessionPath(sessionId);
+            if (!Directory.Exists(sessionPath))
+            {
+                throw new InvalidOperationException("The upload session has expired. Please upload your files again.");
+            }
+
+            var metadataPath = Path.Combine(sessionPath, UploadMetadataFileName);
+            if (!System.IO.File.Exists(metadataPath))
+            {
+                throw new InvalidOperationException("The upload session metadata is missing.");
+            }
+
+            var metadataJson = System.IO.File.ReadAllText(metadataPath);
+            var metadata = SystemTextJson.Deserialize<List<PersistedFileMetadata>>(metadataJson) ?? new List<PersistedFileMetadata>();
+
+            var files = new List<IFormFile>();
+
+            foreach (var entry in metadata)
+            {
+                var path = Path.Combine(sessionPath, entry.StoredName);
+                if (!System.IO.File.Exists(path))
+                {
+                    continue;
+                }
+
+                files.Add(new PhysicalFormFile(path, entry.OriginalFileName, entry.ContentType));
+            }
+
+            if (files.Count == 0)
+            {
+                throw new InvalidOperationException("The upload session is empty. Please upload your files again.");
+            }
+
+            return files;
+        }
+
+        private void DeleteUploadSession(string? sessionId)
+        {
+            if (string.IsNullOrWhiteSpace(sessionId))
+            {
+                return;
+            }
+
+            var sessionPath = GetUploadSessionPath(sessionId);
+            if (!Directory.Exists(sessionPath))
+            {
+                return;
+            }
+
+            try
+            {
+                Directory.Delete(sessionPath, true);
+            }
+            catch
+            {
+                // Best-effort cleanup
+            }
+        }
+
+        private static List<PersistedFileSummary> BuildPersistedFileSummaries(UploadSession session)
+        {
+            return session.Files
+                .Select(f => new PersistedFileSummary
+                {
+                    Name = f.FileName ?? string.Empty,
+                    SizeBytes = f.Length
+                })
+                .ToList();
+        }
+
+        private static List<TabularColumnDefinition> BuildSelectedColumns(IReadOnlyCollection<ColumnTypeSelectionViewModel> columnTypes)
+        {
+            if (columnTypes == null || columnTypes.Count == 0)
+            {
+                throw new InvalidOperationException("Column types are required to create the table.");
+            }
+
+            var columns = new List<TabularColumnDefinition>();
+            var fallbackLength = 255;
+
+            foreach (var column in columnTypes)
+            {
+                if (!Enum.TryParse<TabularColumnType>(column.SelectedType, out var columnType))
+                {
+                    columnType = TabularColumnType.NVarChar;
+                }
+
+                int? length = null;
+                if (columnType == TabularColumnType.NVarChar)
+                {
+                    if (column.MaxLength.HasValue && column.MaxLength.Value > 0)
+                    {
+                        length = column.MaxLength.Value;
+                    }
+                    else if (column.InferredLength.HasValue && column.InferredLength.Value > 0)
+                    {
+                        length = column.InferredLength.Value;
+                    }
+                    else
+                    {
+                        length = fallbackLength;
+                    }
+                }
+
+                columns.Add(new TabularColumnDefinition(column.ColumnName, columnType, length));
+            }
+
+            return columns;
+        }
+
+        private string GetUploadSessionPath(string sessionId)
+        {
+            return Path.Combine(Path.GetTempPath(), UploadCacheFolderName, sessionId);
+        }
+
+        private record PersistedFileMetadata(string StoredName, string OriginalFileName, string ContentType);
+
+        private record UploadSession(string SessionId, List<IFormFile> Files, long TotalSize);
 
         private (int? metadonneeId, int? nextStep) GetModificationWizardState()
         {
