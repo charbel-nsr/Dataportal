@@ -62,6 +62,7 @@ builder.Services.AddScoped<IEmailTemplateRenderer, ThemedEmailTemplateRenderer>(
 builder.Services.AddScoped<IPortalEmailSender, MailKitEmailSender>();
 builder.Services.AddScoped<IAccountEmailService, AccountEmailService>();
 builder.Services.AddHostedService<PendingRequestReminderHostedService>();
+builder.Services.AddHostedService<UploadCleanupHostedService>();
 
 var app = builder.Build();
 
