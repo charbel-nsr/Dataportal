@@ -2,11 +2,10 @@
 using Dataportal.Context;
 using Dataportal.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.SqlClient;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using System;
-using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -16,35 +15,54 @@ namespace Dataportal.Controllers.NotebookApi
     [Route("api/notebook/private")]
     public class NotebookPrivateController : NotebookApiBaseController
     {
-        private const int MaxRows = 1000;
-
-        public NotebookPrivateController(ApplicationDbContext context)
-            : base(context)
+        public NotebookPrivateController(ApplicationDbContext context, IOptions<NotebookApiOptions> options)
+            : base(context, options)
         {
         }
 
-        [HttpGet("query")]
-        public async Task<IActionResult> QueryAsync([FromQuery] string schema, [FromQuery] string table, [FromQuery] int? limit, CancellationToken cancellationToken)
+        [HttpGet("donnees/parquet")]
+        public async Task<IActionResult> QueryParquetAsync([FromQuery] int? id, [FromQuery] int? limit, [FromQuery] string? cursor, CancellationToken cancellationToken)
         {
-            var schemaCheck = EnsureAllowedSchema(schema);
-            if (schemaCheck != null)
+            if (!id.HasValue)
             {
-                return schemaCheck;
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Dataset id is required",
+                    Detail = "A dataset id must be provided.",
+                    Status = StatusCodes.Status400BadRequest,
+                    Type = "https://httpstatuses.com/400"
+                });
             }
 
-            var tableCheck = ValidateTableName(table, out var normalizedTable);
-            if (tableCheck != null)
+            if (!limit.HasValue)
             {
-                return tableCheck;
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Limit is required",
+                    Detail = "A limit must be provided for cursor paging.",
+                    Status = StatusCodes.Status400BadRequest,
+                    Type = "https://httpstatuses.com/400"
+                });
             }
 
-            var metadonnee = await FindMetadonneeForTableAsync(normalizedTable, cancellationToken);
+            if (limit.Value < 1 || limit.Value > Options.MaxRowsPerPage)
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Limit out of range",
+                    Detail = $"Limit must be between 1 and {Options.MaxRowsPerPage}.",
+                    Status = StatusCodes.Status400BadRequest,
+                    Type = "https://httpstatuses.com/400"
+                });
+            }
+
+            var metadonnee = await FindMetadonneeByIdAsync(id.Value, cancellationToken);
             if (metadonnee == null)
             {
                 return NotFound(new ProblemDetails
                 {
                     Title = "Dataset not found",
-                    Detail = $"No dataset metadata is associated with table '{normalizedTable}'."
+                    Detail = $"No dataset metadata is associated with id '{id.Value}'."
                 });
             }
 
@@ -60,31 +78,47 @@ namespace Dataportal.Controllers.NotebookApi
                     : Forbid();
             }
 
-            var resolvedLimit = Math.Clamp(limit ?? 100, 1, MaxRows);
-            var qualifiedTable = BuildQualifiedTable(schema, normalizedTable);
-
-            using var connection = new SqlConnection(Context.Database.GetConnectionString());
-            await connection.OpenAsync(cancellationToken);
-
-            var query = $"SELECT TOP (@limit) * FROM {qualifiedTable}";
-            using var command = new SqlCommand(query, connection);
-            command.Parameters.AddWithValue("@limit", resolvedLimit);
-
-            using var reader = await command.ExecuteReaderAsync(cancellationToken);
-            var rows = new List<Dictionary<string, object?>>();
-
-            while (await reader.ReadAsync(cancellationToken))
+            if (!TryResolveDatasetTarget(metadonnee, out var target, out var resolutionError))
             {
-                var row = new Dictionary<string, object?>();
-                for (var i = 0; i < reader.FieldCount; i++)
+                return NotFound(new ProblemDetails
                 {
-                    row[reader.GetName(i)] = reader.IsDBNull(i) ? null : reader.GetValue(i);
-                }
-
-                rows.Add(row);
+                    Title = "Dataset not found",
+                    Detail = resolutionError ?? "Dataset table could not be resolved."
+                });
             }
 
-            return Ok(rows);
+            var primaryKeyColumns = await GetPrimaryKeyColumnsAsync(target, cancellationToken);
+            if (primaryKeyColumns.Count == 0)
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Primary key required",
+                    Detail = "Notebook API requires a primary key for cursor paging.",
+                    Status = StatusCodes.Status400BadRequest,
+                    Type = "https://httpstatuses.com/400"
+                });
+            }
+
+            object?[]? cursorValues = null;
+            if (!string.IsNullOrWhiteSpace(cursor))
+            {
+                try
+                {
+                    cursorValues = DecodeCursor(cursor, primaryKeyColumns);
+                }
+                catch (Exception ex)
+                {
+                    return BadRequest(new ProblemDetails
+                    {
+                        Title = "Invalid cursor",
+                        Detail = ex.Message,
+                        Status = StatusCodes.Status400BadRequest,
+                        Type = "https://httpstatuses.com/400"
+                    });
+                }
+            }
+
+            return await StreamParquetAsync(target, primaryKeyColumns, limit.Value, cursorValues, cancellationToken);
         }
     }
 }
