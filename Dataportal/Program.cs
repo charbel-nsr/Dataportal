@@ -66,6 +66,7 @@ builder.Services.AddScoped<IPasswordHasher<Utilisateur>, PasswordHasher<Utilisat
 
 builder.Services.Configure<MailOptions>(builder.Configuration.GetSection(MailOptions.SectionName));
 builder.Services.Configure<PortalOptions>(builder.Configuration.GetSection(PortalOptions.SectionName));
+builder.Services.Configure<NotebookApiOptions>(builder.Configuration.GetSection("NotebookApi"));
 builder.Services.AddScoped<IEmailTemplateRenderer, ThemedEmailTemplateRenderer>();
 builder.Services.AddScoped<IPortalEmailSender, MailKitEmailSender>();
 builder.Services.AddScoped<IAccountEmailService, AccountEmailService>();
