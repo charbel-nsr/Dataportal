@@ -27,7 +27,7 @@
                     <div class="alert alert-warning d-flex flex-column gap-2" role="alert">
                         <div class="d-flex justify-content-between align-items-start">
                             <div>
-                                <p class="mb-2">Some values could not be parsed with the selected types. Update your files or column types, then re-run the import, or continue to the next step with invalid values stored as <strong>NULL</strong>.</p>
+                                <p class="mb-2">Some values could not be parsed with the selected types. Update your files or column types, then re-run the import, or continue to the next step with invalid values stored as <strong>NULL</strong>. If the list is too long, not all issues are included.</p>
                             </div>
                             <div>
                                 <button type="button" class="btn btn-outline-secondary btn-sm" data-download-errors data-errors='@JsonSerializer.Serialize(Model.ImportErrors)'>Download log</button>

@@ -34,7 +34,7 @@
                     <div class="alert alert-warning d-flex flex-column gap-2" role="alert">
                         <div class="d-flex justify-content-between align-items-start">
                             <div>
-                                <p class="mb-2">Some values could not be parsed with the selected types. Update your files or column types, then re-run the import, or continue to the next step with invalid values stored as <strong>NULL</strong>.</p>
+                                <p class="mb-2">Some values could not be parsed with the selected types. Update your files or column types, then re-run the import, or continue to the next step with invalid values stored as <strong>NULL</strong>. If the list is too long, not all issues are included.</p>
                             </div>
                             <div>
                                 <button type="button" class="btn btn-outline-secondary btn-sm" data-download-errors data-errors='@JsonSerializer.Serialize(Model.ImportErrors)'>Download log</button>
@@ -280,6 +280,16 @@
             document.querySelectorAll('.column-type-select').forEach(select => {
                 const targetId = select.dataset.lengthTarget;
                 const lengthInput = targetId ? document.getElementById(targetId) : null;
+                const description = select.closest('tr')?.querySelector('[data-type-description]');
+                const descriptions = {
+                    Bit: 'Boolean (true/false, 0/1, yes/no).',
+                    Int: '32-bit integer numbers.',
+                    BigInt: '64-bit integer numbers.',
+                    Decimal: 'High-precision decimal numbers.',
+                    Float: 'Floating point numbers.',
+                    DateTime2: 'Date/time values (datetime2).',
+                    NVarChar: 'Text values (NVARCHAR, length as specified).'
+                };
 
                 const toggleLength = () => {
                     if (!lengthInput) {
@@ -294,8 +304,18 @@
                     }
                 };
 
+                const updateDescription = () => {
+                    if (!description) {
+                        return;
+                    }
+
+                    description.textContent = descriptions[select.value] || 'Text values.';
+                };
+
                 select.addEventListener('change', toggleLength);
+                select.addEventListener('change', updateDescription);
                 toggleLength();
+                updateDescription();
             });
 
             document.querySelectorAll('[data-download-errors]').forEach(button => {
