@@ -1,6 +1,7 @@
 using Dataportal.Context;
 using Dataportal.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Dataportal.Models;
 using Microsoft.AspNetCore.Identity;
@@ -46,12 +47,19 @@ builder.Services.AddSession(options =>
 });
 
 // Add cookie authentication
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+})
     .AddCookie(options =>
     {
         options.LoginPath = "/Compte/SeConnecter"; // Redirects to your login page if not authenticated.
         options.ReturnUrlParameter = "returnUrl";
-    });
+    })
+    .AddScheme<AuthenticationSchemeOptions, NotebookTokenAuthenticationHandler>(
+        NotebookTokenDefaults.AuthenticationScheme,
+        _ => { });
 
 // Register the password hasher for Utilisateur class
 builder.Services.AddScoped<IPasswordHasher<Utilisateur>, PasswordHasher<Utilisateur>>();

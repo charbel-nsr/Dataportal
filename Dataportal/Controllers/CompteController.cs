@@ -398,6 +398,92 @@ namespace Dataportal.Controllers
             return View("Profil", model);
         }
 
+        // GET: /Compte/NotebookTokens
+        [HttpGet]
+        public async Task<IActionResult> NotebookTokens()
+        {
+            var utilisateur = await GetCurrentUserAsync();
+            if (utilisateur == null)
+            {
+                _logger.LogWarning("Notebook tokens page requested without a logged in user.");
+                return RedirectToAction("SeConnecter", "Compte");
+            }
+
+            var model = await BuildNotebookTokensViewModel(utilisateur);
+            model.NewToken = TempData["NotebookToken"] as string;
+
+            return View(model);
+        }
+
+        // POST: /Compte/NotebookTokens/Create
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateNotebookToken(NotebookTokensViewModel model)
+        {
+            var utilisateur = await GetCurrentUserAsync();
+            if (utilisateur == null)
+            {
+                _logger.LogWarning("Notebook token creation attempted without a logged in user.");
+                return RedirectToAction("SeConnecter", "Compte");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                var viewModel = await BuildNotebookTokensViewModel(utilisateur);
+                viewModel.Label = model.Label;
+                return View("NotebookTokens", viewModel);
+            }
+
+            var token = SecurityTokenHelper.GenerateSecureToken();
+            var tokenHash = SecurityTokenHelper.ComputeSha256(token);
+
+            var notebookToken = new NotebookApiToken
+            {
+                Label = model.Label?.Trim() ?? string.Empty,
+                TokenHash = tokenHash,
+                CreatedAtUtc = DateTime.UtcNow,
+                IdUtilisateur = utilisateur.Id
+            };
+
+            _context.NotebookApiTokens.Add(notebookToken);
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "Notebook token created. Copy it now as it will not be shown again.";
+            TempData["NotebookToken"] = token;
+
+            return RedirectToAction("NotebookTokens");
+        }
+
+        // POST: /Compte/NotebookTokens/Revoke
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RevokeNotebookToken(int id)
+        {
+            var utilisateur = await GetCurrentUserAsync();
+            if (utilisateur == null)
+            {
+                _logger.LogWarning("Notebook token revoke attempted without a logged in user.");
+                return RedirectToAction("SeConnecter", "Compte");
+            }
+
+            var notebookToken = await _context.NotebookApiTokens
+                .FirstOrDefaultAsync(t => t.Id == id && t.IdUtilisateur == utilisateur.Id);
+
+            if (notebookToken == null)
+            {
+                return NotFound();
+            }
+
+            if (!notebookToken.RevokedAtUtc.HasValue)
+            {
+                notebookToken.RevokedAtUtc = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+            }
+
+            TempData["SuccessMessage"] = "Notebook token revoked.";
+            return RedirectToAction("NotebookTokens");
+        }
+
         // GET: /Compte/ChangerMotDePasse
         [HttpGet]
         public async Task<IActionResult> ChangerMotDePasse()
@@ -420,6 +506,39 @@ namespace Dataportal.Controllers
                 MotDePasseActuel = ""
             };
             return View(model);
+        }
+
+        private async Task<Utilisateur?> GetCurrentUserAsync()
+        {
+            var userEmail = User.Identity?.Name;
+            if (string.IsNullOrWhiteSpace(userEmail))
+            {
+                return null;
+            }
+
+            return await _context.Utilisateur.FirstOrDefaultAsync(u => u.Email == userEmail);
+        }
+
+        private async Task<NotebookTokensViewModel> BuildNotebookTokensViewModel(Utilisateur utilisateur)
+        {
+            var tokens = await _context.NotebookApiTokens
+                .AsNoTracking()
+                .Where(t => t.IdUtilisateur == utilisateur.Id)
+                .OrderByDescending(t => t.CreatedAtUtc)
+                .Select(t => new NotebookTokenListItemViewModel
+                {
+                    Id = t.Id,
+                    Label = t.Label,
+                    CreatedAtUtc = t.CreatedAtUtc,
+                    LastUsedAtUtc = t.LastUsedAtUtc,
+                    RevokedAtUtc = t.RevokedAtUtc
+                })
+                .ToListAsync();
+
+            return new NotebookTokensViewModel
+            {
+                Tokens = tokens
+            };
         }
 
         // POST: /Compte/ChangerMotDePasse

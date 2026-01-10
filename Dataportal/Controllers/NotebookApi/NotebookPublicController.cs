@@ -1,4 +1,8 @@
-﻿using Dataportal.Context;
+﻿using Dataportal.Classes;
+using Dataportal.Context;
+using Dataportal.Services;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -28,19 +32,47 @@ namespace Dataportal.Controllers.NotebookApi
                 return schemaCheck;
             }
 
-            if (string.IsNullOrWhiteSpace(table))
+            var tableCheck = ValidateTableName(table, out var normalizedTable);
+            if (tableCheck != null)
             {
-                return BadRequest(new ProblemDetails
+                return tableCheck;
+            }
+
+            var metadonnee = await FindMetadonneeForTableAsync(normalizedTable, cancellationToken);
+            if (metadonnee == null)
+            {
+                return NotFound(new ProblemDetails
                 {
-                    Title = "Table name is required",
-                    Detail = "A table name must be provided.",
-                    Status = StatusCodes.Status400BadRequest,
-                    Type = "https://httpstatuses.com/400"
+                    Title = "Dataset not found",
+                    Detail = $"No dataset metadata is associated with table '{normalizedTable}'."
                 });
             }
 
+            var tokenAuthResult = await HttpContext.AuthenticateAsync(NotebookTokenDefaults.AuthenticationScheme);
+            if (tokenAuthResult.Succeeded && tokenAuthResult.Principal != null)
+            {
+                HttpContext.User = tokenAuthResult.Principal;
+            }
+            else if (tokenAuthResult.Failure != null)
+            {
+                return Unauthorized(new ProblemDetails
+                {
+                    Title = "Invalid token",
+                    Detail = "The provided notebook token is invalid.",
+                    Status = StatusCodes.Status401Unauthorized,
+                    Type = "https://httpstatuses.com/401"
+                });
+            }
+
+            if (!HttpContextUserHelper.CanCurrentUserAccessMetadonnee(HttpContext, Context, metadonnee, out var requiresAuthentication))
+            {
+                return requiresAuthentication
+                    ? Challenge(NotebookTokenDefaults.AuthenticationScheme)
+                    : Forbid();
+            }
+
             var resolvedLimit = Math.Clamp(limit ?? 100, 1, MaxRows);
-            var qualifiedTable = BuildQualifiedTable(schema, table);
+            var qualifiedTable = BuildQualifiedTable(schema, normalizedTable);
 
             using var connection = new SqlConnection(Context.Database.GetConnectionString());
             await connection.OpenAsync(cancellationToken);

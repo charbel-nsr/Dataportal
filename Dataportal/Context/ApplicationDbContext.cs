@@ -35,6 +35,7 @@ namespace Dataportal.Context
         public DbSet<QualiteDonnees> QualiteDonnees { get; set; }
         public DbSet<TypeEnergieRenouvelable> TypeEnergieRenouvelable { get; set; }
         public DbSet<MessageAccueil> MessageAccueil { get; set; }
+        public DbSet<NotebookApiToken> NotebookApiTokens { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -390,6 +391,25 @@ namespace Dataportal.Context
                       .HasMaxLength(4000);
                 entity.Property(m => m.DateDerniereModification)
                       .IsRequired();
+            });
+
+            modelBuilder.Entity<NotebookApiToken>(entity =>
+            {
+                entity.HasKey(t => t.Id);
+                entity.Property(t => t.Label)
+                      .IsRequired()
+                      .HasMaxLength(100);
+                entity.Property(t => t.TokenHash)
+                      .IsRequired()
+                      .HasMaxLength(64);
+                entity.Property(t => t.CreatedAtUtc)
+                      .IsRequired();
+                entity.HasIndex(t => t.TokenHash)
+                      .IsUnique();
+                entity.HasOne(t => t.Utilisateur)
+                      .WithMany()
+                      .HasForeignKey(t => t.IdUtilisateur)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
         }
     }

@@ -1,0 +1,104 @@
+﻿@model Dataportal.ViewModels.NotebookTokensViewModel
+
+@{
+    ViewData["Title"] = "Notebook API tokens";
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col">
+            <h2 class="mb-3">Notebook API tokens</h2>
+            <p class="text-muted">Create tokens to authenticate notebook and service requests. Copy new tokens now; they will not be shown again.</p>
+        </div>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success">
+            @TempData["SuccessMessage"]
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Model.NewToken))
+    {
+        <div class="alert alert-warning">
+            <strong>New token:</strong>
+            <code class="ms-2">@Model.NewToken</code>
+        </div>
+    }
+
+    <div class="row mt-4">
+        <div class="col-lg-6">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Create a new token</h5>
+                    <form asp-action="CreateNotebookToken" method="post">
+                        @Html.AntiForgeryToken()
+                        <div class="form-floating mb-3">
+                            <input asp-for="Label" class="form-control" placeholder="Token label" />
+                            <label asp-for="Label"></label>
+                            <span asp-validation-for="Label" class="text-danger"></span>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Create token</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col">
+            <h5 class="mb-3">Your tokens</h5>
+            @if (Model.Tokens.Count == 0)
+            {
+                <div class="alert alert-info">No tokens created yet.</div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-striped align-middle">
+                        <thead>
+                            <tr>
+                                <th>Label</th>
+                                <th>Created</th>
+                                <th>Last used</th>
+                                <th>Status</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var token in Model.Tokens)
+                            {
+                                <tr>
+                                    <td>@token.Label</td>
+                                    <td>@token.CreatedAtUtc.ToLocalTime().ToString("g")</td>
+                                    <td>@(token.LastUsedAtUtc.HasValue ? token.LastUsedAtUtc.Value.ToLocalTime().ToString("g") : "Never")</td>
+                                    <td>
+                                        @if (token.RevokedAtUtc.HasValue)
+                                        {
+                                            <span class="badge bg-secondary">Revoked</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-success">Active</span>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        @if (!token.RevokedAtUtc.HasValue)
+                                        {
+                                            <form asp-action="RevokeNotebookToken" method="post" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@token.Id" />
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">Revoke</button>
+                                            </form>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
