@@ -48,6 +48,11 @@ namespace Dataportal.Controllers.NotebookApi
                 });
             }
 
+            if (!metadonnee.AutoriserApi)
+            {
+                return Forbid();
+            }
+
             if (!HttpContextUserHelper.CanCurrentUserAccessMetadonnee(HttpContext, Context, metadonnee, out var requiresAuthentication))
             {
                 return requiresAuthentication
