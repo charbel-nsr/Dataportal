@@ -27,6 +27,73 @@ namespace Dataportal.Controllers
             _accountEmailService = accountEmailService;
         }
 
+        // GET: /Gestion/NotebookApiAccessLogs
+        [HttpGet]
+        [Authorize(Roles = "administrator")]
+        public async Task<IActionResult> NotebookApiAccessLogs(int? datasetId, int? userId, int? tokenId, DateTime? dateFromUtc, DateTime? dateToUtc)
+        {
+            var query = _context.NotebookApiAccessLogs
+                .AsNoTracking()
+                .Include(l => l.Metadonnee)
+                .Include(l => l.Utilisateur)
+                .Include(l => l.NotebookApiToken)
+                .AsQueryable();
+
+            if (datasetId.HasValue)
+            {
+                query = query.Where(l => l.IdMetadonnee == datasetId.Value);
+            }
+
+            if (userId.HasValue)
+            {
+                query = query.Where(l => l.IdUtilisateur == userId.Value);
+            }
+
+            if (tokenId.HasValue)
+            {
+                query = query.Where(l => l.IdNotebookApiToken == tokenId.Value);
+            }
+
+            if (dateFromUtc.HasValue)
+            {
+                query = query.Where(l => l.AccessedAtUtc >= dateFromUtc.Value);
+            }
+
+            if (dateToUtc.HasValue)
+            {
+                query = query.Where(l => l.AccessedAtUtc <= dateToUtc.Value);
+            }
+
+            var logs = await query
+                .OrderByDescending(l => l.AccessedAtUtc)
+                .Take(500)
+                .Select(l => new NotebookApiAccessLogItemViewModel
+                {
+                    Id = l.Id,
+                    DatasetId = l.IdMetadonnee,
+                    DatasetName = l.Metadonnee != null ? l.Metadonnee.Nom : string.Empty,
+                    UserId = l.IdUtilisateur,
+                    UserDisplayName = l.Utilisateur != null ? $"{l.Utilisateur.Prenom} {l.Utilisateur.Nom}".Trim() : null,
+                    TokenId = l.IdNotebookApiToken,
+                    TokenLabel = l.NotebookApiToken != null ? l.NotebookApiToken.Label : null,
+                    AccessedAtUtc = l.AccessedAtUtc,
+                    BytesReturned = l.BytesReturned
+                })
+                .ToListAsync();
+
+            var viewModel = new NotebookApiAccessLogsViewModel
+            {
+                DatasetId = datasetId,
+                UserId = userId,
+                TokenId = tokenId,
+                DateFromUtc = dateFromUtc,
+                DateToUtc = dateToUtc,
+                Logs = logs
+            };
+
+            return View(viewModel);
+        }
+
         // GET: /Gestion/DemandeDeCompte
         [HttpGet]
         [Authorize(Roles = "administrator")]

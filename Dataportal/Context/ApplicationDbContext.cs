@@ -36,6 +36,7 @@ namespace Dataportal.Context
         public DbSet<TypeEnergieRenouvelable> TypeEnergieRenouvelable { get; set; }
         public DbSet<MessageAccueil> MessageAccueil { get; set; }
         public DbSet<NotebookApiToken> NotebookApiTokens { get; set; }
+        public DbSet<NotebookApiAccessLog> NotebookApiAccessLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -101,6 +102,30 @@ namespace Dataportal.Context
                       .HasMaxLength(200);
                 entity.HasIndex(r => r.Key)
                       .IsUnique();
+            });
+            modelBuilder.Entity<NotebookApiAccessLog>(entity =>
+            {
+                entity.HasKey(l => l.Id);
+                entity.Property(l => l.AccessedAtUtc)
+                      .HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(l => l.BytesReturned)
+                      .IsRequired();
+                entity.HasIndex(l => l.IdMetadonnee);
+                entity.HasIndex(l => l.IdUtilisateur);
+                entity.HasIndex(l => l.IdNotebookApiToken);
+                entity.HasIndex(l => l.AccessedAtUtc);
+                entity.HasOne(l => l.Metadonnee)
+                      .WithMany()
+                      .HasForeignKey(l => l.IdMetadonnee)
+                      .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(l => l.Utilisateur)
+                      .WithMany()
+                      .HasForeignKey(l => l.IdUtilisateur)
+                      .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(l => l.NotebookApiToken)
+                      .WithMany()
+                      .HasForeignKey(l => l.IdNotebookApiToken)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
             modelBuilder.Entity<DomaineEmail>(entity =>
             {

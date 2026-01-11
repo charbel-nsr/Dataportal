@@ -63,6 +63,7 @@ namespace Dataportal.Services
 
             var claims = new List<Claim>
             {
+                new("NotebookTokenId", notebookToken.Id.ToString(CultureInfo.InvariantCulture)),
                 new("UserId", user.Id.ToString(CultureInfo.InvariantCulture)),
                 new("RoleId", user.IdRole.ToString(CultureInfo.InvariantCulture)),
                 new("EntrepriseId", user.IdEntreprise.ToString(CultureInfo.InvariantCulture)),

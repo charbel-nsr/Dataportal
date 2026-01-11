@@ -10,7 +10,7 @@ namespace Dataportal.Models
         [MaxLength(200)]
         public string Key { get; set; }
 
-        public int Count { get; set; }
+        public long Count { get; set; }
 
         public DateTime WindowEndUtc { get; set; }
     }

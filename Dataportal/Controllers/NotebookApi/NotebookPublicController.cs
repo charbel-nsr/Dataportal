@@ -78,6 +78,13 @@ namespace Dataportal.Controllers.NotebookApi
                 });
             }
 
+            var rateLimitContext = BuildPublicRateLimitContext();
+            var rateLimitResult = await EnforceRateLimitAsync(rateLimitContext, cancellationToken);
+            if (rateLimitResult != null)
+            {
+                return rateLimitResult;
+            }
+
             var primaryKeyColumns = await GetPrimaryKeyColumnsAsync(target, cancellationToken);
             if (primaryKeyColumns.Count == 0)
             {
@@ -109,7 +116,8 @@ namespace Dataportal.Controllers.NotebookApi
                 }
             }
 
-            return await StreamParquetAsync(target, primaryKeyColumns, limit.Value, cursorValues, cancellationToken);
+            var accessContext = BuildAccessContext(id.Value);
+            return await StreamParquetAsync(target, primaryKeyColumns, limit.Value, cursorValues, accessContext, rateLimitContext, cancellationToken);
         }
     }
 }

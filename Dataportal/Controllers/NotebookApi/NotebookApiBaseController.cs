@@ -1,4 +1,5 @@
-﻿using Dataportal.Context;
+﻿using Dataportal.Classes;
+using Dataportal.Context;
 using Dataportal.Models;
 using Dataportal.Services;
 using Microsoft.AspNetCore.Http;
@@ -286,11 +287,98 @@ ORDER BY ic.key_ordinal";
 
         protected sealed record PrimaryKeyColumn(string Name, SqlDbType DbType, bool IsNullable);
 
+        protected sealed record NotebookApiAccessContext(int DatasetId, int? UserId, int? NotebookTokenId);
+
+        protected sealed record NotebookApiRateLimitContext(string Key, long Limit, DateTime WindowEndUtc);
+
+        protected NotebookApiAccessContext BuildAccessContext(int datasetId)
+        {
+            return new NotebookApiAccessContext(
+                datasetId,
+                HttpContextUserHelper.TryGetCurrentUserId(User),
+                TryGetNotebookTokenId());
+        }
+
+        protected NotebookApiRateLimitContext? BuildPublicRateLimitContext()
+        {
+            if (Options.PublicDailyByteLimit <= 0)
+            {
+                return null;
+            }
+
+            var today = DateTime.UtcNow.Date;
+            var windowEnd = today.AddDays(1);
+            var key = $"notebook-public:{today:yyyyMMdd}";
+            return new NotebookApiRateLimitContext(key, Options.PublicDailyByteLimit, windowEnd);
+        }
+
+        protected NotebookApiRateLimitContext? BuildPrivateTokenRateLimitContext(int tokenId)
+        {
+            if (Options.PrivateTokenByteLimit <= 0)
+            {
+                return null;
+            }
+
+            var windowMinutes = Options.PrivateTokenWindowMinutes <= 0 ? 60 : Options.PrivateTokenWindowMinutes;
+            var windowEnd = DateTime.UtcNow.AddMinutes(windowMinutes);
+            var key = $"notebook-private:{tokenId}";
+            return new NotebookApiRateLimitContext(key, Options.PrivateTokenByteLimit, windowEnd);
+        }
+
+        protected async Task<IActionResult?> EnforceRateLimitAsync(NotebookApiRateLimitContext? rateLimitContext, CancellationToken cancellationToken)
+        {
+            if (rateLimitContext == null)
+            {
+                return null;
+            }
+
+            var normalizedKey = rateLimitContext.Key.ToLowerInvariant();
+            var now = DateTime.UtcNow;
+            var entry = await Context.RateLimitEntries.FirstOrDefaultAsync(r => r.Key == normalizedKey, cancellationToken);
+            if (entry == null || entry.WindowEndUtc < now)
+            {
+                if (entry == null)
+                {
+                    entry = new RateLimitEntry
+                    {
+                        Key = normalizedKey,
+                        Count = 0,
+                        WindowEndUtc = rateLimitContext.WindowEndUtc
+                    };
+                    Context.RateLimitEntries.Add(entry);
+                }
+                else
+                {
+                    entry.Count = 0;
+                    entry.WindowEndUtc = rateLimitContext.WindowEndUtc;
+                    Context.RateLimitEntries.Update(entry);
+                }
+
+                await Context.SaveChangesAsync(cancellationToken);
+                return null;
+            }
+
+            if (entry.Count >= rateLimitContext.Limit)
+            {
+                return StatusCode(StatusCodes.Status429TooManyRequests, new ProblemDetails
+                {
+                    Title = "Rate limit exceeded",
+                    Detail = "The notebook API rate limit has been exceeded. Try again later.",
+                    Status = StatusCodes.Status429TooManyRequests,
+                    Type = "https://httpstatuses.com/429"
+                });
+            }
+
+            return null;
+        }
+
         protected async Task<IActionResult> StreamParquetAsync(
             TableImportTarget target,
             IReadOnlyList<PrimaryKeyColumn> primaryKeyColumns,
             int limit,
             object?[]? cursorValues,
+            NotebookApiAccessContext? accessContext,
+            NotebookApiRateLimitContext? rateLimitContext,
             CancellationToken cancellationToken)
         {
             var qualifiedTable = target.QualifiedNameWithDatabase;
@@ -329,6 +417,8 @@ ORDER BY ic.key_ordinal";
 
             if (pkRows.Count == 0)
             {
+                await RecordAccessLogAsync(accessContext, 0, cancellationToken);
+                await UpdateRateLimitAsync(rateLimitContext, 0, cancellationToken);
                 return NoContent();
             }
 
@@ -340,6 +430,8 @@ ORDER BY ic.key_ordinal";
             Response.Headers["X-Has-More"] = hasMore ? "true" : "false";
             Response.Headers["X-Next-Cursor"] = hasMore ? nextCursor : string.Empty;
             Response.ContentType = "application/x-parquet";
+
+            var bytesWritten = 0L;
 
             try
             {
@@ -356,6 +448,8 @@ ORDER BY ic.key_ordinal";
 
                 if (!await reader.ReadAsync(cancellationToken))
                 {
+                    await RecordAccessLogAsync(accessContext, 0, cancellationToken);
+                    await UpdateRateLimitAsync(rateLimitContext, 0, cancellationToken);
                     return NoContent();
                 }
 
@@ -379,14 +473,16 @@ ORDER BY ic.key_ordinal";
 
                     if (rowsWritten % rowGroupSize == 0)
                     {
-                        await WriteRowGroupAsync(parquetWriter, columns, cancellationToken);
+                        await WriteRowGroupAsync(parquetWriter, schema, columns, cancellationToken);
                     }
                 } while (await reader.ReadAsync(cancellationToken));
 
                 if (columns.Any(column => column.Count > 0))
                 {
-                    await WriteRowGroupAsync(parquetWriter, columns, cancellationToken);
+                    await WriteRowGroupAsync(parquetWriter, schema, columns, cancellationToken);
                 }
+
+                bytesWritten = limitedStream.BytesWritten;
             }
             catch (NotebookApiResponseTooLargeException)
             {
@@ -405,7 +501,78 @@ ORDER BY ic.key_ordinal";
                 return new EmptyResult();
             }
 
+            await RecordAccessLogAsync(accessContext, bytesWritten, cancellationToken);
+            await UpdateRateLimitAsync(rateLimitContext, bytesWritten, cancellationToken);
+
             return new EmptyResult();
+        }
+
+        protected Task<IActionResult> StreamParquetAsync(
+            TableImportTarget target,
+            IReadOnlyList<PrimaryKeyColumn> primaryKeyColumns,
+            int limit,
+            object?[]? cursorValues,
+            CancellationToken cancellationToken)
+            => StreamParquetAsync(target, primaryKeyColumns, limit, cursorValues, null, null, cancellationToken);
+
+        protected int? TryGetNotebookTokenId()
+        {
+            var claim = User.FindFirst("NotebookTokenId")?.Value;
+            return int.TryParse(claim, out var id) ? id : (int?)null;
+        }
+
+        private async Task RecordAccessLogAsync(NotebookApiAccessContext? accessContext, long bytesReturned, CancellationToken cancellationToken)
+        {
+            if (accessContext == null)
+            {
+                return;
+            }
+
+            var logEntry = new NotebookApiAccessLog
+            {
+                IdMetadonnee = accessContext.DatasetId,
+                IdUtilisateur = accessContext.UserId,
+                IdNotebookApiToken = accessContext.NotebookTokenId,
+                AccessedAtUtc = DateTime.UtcNow,
+                BytesReturned = bytesReturned
+            };
+
+            Context.NotebookApiAccessLogs.Add(logEntry);
+            await Context.SaveChangesAsync(cancellationToken);
+        }
+
+        private async Task UpdateRateLimitAsync(NotebookApiRateLimitContext? rateLimitContext, long bytesReturned, CancellationToken cancellationToken)
+        {
+            if (rateLimitContext == null)
+            {
+                return;
+            }
+
+            var normalizedKey = rateLimitContext.Key.ToLowerInvariant();
+            var now = DateTime.UtcNow;
+            var entry = await Context.RateLimitEntries.FirstOrDefaultAsync(r => r.Key == normalizedKey, cancellationToken);
+            if (entry == null || entry.WindowEndUtc < now)
+            {
+                var newEntry = entry ?? new RateLimitEntry { Key = normalizedKey };
+                newEntry.Count = bytesReturned;
+                newEntry.WindowEndUtc = rateLimitContext.WindowEndUtc;
+                if (entry == null)
+                {
+                    Context.RateLimitEntries.Add(newEntry);
+                }
+                else
+                {
+                    Context.RateLimitEntries.Update(newEntry);
+                }
+
+                await Context.SaveChangesAsync(cancellationToken);
+                return;
+            }
+
+            entry.Count += bytesReturned;
+            entry.WindowEndUtc = rateLimitContext.WindowEndUtc;
+            Context.RateLimitEntries.Update(entry);
+            await Context.SaveChangesAsync(cancellationToken);
         }
 
         private static List<List<object?>> BuildColumnBuffers(int fieldCount)
@@ -427,14 +594,18 @@ ORDER BY ic.key_ordinal";
             }
         }
 
-        private static async Task WriteRowGroupAsync(ParquetWriter writer, List<List<object?>> columns, CancellationToken cancellationToken)
+        private static async Task WriteRowGroupAsync(
+            ParquetWriter writer,
+            Parquet.Schema.ParquetSchema schema,
+            List<List<object?>> columns,
+            CancellationToken cancellationToken)
         {
             using var rowGroupWriter = writer.CreateRowGroup();
             for (var i = 0; i < columns.Count; i++)
             {
-                var field = (DataField)writer.Schema.Fields[i];
+                var field = (DataField)schema.Fields[i];
                 var data = columns[i].ToArray();
-                await rowGroupWriter.WriteColumnAsync(new DataColumn(field, data), cancellationToken);
+                await rowGroupWriter.WriteColumnAsync(new Parquet.Data.DataColumn(field, data), cancellationToken);
                 columns[i].Clear();
             }
         }
