@@ -16,6 +16,7 @@ using System.Data;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -24,6 +25,15 @@ namespace Dataportal.Controllers.NotebookApi
     [ApiController]
     public abstract class NotebookApiBaseController : ControllerBase
     {
+        protected enum NotebookApiTableType
+        {
+            Donnees,
+            EventLogs,
+            ContexteEnvironnemental
+        }
+
+        private static readonly Regex TableNameRegex = new Regex("^[A-Za-z0-9_]+$", RegexOptions.Compiled);
+
         protected NotebookApiBaseController(ApplicationDbContext context, IOptions<NotebookApiOptions> options)
         {
             Context = context;
@@ -43,6 +53,34 @@ namespace Dataportal.Controllers.NotebookApi
                 .Include(m => m.DonneesEventLogs)
                 .Include(m => m.DonneesContexteEnvironnemental)
                 .FirstOrDefaultAsync(m => m.Id == datasetId, cancellationToken);
+        }
+
+        protected async Task<Metadonnee?> FindMetadonneeByTableNameAsync(
+            NotebookApiTableType tableType,
+            string tableName,
+            CancellationToken cancellationToken)
+        {
+            var query = Context.Metadonnee
+                .AsNoTracking()
+                .Include(m => m.Utilisateur)
+                .Include(m => m.Donnees)
+                .Include(m => m.DonneesEventLogs)
+                .Include(m => m.DonneesContexteEnvironnemental);
+
+            return tableType switch
+            {
+                NotebookApiTableType.Donnees => await query.FirstOrDefaultAsync(
+                    m => m.Donnees != null && m.Donnees.NomDeLaTable == tableName,
+                    cancellationToken),
+                NotebookApiTableType.EventLogs => await query.FirstOrDefaultAsync(
+                    m => m.DonneesEventLogs != null && m.DonneesEventLogs.NomDeLaTable == tableName,
+                    cancellationToken),
+                NotebookApiTableType.ContexteEnvironnemental => await query.FirstOrDefaultAsync(
+                    m => m.DonneesContexteEnvironnemental != null &&
+                         m.DonneesContexteEnvironnemental.NomDeLaTable == tableName,
+                    cancellationToken),
+                _ => null
+            };
         }
 
         protected bool TryResolveDatasetTarget(Metadonnee metadonnee, out TableImportTarget target, out string? errorMessage)
@@ -70,6 +108,81 @@ namespace Dataportal.Controllers.NotebookApi
 
             errorMessage = "Dataset does not include a data, event logs, or environmental context table.";
             return false;
+        }
+
+        protected bool TryResolveDatasetTarget(
+            Metadonnee metadonnee,
+            NotebookApiTableType tableType,
+            out TableImportTarget target,
+            out string? errorMessage)
+        {
+            errorMessage = null;
+            target = null!;
+
+            switch (tableType)
+            {
+                case NotebookApiTableType.Donnees:
+                    if (!string.IsNullOrWhiteSpace(metadonnee.Donnees?.NomDeLaTable))
+                    {
+                        target = new TableImportTarget(TableImportSchemas.Donnees, metadonnee.Donnees.NomDeLaTable);
+                        return true;
+                    }
+                    break;
+                case NotebookApiTableType.EventLogs:
+                    if (!string.IsNullOrWhiteSpace(metadonnee.DonneesEventLogs?.NomDeLaTable))
+                    {
+                        target = new TableImportTarget(TableImportSchemas.DonneesEventLogs, metadonnee.DonneesEventLogs.NomDeLaTable);
+                        return true;
+                    }
+                    break;
+                case NotebookApiTableType.ContexteEnvironnemental:
+                    if (!string.IsNullOrWhiteSpace(metadonnee.DonneesContexteEnvironnemental?.NomDeLaTable))
+                    {
+                        target = new TableImportTarget(
+                            TableImportSchemas.DonneesContexteEnvironnemental,
+                            metadonnee.DonneesContexteEnvironnemental.NomDeLaTable);
+                        return true;
+                    }
+                    break;
+            }
+
+            errorMessage = "Dataset does not include the requested table type.";
+            return false;
+        }
+
+        protected bool TryParseTableType(string? tableType, out NotebookApiTableType parsedType)
+        {
+            parsedType = default;
+            if (string.IsNullOrWhiteSpace(tableType))
+            {
+                return false;
+            }
+
+            var normalized = new string(tableType.Where(char.IsLetterOrDigit).ToArray())
+                .ToLowerInvariant();
+
+            return normalized switch
+            {
+                "donnees" => SetParsedType(NotebookApiTableType.Donnees, out parsedType),
+                "eventlogs" => SetParsedType(NotebookApiTableType.EventLogs, out parsedType),
+                "donneeseventlogs" => SetParsedType(NotebookApiTableType.EventLogs, out parsedType),
+                "contexteenv" => SetParsedType(NotebookApiTableType.ContexteEnvironnemental, out parsedType),
+                "contexteenvironmental" => SetParsedType(NotebookApiTableType.ContexteEnvironnemental, out parsedType),
+                "donneescontexteenv" => SetParsedType(NotebookApiTableType.ContexteEnvironnemental, out parsedType),
+                "donneescontexteenvironmental" => SetParsedType(NotebookApiTableType.ContexteEnvironnemental, out parsedType),
+                _ => false
+            };
+        }
+
+        protected bool IsValidTableName(string tableName)
+        {
+            return TableNameRegex.IsMatch(tableName);
+        }
+
+        private static bool SetParsedType(NotebookApiTableType tableType, out NotebookApiTableType parsedType)
+        {
+            parsedType = tableType;
+            return true;
         }
 
         protected async Task<IReadOnlyList<PrimaryKeyColumn>> GetPrimaryKeyColumnsAsync(TableImportTarget target, CancellationToken cancellationToken)

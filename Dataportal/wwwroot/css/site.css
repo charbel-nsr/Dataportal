@@ -793,3 +793,36 @@ th[data-sortable="true"] {
     align-self: flex-start;
     box-shadow: none !important;
 }
+
+/* Notebook API documentation */
+.notebook-api-hero {
+    background: radial-gradient(circle at top left, rgba(231, 43, 55, 0.15), transparent 55%), radial-gradient(circle at bottom right, rgba(0, 0, 0, 0.08), transparent 40%);
+}
+
+.notebook-api-hero-card {
+    border-radius: 1rem;
+    background: #ffffff;
+}
+
+.notebook-api-endpoint {
+    background: #f8f9fa;
+    border-radius: 0.75rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid #e9ecef;
+    font-size: 0.9rem;
+    word-break: break-all;
+}
+
+.code-block {
+    background: #0f172a;
+    color: #e2e8f0;
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    overflow-x: auto;
+}
+
+    .code-block code {
+        color: inherit;
+    }

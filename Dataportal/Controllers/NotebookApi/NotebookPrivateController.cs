@@ -21,14 +21,52 @@ namespace Dataportal.Controllers.NotebookApi
         }
 
         [HttpGet("donnees/parquet")]
-        public async Task<IActionResult> QueryParquetAsync([FromQuery] int? id, [FromQuery] int? limit, [FromQuery] string? cursor, CancellationToken cancellationToken)
+        public async Task<IActionResult> QueryParquetAsync(
+            [FromQuery] string? schema,
+            [FromQuery] string? table,
+            [FromQuery] int? limit,
+            [FromQuery] string? cursor,
+            CancellationToken cancellationToken)
         {
-            if (!id.HasValue)
+            if (string.IsNullOrWhiteSpace(schema))
             {
                 return BadRequest(new ProblemDetails
                 {
-                    Title = "Dataset id is required",
-                    Detail = "A dataset id must be provided.",
+                    Title = "Schema is required",
+                    Detail = "A schema must be provided (donnees, donnees_event_logs, donnees_contexte_environnemental).",
+                    Status = StatusCodes.Status400BadRequest,
+                    Type = "https://httpstatuses.com/400"
+                });
+            }
+
+            if (!TryParseTableType(schema, out var parsedTableType))
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Invalid schema",
+                    Detail = "Schema must be one of: donnees, donnees_event_logs, donnees_contexte_environnemental.",
+                    Status = StatusCodes.Status400BadRequest,
+                    Type = "https://httpstatuses.com/400"
+                });
+            }
+
+            if (string.IsNullOrWhiteSpace(table))
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Table name is required",
+                    Detail = "A table name must be provided.",
+                    Status = StatusCodes.Status400BadRequest,
+                    Type = "https://httpstatuses.com/400"
+                });
+            }
+
+            if (!IsValidTableName(table))
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Invalid table name",
+                    Detail = "Table name contains unsupported characters.",
                     Status = StatusCodes.Status400BadRequest,
                     Type = "https://httpstatuses.com/400"
                 });
@@ -56,13 +94,13 @@ namespace Dataportal.Controllers.NotebookApi
                 });
             }
 
-            var metadonnee = await FindMetadonneeByIdAsync(id.Value, cancellationToken);
+            var metadonnee = await FindMetadonneeByTableNameAsync(parsedTableType, table, cancellationToken);
             if (metadonnee == null)
             {
                 return NotFound(new ProblemDetails
                 {
                     Title = "Dataset not found",
-                    Detail = $"No dataset metadata is associated with id '{id.Value}'."
+                    Detail = $"No dataset metadata is associated with schema '{schema}' and table '{table}'."
                 });
             }
 
@@ -78,7 +116,7 @@ namespace Dataportal.Controllers.NotebookApi
                     : Forbid();
             }
 
-            if (!TryResolveDatasetTarget(metadonnee, out var target, out var resolutionError))
+            if (!TryResolveDatasetTarget(metadonnee, parsedTableType, out var target, out var resolutionError))
             {
                 return NotFound(new ProblemDetails
                 {
@@ -126,7 +164,7 @@ namespace Dataportal.Controllers.NotebookApi
                 }
             }
 
-            var accessContext = BuildAccessContext(id.Value);
+            var accessContext = BuildAccessContext(metadonnee.Id);
             return await StreamParquetAsync(target, primaryKeyColumns, limit.Value, cursorValues, accessContext, rateLimitContext, cancellationToken);
         }
     }
