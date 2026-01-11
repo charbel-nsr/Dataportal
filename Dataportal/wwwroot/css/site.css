@@ -103,6 +103,77 @@ header nav.scrolled {
     background: #f0f0f0 !important;
 }
 
+/* Documentation */
+.documentation-page {
+    background: #f8f9fb;
+}
+
+.documentation-hero {
+    background: linear-gradient(135deg, #ffffff 0%, #f3f5f9 100%);
+    border-bottom: 1px solid #e6e9f0;
+}
+
+    .documentation-hero h1 {
+        font-weight: 600;
+    }
+
+    .documentation-hero .lead {
+        max-width: 720px;
+    }
+
+.doc-card,
+.doc-role-card,
+.doc-role-panel {
+    background: #ffffff;
+    border: 1px solid #edf0f6;
+    border-radius: 16px;
+    box-shadow: 0 10px 24px rgba(24, 39, 75, 0.06);
+}
+
+.doc-card {
+    padding: 1.75rem;
+}
+
+.doc-card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: rgba(231, 43, 55, 0.12);
+    color: #e72b37;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    margin-bottom: 1rem;
+}
+
+.doc-role-card {
+    padding: 2rem;
+}
+
+.doc-role-panel {
+    padding: 1.5rem;
+    background: #fdfdff;
+}
+
+.doc-list {
+    padding-left: 1.2rem;
+    margin-bottom: 0;
+}
+
+.doc-list li {
+    margin-bottom: 0.65rem;
+    color: #4b5563;
+}
+
+.doc-list li:last-child {
+    margin-bottom: 0;
+}
+
+.tracking-wide {
+    letter-spacing: 0.08em;
+}
+
 /*Page Accueil hero*/
 .hero {
     background-repeat: no-repeat;
