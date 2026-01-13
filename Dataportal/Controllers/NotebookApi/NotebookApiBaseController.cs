@@ -60,6 +60,8 @@ namespace Dataportal.Controllers.NotebookApi
             string tableName,
             CancellationToken cancellationToken)
         {
+            var schemaName = GetSchemaName(tableType);
+            var qualifiedName = schemaName == null ? null : $"{schemaName}.{tableName}";
             var query = Context.Metadonnee
                 .AsNoTracking()
                 .Include(m => m.Utilisateur)
@@ -70,14 +72,18 @@ namespace Dataportal.Controllers.NotebookApi
             return tableType switch
             {
                 NotebookApiTableType.Donnees => await query.FirstOrDefaultAsync(
-                    m => m.Donnees != null && m.Donnees.NomDeLaTable == tableName,
+                    m => m.Donnees != null &&
+                         (m.Donnees.NomDeLaTable == tableName || m.Donnees.NomDeLaTable == qualifiedName),
                     cancellationToken),
                 NotebookApiTableType.EventLogs => await query.FirstOrDefaultAsync(
-                    m => m.DonneesEventLogs != null && m.DonneesEventLogs.NomDeLaTable == tableName,
+                    m => m.DonneesEventLogs != null &&
+                         (m.DonneesEventLogs.NomDeLaTable == tableName ||
+                          m.DonneesEventLogs.NomDeLaTable == qualifiedName),
                     cancellationToken),
                 NotebookApiTableType.ContexteEnvironnemental => await query.FirstOrDefaultAsync(
                     m => m.DonneesContexteEnvironnemental != null &&
-                         m.DonneesContexteEnvironnemental.NomDeLaTable == tableName,
+                         (m.DonneesContexteEnvironnemental.NomDeLaTable == tableName ||
+                          m.DonneesContexteEnvironnemental.NomDeLaTable == qualifiedName),
                     cancellationToken),
                 _ => null
             };
@@ -90,20 +96,35 @@ namespace Dataportal.Controllers.NotebookApi
 
             if (!string.IsNullOrWhiteSpace(metadonnee.Donnees?.NomDeLaTable))
             {
-                target = new TableImportTarget(TableImportSchemas.Donnees, metadonnee.Donnees.NomDeLaTable);
-                return true;
+                if (TryBuildTableImportTarget(metadonnee.Donnees.NomDeLaTable, TableImportSchemas.Donnees, out var parsedTarget))
+                {
+                    target = parsedTarget;
+                    return true;
+                }
             }
 
             if (!string.IsNullOrWhiteSpace(metadonnee.DonneesEventLogs?.NomDeLaTable))
             {
-                target = new TableImportTarget(TableImportSchemas.DonneesEventLogs, metadonnee.DonneesEventLogs.NomDeLaTable);
-                return true;
+                if (TryBuildTableImportTarget(
+                    metadonnee.DonneesEventLogs.NomDeLaTable,
+                    TableImportSchemas.DonneesEventLogs,
+                    out var parsedTarget))
+                {
+                    target = parsedTarget;
+                    return true;
+                }
             }
 
             if (!string.IsNullOrWhiteSpace(metadonnee.DonneesContexteEnvironnemental?.NomDeLaTable))
             {
-                target = new TableImportTarget(TableImportSchemas.DonneesContexteEnvironnemental, metadonnee.DonneesContexteEnvironnemental.NomDeLaTable);
-                return true;
+                if (TryBuildTableImportTarget(
+                    metadonnee.DonneesContexteEnvironnemental.NomDeLaTable,
+                    TableImportSchemas.DonneesContexteEnvironnemental,
+                    out var parsedTarget))
+                {
+                    target = parsedTarget;
+                    return true;
+                }
             }
 
             errorMessage = "Dataset does not include a data, event logs, or environmental context table.";
@@ -124,24 +145,37 @@ namespace Dataportal.Controllers.NotebookApi
                 case NotebookApiTableType.Donnees:
                     if (!string.IsNullOrWhiteSpace(metadonnee.Donnees?.NomDeLaTable))
                     {
-                        target = new TableImportTarget(TableImportSchemas.Donnees, metadonnee.Donnees.NomDeLaTable);
-                        return true;
+                        if (TryBuildTableImportTarget(metadonnee.Donnees.NomDeLaTable, TableImportSchemas.Donnees, out var parsedTarget))
+                        {
+                            target = parsedTarget;
+                            return true;
+                        }
                     }
                     break;
                 case NotebookApiTableType.EventLogs:
                     if (!string.IsNullOrWhiteSpace(metadonnee.DonneesEventLogs?.NomDeLaTable))
                     {
-                        target = new TableImportTarget(TableImportSchemas.DonneesEventLogs, metadonnee.DonneesEventLogs.NomDeLaTable);
-                        return true;
+                        if (TryBuildTableImportTarget(
+                            metadonnee.DonneesEventLogs.NomDeLaTable,
+                            TableImportSchemas.DonneesEventLogs,
+                            out var parsedTarget))
+                        {
+                            target = parsedTarget;
+                            return true;
+                        }
                     }
                     break;
                 case NotebookApiTableType.ContexteEnvironnemental:
                     if (!string.IsNullOrWhiteSpace(metadonnee.DonneesContexteEnvironnemental?.NomDeLaTable))
                     {
-                        target = new TableImportTarget(
+                        if (TryBuildTableImportTarget(
+                            metadonnee.DonneesContexteEnvironnemental.NomDeLaTable,
                             TableImportSchemas.DonneesContexteEnvironnemental,
-                            metadonnee.DonneesContexteEnvironnemental.NomDeLaTable);
-                        return true;
+                            out var parsedTarget))
+                        {
+                            target = parsedTarget;
+                            return true;
+                        }
                     }
                     break;
             }
@@ -177,6 +211,49 @@ namespace Dataportal.Controllers.NotebookApi
         protected bool IsValidTableName(string tableName)
         {
             return TableNameRegex.IsMatch(tableName);
+        }
+
+        private static string? GetSchemaName(NotebookApiTableType tableType)
+        {
+            return tableType switch
+            {
+                NotebookApiTableType.Donnees => TableImportSchemas.Donnees,
+                NotebookApiTableType.EventLogs => TableImportSchemas.DonneesEventLogs,
+                NotebookApiTableType.ContexteEnvironnemental => TableImportSchemas.DonneesContexteEnvironnemental,
+                _ => null
+            };
+        }
+
+        private static bool TryBuildTableImportTarget(string? storedName, string fallbackSchema, out TableImportTarget? target)
+        {
+            target = null;
+
+            if (string.IsNullOrWhiteSpace(storedName))
+            {
+                return false;
+            }
+
+            var segments = storedName.Split('.', 2, StringSplitOptions.RemoveEmptyEntries);
+            if (segments.Length == 2 && IsKnownSchema(segments[0]))
+            {
+                target = new TableImportTarget(segments[0], segments[1]);
+                return true;
+            }
+
+            target = new TableImportTarget(fallbackSchema, storedName.Trim());
+            return true;
+        }
+
+        private static bool IsKnownSchema(string? schema)
+        {
+            if (string.IsNullOrWhiteSpace(schema))
+            {
+                return false;
+            }
+
+            return schema.Equals(TableImportSchemas.Donnees, StringComparison.OrdinalIgnoreCase) ||
+                   schema.Equals(TableImportSchemas.DonneesEventLogs, StringComparison.OrdinalIgnoreCase) ||
+                   schema.Equals(TableImportSchemas.DonneesContexteEnvironnemental, StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool SetParsedType(NotebookApiTableType tableType, out NotebookApiTableType parsedType)
