@@ -32,7 +32,7 @@ namespace Dataportal.Controllers.NotebookApi
             ContexteEnvironnemental
         }
 
-        private static readonly Regex TableNameRegex = new Regex("^[A-Za-z0-9_]+$", RegexOptions.Compiled);
+        private static readonly Regex TableNameRegex = new Regex("^[A-Za-z0-9_-]+$", RegexOptions.Compiled);
 
         protected NotebookApiBaseController(ApplicationDbContext context, IOptions<NotebookApiOptions> options)
         {

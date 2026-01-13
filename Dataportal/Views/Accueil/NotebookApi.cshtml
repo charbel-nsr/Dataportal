@@ -71,7 +71,7 @@
                         </ul>
                         <div class="alert alert-secondary small" role="alert">
                             <strong>Safety note:</strong> the API validates schema/table names against metadata and only
-                            accepts alphanumeric + underscore table names. If the table is not linked to metadata, the
+                            accepts alphanumeric, underscore, and dash table names. If the table is not linked to metadata, the
                             API returns a 404.
                         </div>
                         <h3 class="h6 text-uppercase text-muted">Example notebook (public)</h3>
@@ -80,7 +80,7 @@ import pandas as pd
 import requests
 
 endpoint = "@publicEndpoint"
-params = {"schema": "donnees", "table": "donnees_123", "limit": 1000}
+params = {"schema": "donnees", "table": "test-2026011301", "limit": 1000}
 
 response = requests.get(endpoint, params=params, timeout=60)
 response.raise_for_status()

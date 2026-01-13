@@ -1506,9 +1506,33 @@ namespace Dataportal.Controllers
             return View(vm);
         }
 
+        private static readonly Regex TableLabelWhitespaceRegex = new Regex("\\s+", RegexOptions.Compiled);
+        private static readonly Regex TableLabelInvalidCharsRegex = new Regex("[^A-Za-z0-9-]", RegexOptions.Compiled);
+        private static readonly Regex TableLabelDashCollapseRegex = new Regex("-{2,}", RegexOptions.Compiled);
+
         private static string BuildBaseTableName(string libelle, string code)
         {
-            return $"{libelle}-{code}".Replace(" ", "_");
+            var normalizedLabel = NormalizeTableLabel(libelle);
+            if (string.IsNullOrWhiteSpace(normalizedLabel))
+            {
+                normalizedLabel = "dataset";
+            }
+
+            return $"{normalizedLabel}-{code}";
+        }
+
+        private static string NormalizeTableLabel(string libelle)
+        {
+            if (string.IsNullOrWhiteSpace(libelle))
+            {
+                return string.Empty;
+            }
+
+            var trimmed = libelle.Trim();
+            var dashed = TableLabelWhitespaceRegex.Replace(trimmed, "-");
+            var sanitized = TableLabelInvalidCharsRegex.Replace(dashed, string.Empty);
+            var collapsed = TableLabelDashCollapseRegex.Replace(sanitized, "-");
+            return collapsed.Trim('-');
         }
 
         private static string BuildSchemaQualifiedName(string schema, string tableName)
