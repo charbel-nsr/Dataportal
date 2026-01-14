@@ -54,36 +54,55 @@
 
     @if (Model.Logs != null && Model.Logs.Any())
     {
-        <div class="table-responsive">
-            <table class="table table-hover shadow-sm">
-                <thead class="table-light">
-                    <tr>
-                        <th scope="col">Accessed (UTC)</th>
-                        <th scope="col">Dataset</th>
-                        <th scope="col">Dataset id</th>
-                        <th scope="col">User</th>
-                        <th scope="col">User id</th>
-                        <th scope="col">Token</th>
-                        <th scope="col">Token id</th>
-                        <th scope="col">Bytes returned</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var log in Model.Logs)
-                    {
+        <div class="paginated-table-wrapper" data-page-size="20">
+            <div class="table-responsive">
+                <table class="table table-hover shadow-sm paginated-table">
+                    <thead class="table-light">
                         <tr>
-                            <td>@log.AccessedAtUtc.ToString("yyyy-MM-dd HH:mm:ss")</td>
-                            <td>@log.DatasetName</td>
-                            <td>@log.DatasetId</td>
-                            <td>@(log.UserDisplayName ?? "-")</td>
-                            <td>@(log.UserId?.ToString() ?? "-")</td>
-                            <td>@(log.TokenLabel ?? "-")</td>
-                            <td>@(log.TokenId?.ToString() ?? "-")</td>
-                            <td>@log.BytesReturned</td>
+                            <th scope="col">Accessed (UTC)</th>
+                            <th scope="col">Dataset</th>
+                            <th scope="col">Dataset id</th>
+                            <th scope="col">User</th>
+                            <th scope="col">User id</th>
+                            <th scope="col">Token</th>
+                            <th scope="col">Token id</th>
+                            <th scope="col">Bytes returned</th>
                         </tr>
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @foreach (var log in Model.Logs)
+                        {
+                            <tr>
+                                <td>@log.AccessedAtUtc.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                <td>@log.DatasetName</td>
+                                <td>@log.DatasetId</td>
+                                <td>@(log.UserDisplayName ?? "-")</td>
+                                <td>@(log.UserId?.ToString() ?? "-")</td>
+                                <td>@(log.TokenLabel ?? "-")</td>
+                                <td>@(log.TokenId?.ToString() ?? "-")</td>
+                                <td>@log.BytesReturned</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-pagination-controls d-flex justify-content-end align-items-center gap-2 mt-3 d-none">
+                <button type="button" class="table-pagination-button table-pagination-prev" aria-label="Previous page" disabled>
+                    <span class="material-symbols-outlined">
+                        arrow_circle_left
+                    </span>
+                </button>
+                <div class="d-flex align-items-center gap-1">
+                    <input type="number" class="form-control table-pagination-input" value="1" min="1" />
+                    <span>/</span>
+                    <span class="table-pagination-total">1</span>
+                </div>
+                <button type="button" class="table-pagination-button table-pagination-next" aria-label="Next page" disabled>
+                    <span class="material-symbols-outlined">
+                        arrow_circle_right
+                    </span>
+                </button>
+            </div>
         </div>
     }
     else

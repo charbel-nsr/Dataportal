@@ -3,6 +3,7 @@ using Dataportal.Context;
 using Dataportal.Models;
 using Dataportal.Services;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -621,6 +622,12 @@ ORDER BY ic.key_ordinal";
             Response.Headers["X-Has-More"] = hasMore ? "true" : "false";
             Response.Headers["X-Next-Cursor"] = hasMore ? nextCursor : string.Empty;
             Response.ContentType = "application/x-parquet";
+
+            var syncIoFeature = HttpContext.Features.Get<IHttpBodyControlFeature>();
+            if (syncIoFeature != null)
+            {
+                syncIoFeature.AllowSynchronousIO = true;
+            }
 
             var bytesWritten = 0L;
 
