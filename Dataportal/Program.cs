@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Http.Features;
 using Dataportal.Classes;
 using Dataportal.Services.Email;
 using IPortalEmailSender = Dataportal.Services.Email.IEmailSender;
+using Microsoft.AspNetCore.CookiePolicy;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -44,6 +45,15 @@ builder.Services.AddSession(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
     options.Cookie.Name = ".Dataportal.Session";
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+});
+
+builder.Services.Configure<CookiePolicyOptions>(options =>
+{
+    options.HttpOnly = HttpOnlyPolicy.Always;
+    options.MinimumSameSitePolicy = SameSiteMode.Lax;
+    options.Secure = CookieSecurePolicy.Always;
 });
 
 // Add cookie authentication
@@ -56,6 +66,9 @@ builder.Services.AddAuthentication(options =>
     {
         options.LoginPath = "/Compte/SeConnecter"; // Redirects to your login page if not authenticated.
         options.ReturnUrlParameter = "returnUrl";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
     })
     .AddScheme<AuthenticationSchemeOptions, NotebookTokenAuthenticationHandler>(
         NotebookTokenDefaults.AuthenticationScheme,
@@ -89,6 +102,8 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
+
+app.UseCookiePolicy();
 
 app.UseSession();
 

@@ -75,18 +75,95 @@
                             API returns a 404.
                         </div>
                         <h3 class="h6 text-uppercase text-muted">Example notebook (public)</h3>
-                        <pre class="code-block"><code>import io
+                        <p class="text-muted small mb-3">
+                            This notebook streams paginated Parquet pages without authentication. It also demonstrates
+                            how to handle rate limits and aggregate all pages into a single DataFrame.
+                        </p>
+                        <div class="mb-3">
+                            <div class="text-muted small">Part 1 — Setup and paging helper</div>
+                            <pre class="code-block"><code>import io
+import time
 import pandas as pd
 import requests
 
-endpoint = "@publicEndpoint"
-params = {"schema": "donnees", "table": "test-2026011301", "limit": 1000}
+ENDPOINT = "@publicEndpoint"
 
-response = requests.get(endpoint, params=params, timeout=60)
-response.raise_for_status()
+def iter_table(schema: str, table: str, limit: int = 100_000, timeout: int = 60):
+    """
+    Yields (df, headers) for each page of the table using cursor pagination.
+    - schema/table: dataset
+    - limit: rows per page (1..100000)
+    - timeout: seconds for requests
+    """
+    params = {"schema": schema, "table": table, "limit": limit}
+    cursor = None
 
-df = pd.read_parquet(io.BytesIO(response.content))
-print(df.head())</code></pre>
+    while True:
+        # Add/remove cursor param
+        if cursor:
+            params["cursor"] = cursor
+        else:
+            params.pop("cursor", None)
+
+        r = requests.get(ENDPOINT, params=params, timeout=timeout)
+
+        # Rate limit handling
+        if r.status_code == 429:
+            retry_after = int(r.headers.get("Retry-After", "2"))
+            print(f"Rate limited (429). Sleeping {retry_after}s...")
+            time.sleep(retry_after)
+            continue
+
+        # No data
+        if r.status_code == 204:
+            print("No content (204): table has no rows.")
+            return
+
+        r.raise_for_status()
+
+        # Parse parquet page
+        df = pd.read_parquet(io.BytesIO(r.content), engine="pyarrow")
+
+        yield df, r.headers
+
+        # Next cursor
+        cursor = r.headers.get("X-Next-Cursor")
+        if not cursor:
+            break</code></pre>
+                        </div>
+                        <div>
+                            <div class="text-muted small">Part 2 — Iterate pages and optionally concatenate</div>
+                            <pre class="code-block"><code>SCHEMA = "schema"
+TABLE = "label-code"
+
+# Start with something safe; increase if stable (e.g., 50_000 or 100_000)
+LIMIT = 25_000
+
+total_rows = 0
+page = 0
+
+for df_page, headers in iter_table(SCHEMA, TABLE, limit=LIMIT, timeout=60):
+    page += 1
+    total_rows += len(df_page)
+
+    row_count_hdr = headers.get("X-Row-Count")
+    has_more = headers.get("X-Has-More")
+
+    print(
+        f"Page {page}: {len(df_page)} rows "
+        f"(X-Row-Count={row_count_hdr}, X-Has-More={has_more})"
+    )
+
+print("Done. Total rows:", total_rows)
+
+# If the table is not huge and you truly want one DataFrame at the end:
+all_pages = []
+for df_page, _ in iter_table(SCHEMA, TABLE, limit=LIMIT, timeout=60):
+    all_pages.append(df_page)
+
+df = pd.concat(all_pages, ignore_index=True)
+df.shape</code></pre>
+                        </div>
                         <p class="text-muted small mb-0">Public access does not require a token.</p>
                     </div>
                 </div>
@@ -112,19 +189,109 @@ print(df.head())</code></pre>
                                 <li>Or use <strong>X-Notebook-Token</strong> / <strong>X-Api-Key</strong> headers.</li>
                             </ul>
                             <h3 class="h6 text-uppercase text-muted">Example notebook (private)</h3>
-                            <pre class="code-block"><code>import io
+                            <p class="text-muted small mb-3">
+                                This notebook uses a bearer token to access private datasets. It also shows how to
+                                handle auth errors and assemble all pages into a single DataFrame.
+                            </p>
+                            <div class="mb-3">
+                                <div class="text-muted small">Part 1 — Setup headers and paging helper</div>
+                                <pre class="code-block"><code>import io
+    import time
     import pandas as pd
     import requests
 
-    endpoint = "@privateEndpoint"
-        headers = {"Authorization": "Bearer YOUR_NOTEBOOK_TOKEN"}
-    params = {"schema": "donnees_event_logs", "table": "event_logs_456", "limit": 5000}
+    ENDPOINT = "@privateEndpoint"
 
-    response = requests.get(endpoint, params=params, headers=headers, timeout=60)
-    response.raise_for_status()
+    NOTEBOOK_TOKEN = "token"
 
-    df = pd.read_parquet(io.BytesIO(response.content))
-    print(df.describe())</code></pre>
+    HEADERS = {
+        "Authorization": f"Bearer {NOTEBOOK_TOKEN}"
+        # or alternatively:
+        # "X-Notebook-Token": NOTEBOOK_TOKEN
+        # "X-Api-Key": NOTEBOOK_TOKEN
+    }
+
+    def iter_table(schema: str, table: str, limit: int = 100_000, timeout: int = 60, headers: dict | None = None):
+        """
+        Yields (df, headers) for each page of the table using cursor pagination (PRIVATE API).
+        """
+        if headers is None:
+            headers = {}
+
+        params = {"schema": schema, "table": table, "limit": limit}
+        cursor = None
+
+        # Reuse TCP connection + keep headers
+        session = requests.Session()
+        session.headers.update(headers)
+
+        while True:
+            if cursor:
+                params["cursor"] = cursor
+            else:
+                params.pop("cursor", None)
+
+            r = session.get(ENDPOINT, params=params, timeout=timeout)
+
+            # Rate limit handling
+            if r.status_code == 429:
+                retry_after = int(r.headers.get("Retry-After", "2"))
+                print(f"Rate limited (429). Sleeping {retry_after}s...")
+                time.sleep(retry_after)
+                continue
+
+            # No data
+            if r.status_code == 204:
+                print("No content (204): table has no rows.")
+                return
+
+            # Auth errors (nice message)
+            if r.status_code in (401, 403):
+                raise RuntimeError(
+                    f"Auth/permission error ({r.status_code}). "
+                    f"Check token + dataset permissions. Response: {r.text[:300]}"
+                )
+
+            r.raise_for_status()
+
+            df = pd.read_parquet(io.BytesIO(r.content), engine="pyarrow")
+            yield df, r.headers
+
+            cursor = r.headers.get("X-Next-Cursor")
+            if not cursor:
+                break</code></pre>
+                            </div>
+                            <div>
+                                <div class="text-muted small">Part 2 — Iterate pages and optionally concatenate</div>
+                                <pre class="code-block"><code>SCHEMA = "schema"                 # or donnees_event_logs / donnees_contexte_environnemental
+    TABLE = "label-code"          # change to your private table
+    LIMIT = 25_000
+
+    total_rows = 0
+    page = 0
+
+    for df_page, resp_headers in iter_table(SCHEMA, TABLE, limit=LIMIT, timeout=60, headers=HEADERS):
+        page += 1
+        total_rows += len(df_page)
+
+        row_count_hdr = resp_headers.get("X-Row-Count")
+        has_more = resp_headers.get("X-Has-More")
+
+        print(
+            f"Page {page}: {len(df_page)} rows "
+            f"(X-Row-Count={row_count_hdr}, X-Has-More={has_more})"
+        )
+
+    print("Done. Total rows:", total_rows)
+
+    # If the table is not huge and you truly want one DataFrame at the end:
+    all_pages = []
+    for df_page, _ in iter_table(SCHEMA, TABLE, limit=LIMIT, timeout=60, headers=HEADERS):
+        all_pages.append(df_page)
+
+    df = pd.concat(all_pages, ignore_index=True)
+    df.shape</code></pre>
+                            </div>
                             <p class="text-muted small mb-0">
                                 Manage your tokens in <a asp-controller="Compte" asp-action="NotebookTokens">Notebook API tokens</a>.
                             </p>
