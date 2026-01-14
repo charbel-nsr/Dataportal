@@ -13,6 +13,7 @@ using Parquet.Schema;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
@@ -794,10 +795,43 @@ ORDER BY ic.key_ordinal";
             for (var i = 0; i < columns.Count; i++)
             {
                 var field = (DataField)schema.Fields[i];
-                var data = columns[i].ToArray();
+                var data = BuildTypedArray(field, columns[i]);
                 await rowGroupWriter.WriteColumnAsync(new Parquet.Data.DataColumn(field, data), cancellationToken);
                 columns[i].Clear();
             }
+        }
+
+        private static Array BuildTypedArray(DataField field, IReadOnlyList<object?> values)
+        {
+            var baseType = field.ClrType;
+            var useNullable = field.IsNullable && baseType.IsValueType;
+            var arrayElementType = useNullable ? typeof(Nullable<>).MakeGenericType(baseType) : baseType;
+            var typedArray = Array.CreateInstance(arrayElementType, values.Count);
+
+            for (var i = 0; i < values.Count; i++)
+            {
+                var value = values[i];
+                if (value == null)
+                {
+                    typedArray.SetValue(null, i);
+                    continue;
+                }
+
+                object? convertedValue = value;
+                if (!baseType.IsInstanceOfType(value))
+                {
+                    convertedValue = Convert.ChangeType(value, baseType, CultureInfo.InvariantCulture);
+                }
+
+                if (useNullable)
+                {
+                    convertedValue = Activator.CreateInstance(arrayElementType, convertedValue);
+                }
+
+                typedArray.SetValue(convertedValue, i);
+            }
+
+            return typedArray;
         }
 
         private static void AddCursorParameters(SqlCommand command, IReadOnlyList<PrimaryKeyColumn> primaryKeyColumns, object?[]? cursorValues)
