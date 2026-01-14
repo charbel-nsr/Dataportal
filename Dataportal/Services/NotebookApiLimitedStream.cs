@@ -29,7 +29,7 @@ namespace Dataportal.Services
             set => throw new NotSupportedException();
         }
 
-        public override void Flush() => _inner.Flush();
+        public override void Flush() => _inner.FlushAsync().GetAwaiter().GetResult();
 
         public override Task FlushAsync(CancellationToken cancellationToken) => _inner.FlushAsync(cancellationToken);
 
@@ -42,8 +42,15 @@ namespace Dataportal.Services
         public override void Write(byte[] buffer, int offset, int count)
         {
             EnsureWithinLimit(count);
-            _inner.Write(buffer, offset, count);
+            _inner.WriteAsync(buffer, offset, count).GetAwaiter().GetResult();
             _bytesWritten += count;
+        }
+
+        public override void Write(ReadOnlySpan<byte> buffer)
+        {
+            EnsureWithinLimit(buffer.Length);
+            _inner.WriteAsync(buffer.ToArray(), 0, buffer.Length).GetAwaiter().GetResult();
+            _bytesWritten += buffer.Length;
         }
 
         public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
