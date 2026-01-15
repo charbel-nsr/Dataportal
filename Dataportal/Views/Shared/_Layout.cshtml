@@ -35,6 +35,12 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Accueil" asp-action="NotebookApi">Notebook API</a>
                         </li>
+                        @if (User.Identity.IsAuthenticated && (User.IsInRole("administrator") || User.IsInRole("editor")))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" href="/jupyter/launch">Open JupyterHub</a>
+                            </li>
+                        }
                         @if (User.Identity.IsAuthenticated)
                         {
                             @if (User.IsInRole("administrator") || User.IsInRole("editor"))

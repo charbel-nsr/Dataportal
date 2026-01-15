@@ -127,6 +127,15 @@
                                     </ul>
                                 </div>
                             </div>
+                            <div class="col-12">
+                                <div class="doc-role-panel h-100">
+                                    <h3 class="h5">JupyterHub launch</h3>
+                                    <p class="text-muted">
+                                        The JupyterHub launch flow uses a short-lived token that is passed only to
+                                        <code>/hub/login</code>. After login, JupyterHub manages its own session cookie.
+                                    </p>
+                                </div>
+                            </div>
                         }
                         else if (User.Identity.IsAuthenticated && User.IsInRole("editor"))
                         {
@@ -149,6 +158,15 @@
                                         <li>Keep datasets aligned with visibility rules.</li>
                                         <li>Coordinate with administrators on policy updates.</li>
                                     </ul>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="doc-role-panel h-100">
+                                    <h3 class="h5">JupyterHub launch</h3>
+                                    <p class="text-muted">
+                                        The JupyterHub launch flow uses a short-lived token that is passed only to
+                                        <code>/hub/login</code>. After login, JupyterHub manages its own session cookie.
+                                    </p>
                                 </div>
                             </div>
                         }
