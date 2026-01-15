@@ -15,7 +15,6 @@ namespace Dataportal.Services
     public class JupyterSsoTokenService
     {
         public const int TokenLifetimeMinutes = 15;
-        private const string JupyterAudience = "jupyter";
         private const string JupyterScope = "notebooks.read notebooks.update";
 
         private readonly JupyterSsoOptions _options;
@@ -61,7 +60,6 @@ namespace Dataportal.Services
             var expires = DateTime.UtcNow.AddMinutes(TokenLifetimeMinutes);
 
             var token = new JwtSecurityToken(
-                audience: JupyterAudience,
                 claims: claims,
                 expires: expires,
                 signingCredentials: credentials);
