@@ -14,6 +14,7 @@ using Dataportal.Classes;
 using Dataportal.Services.Email;
 using IPortalEmailSender = Dataportal.Services.Email.IEmailSender;
 using Microsoft.AspNetCore.CookiePolicy;
+using System.Threading.Tasks;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -69,6 +70,31 @@ builder.Services.AddAuthentication(options =>
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Lax;
         options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        options.Events = new CookieAuthenticationEvents
+        {
+            OnRedirectToLogin = context =>
+            {
+                if (context.Request.Path.StartsWithSegments("/api"))
+                {
+                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    return Task.CompletedTask;
+                }
+
+                context.Response.Redirect(context.RedirectUri);
+                return Task.CompletedTask;
+            },
+            OnRedirectToAccessDenied = context =>
+            {
+                if (context.Request.Path.StartsWithSegments("/api"))
+                {
+                    context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                    return Task.CompletedTask;
+                }
+
+                context.Response.Redirect(context.RedirectUri);
+                return Task.CompletedTask;
+            }
+        };
     })
     .AddScheme<AuthenticationSchemeOptions, NotebookTokenAuthenticationHandler>(
         NotebookTokenDefaults.AuthenticationScheme,
@@ -80,6 +106,12 @@ builder.Services.AddScoped<IPasswordHasher<Utilisateur>, PasswordHasher<Utilisat
 builder.Services.Configure<MailOptions>(builder.Configuration.GetSection(MailOptions.SectionName));
 builder.Services.Configure<PortalOptions>(builder.Configuration.GetSection(PortalOptions.SectionName));
 builder.Services.Configure<NotebookApiOptions>(builder.Configuration.GetSection("NotebookApi"));
+builder.Services.AddOptions<JupyterSsoOptions>()
+    .Bind(builder.Configuration.GetSection(JupyterSsoOptions.SectionName))
+    .Validate(options => !string.IsNullOrWhiteSpace(options.SigningKey) && options.SigningKey.Length >= 32,
+        "JupyterSso:SigningKey must be at least 32 characters.")
+    .ValidateOnStart();
+builder.Services.AddSingleton<JupyterSsoTokenService>();
 builder.Services.AddScoped<IEmailTemplateRenderer, ThemedEmailTemplateRenderer>();
 builder.Services.AddScoped<IPortalEmailSender, MailKitEmailSender>();
 builder.Services.AddScoped<IAccountEmailService, AccountEmailService>();
