@@ -38,7 +38,7 @@
                         @if (User.Identity.IsAuthenticated && (User.IsInRole("administrator") || User.IsInRole("editor")))
                         {
                             <li class="nav-item">
-                                <a class="nav-link text-dark" href="/jupyter/launch">Open JupyterHub</a>
+                                <a class="nav-link text-dark" href="/jupyter/launch" target="_blank" rel="noopener">JupyterHub</a>
                             </li>
                         }
                         @if (User.Identity.IsAuthenticated)

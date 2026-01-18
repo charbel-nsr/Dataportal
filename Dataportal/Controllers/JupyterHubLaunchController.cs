@@ -26,7 +26,7 @@ namespace Dataportal.Controllers
         {
             var tokenResult = _tokenService.CreateToken(User);
             var escapedToken = Uri.EscapeDataString(tokenResult.AccessToken);
-            var redirectUrl = $"/jupyterhub/hub/login?token={escapedToken}";
+            var redirectUrl = $"/jupyterhub/hub/login?token={escapedToken}&next=%2Fjupyterhub%2Fhub%2Fuser-redirect%2Flab";
 
             return Redirect(redirectUrl);
         }
