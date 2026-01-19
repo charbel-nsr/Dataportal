@@ -87,95 +87,158 @@ namespace Dataportal.Controllers
         {
             var safeColumn = column.Name.Replace("]", "]]", StringComparison.Ordinal);
             var columnExpression = $"[{safeColumn}]";
+            var distinctExpression = GetDistinctExpression(column, columnExpression);
             var typeCategory = GetTypeCategory(column.DataType);
-            string query;
-
             switch (typeCategory)
             {
                 case ColumnTypeCategory.Number:
-                    query = $@"
-                        SELECT
-                            COUNT(*) AS TotalCount,
-                            COUNT(DISTINCT {columnExpression}) AS UniqueCount,
-                            MIN({columnExpression}) AS MinValue,
-                            MAX({columnExpression}) AS MaxValue,
-                            AVG(CAST({columnExpression} AS float)) AS AvgValue
-                        FROM {target.QualifiedNameWithDatabase}";
-                    break;
+                    var numberUniqueCount = await ExecuteScalarLong(connection, $@"
+                        SELECT COUNT(DISTINCT {distinctExpression})
+                        FROM {target.QualifiedNameWithDatabase}");
+                    var numberNonNullCount = await ExecuteScalarLong(connection, $@"
+                        SELECT COUNT({columnExpression})
+                        FROM {target.QualifiedNameWithDatabase}");
+                    var numberMinValue = await ExecuteScalarString(connection, $@"
+                        SELECT MIN({columnExpression})
+                        FROM {target.QualifiedNameWithDatabase}");
+                    var numberMaxValue = await ExecuteScalarString(connection, $@"
+                        SELECT MAX({columnExpression})
+                        FROM {target.QualifiedNameWithDatabase}");
+                    var numberAvgValue = await ExecuteScalarString(connection, $@"
+                        SELECT AVG(CAST({columnExpression} AS float))
+                        FROM {target.QualifiedNameWithDatabase}");
+                    var numberStdDevValue = await ExecuteScalarString(connection, $@"
+                        SELECT STDEV(CAST({columnExpression} AS float))
+                        FROM {target.QualifiedNameWithDatabase}");
+
+                    return new ColumnSummary(
+                        column.Name,
+                        column.DataType,
+                        typeCategory.ToString(),
+                        numberUniqueCount,
+                        numberNonNullCount,
+                        numberMinValue,
+                        numberMaxValue,
+                        numberAvgValue,
+                        numberStdDevValue,
+                        null,
+                        null,
+                        null);
                 case ColumnTypeCategory.Date:
-                    query = $@"
-                        SELECT
-                            COUNT(*) AS TotalCount,
-                            COUNT(DISTINCT {columnExpression}) AS UniqueCount,
-                            MIN({columnExpression}) AS MinValue,
-                            MAX({columnExpression}) AS MaxValue
-                        FROM {target.QualifiedNameWithDatabase}";
-                    break;
+                    var dateUniqueCount = await ExecuteScalarLong(connection, $@"
+                        SELECT COUNT(DISTINCT {distinctExpression})
+                        FROM {target.QualifiedNameWithDatabase}");
+                    var dateNonNullCount = await ExecuteScalarLong(connection, $@"
+                        SELECT COUNT({columnExpression})
+                        FROM {target.QualifiedNameWithDatabase}");
+                    var dateMinValue = await ExecuteScalarString(connection, $@"
+                        SELECT MIN({columnExpression})
+                        FROM {target.QualifiedNameWithDatabase}");
+                    var dateMaxValue = await ExecuteScalarString(connection, $@"
+                        SELECT MAX({columnExpression})
+                        FROM {target.QualifiedNameWithDatabase}");
+
+                    return new ColumnSummary(
+                        column.Name,
+                        column.DataType,
+                        typeCategory.ToString(),
+                        dateUniqueCount,
+                        dateNonNullCount,
+                        dateMinValue,
+                        dateMaxValue,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null);
                 case ColumnTypeCategory.Text:
-                    query = $@"
-                        SELECT
-                            COUNT(*) AS TotalCount,
-                            COUNT(DISTINCT {columnExpression}) AS UniqueCount,
-                            MIN(LEN({columnExpression})) AS MinLength,
-                            MAX(LEN({columnExpression})) AS MaxLength,
-                            AVG(CAST(LEN({columnExpression}) AS float)) AS AvgLength
-                        FROM {target.QualifiedNameWithDatabase}";
-                    break;
+                    var textUniqueCount = await ExecuteScalarLong(connection, $@"
+                        SELECT COUNT(DISTINCT {distinctExpression})
+                        FROM {target.QualifiedNameWithDatabase}");
+                    var textNonNullCount = await ExecuteScalarLong(connection, $@"
+                        SELECT COUNT({columnExpression})
+                        FROM {target.QualifiedNameWithDatabase}");
+                    var textMinLength = await ExecuteScalarString(connection, $@"
+                        SELECT MIN(LEN({columnExpression}))
+                        FROM {target.QualifiedNameWithDatabase}");
+                    var textMaxLength = await ExecuteScalarString(connection, $@"
+                        SELECT MAX(LEN({columnExpression}))
+                        FROM {target.QualifiedNameWithDatabase}");
+                    var textAvgLength = await ExecuteScalarString(connection, $@"
+                        SELECT AVG(CAST(LEN({columnExpression}) AS float))
+                        FROM {target.QualifiedNameWithDatabase}");
+
+                    return new ColumnSummary(
+                        column.Name,
+                        column.DataType,
+                        typeCategory.ToString(),
+                        textUniqueCount,
+                        textNonNullCount,
+                        null,
+                        null,
+                        null,
+                        null,
+                        textMinLength,
+                        textMaxLength,
+                        textAvgLength);
                 default:
-                    query = $@"
-                        SELECT
-                            COUNT(*) AS TotalCount,
-                            COUNT(DISTINCT {columnExpression}) AS UniqueCount
-                        FROM {target.QualifiedNameWithDatabase}";
-                    break;
+                    var otherUniqueCount = await ExecuteScalarLong(connection, $@"
+                        SELECT COUNT(DISTINCT {distinctExpression})
+                        FROM {target.QualifiedNameWithDatabase}");
+                    var otherNonNullCount = await ExecuteScalarLong(connection, $@"
+                        SELECT COUNT({columnExpression})
+                        FROM {target.QualifiedNameWithDatabase}");
+
+                    return new ColumnSummary(
+                        column.Name,
+                        column.DataType,
+                        typeCategory.ToString(),
+                        otherUniqueCount,
+                        otherNonNullCount,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null);
             }
 
+            return new ColumnSummary(column.Name, column.DataType, typeCategory.ToString(), null, null, null, null, null, null, null, null, null);
+        }
+
+        private static async Task<long?> ExecuteScalarLong(SqlConnection connection, string query)
+        {
             using var command = new SqlCommand(query, connection);
-            using var reader = await command.ExecuteReaderAsync();
-            if (!await reader.ReadAsync())
-            {
-                return new ColumnSummary(column.Name, typeCategory.ToString(), null, null, null, null, null, null, null);
-            }
-
-            var uniqueCount = ReadLong(reader, "UniqueCount");
-
-            return new ColumnSummary(
-                column.Name,
-                typeCategory.ToString(),
-                uniqueCount,
-                ReadString(reader, "MinValue"),
-                ReadString(reader, "MaxValue"),
-                ReadString(reader, "AvgValue"),
-                ReadString(reader, "MinLength"),
-                ReadString(reader, "MaxLength"),
-                ReadString(reader, "AvgLength"));
-        }
-
-        private static long? ReadLong(SqlDataReader reader, string name)
-        {
-            var ordinal = reader.GetOrdinal(name);
-            return reader.IsDBNull(ordinal) ? null : reader.GetInt64(ordinal);
-        }
-
-        private static string? ReadString(SqlDataReader reader, string name)
-        {
-            if (!reader.HasColumn(name))
+            var result = await command.ExecuteScalarAsync();
+            if (result == null || result == DBNull.Value)
             {
                 return null;
             }
 
-            var ordinal = reader.GetOrdinal(name);
-            if (reader.IsDBNull(ordinal))
+            if (result is long longValue)
+            {
+                return longValue;
+            }
+
+            return Convert.ToInt64(result, CultureInfo.InvariantCulture);
+        }
+
+        private static async Task<string?> ExecuteScalarString(SqlConnection connection, string query)
+        {
+            using var command = new SqlCommand(query, connection);
+            var result = await command.ExecuteScalarAsync();
+            if (result == null || result == DBNull.Value)
             {
                 return null;
             }
 
-            var value = reader.GetValue(ordinal);
-            return value switch
+            if (result is DateTime dateTime)
             {
-                DateTime dateTime => dateTime.ToString("O", CultureInfo.InvariantCulture),
-                _ => Convert.ToString(value, CultureInfo.InvariantCulture)
-            };
+                return dateTime.ToString("O", CultureInfo.InvariantCulture);
+            }
+
+            return Convert.ToString(result, CultureInfo.InvariantCulture);
         }
 
         private static bool TryBuildTableImportTarget(string? storedName, string? fallbackSchema, out TableImportTarget? target)
@@ -244,15 +307,29 @@ namespace Dataportal.Controllers
             };
         }
 
+        private static string GetDistinctExpression(ColumnDefinition column, string columnExpression)
+        {
+            var normalized = column.DataType?.Trim().ToLowerInvariant();
+
+            return normalized switch
+            {
+                "text" or "ntext" or "image" => $"CAST({columnExpression} AS nvarchar(max))",
+                _ => columnExpression
+            };
+        }
+
         private record ColumnDefinition(string Name, string DataType);
 
         private record ColumnSummary(
             string Name,
             string DataType,
+            string Category,
             long? UniqueCount,
+            long? NonNullCount,
             string? MinValue,
             string? MaxValue,
             string? AvgValue,
+            string? StdDevValue,
             string? MinLength,
             string? MaxLength,
             string? AvgLength);
@@ -264,22 +341,6 @@ namespace Dataportal.Controllers
             Date,
             Text,
             Other
-        }
-    }
-
-    internal static class SqlDataReaderExtensions
-    {
-        public static bool HasColumn(this SqlDataReader reader, string name)
-        {
-            for (var i = 0; i < reader.FieldCount; i += 1)
-            {
-                if (reader.GetName(i).Equals(name, StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-            }
-
-            return false;
         }
     }
 }

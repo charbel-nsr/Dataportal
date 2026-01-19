@@ -774,42 +774,50 @@
                 }
 
                 const uniqueCount = summary.uniqueCount ?? '—';
+                const nonNullCount = summary.nonNullCount ?? '—';
+                const typeLabel = summary.dataType || '—';
 
-                if (summary.dataType === 'Boolean') {
+                if (summary.category === 'Boolean') {
                     return [
-                        { label: 'Type', value: 'Boolean' },
+                        { label: 'Type', value: typeLabel },
+                        { label: 'Non-null', value: nonNullCount.toString() },
                         { label: 'Unique', value: uniqueCount.toString() }
                     ];
                 }
 
-                if (summary.dataType === 'Number') {
+                if (summary.category === 'Number') {
                     const minValue = formatNumber(parseNumber(summary.minValue));
                     const maxValue = formatNumber(parseNumber(summary.maxValue));
                     const avgValue = formatNumber(parseNumber(summary.avgValue));
+                    const stdDevValue = formatNumber(parseNumber(summary.stdDevValue));
 
                     return [
-                        { label: 'Type', value: 'Number' },
+                        { label: 'Type', value: typeLabel },
                         { label: 'Min / Max', value: `${minValue} / ${maxValue}` },
                         { label: 'Avg', value: avgValue },
+                        { label: 'Std dev', value: stdDevValue },
+                        { label: 'Non-null', value: nonNullCount.toString() },
                         { label: 'Unique', value: uniqueCount.toString() }
                     ];
                 }
 
-                if (summary.dataType === 'Date') {
+                if (summary.category === 'Date') {
                     return [
-                        { label: 'Type', value: 'Date' },
+                        { label: 'Type', value: typeLabel },
                         { label: 'Min / Max', value: `${formatDate(summary.minValue)} / ${formatDate(summary.maxValue)}` },
+                        { label: 'Non-null', value: nonNullCount.toString() },
                         { label: 'Unique', value: uniqueCount.toString() }
                     ];
                 }
 
-                if (summary.dataType === 'Text') {
+                if (summary.category === 'Text') {
                     const avgLength = formatNumber(parseNumber(summary.avgLength));
                     const maxLength = summary.maxLength ?? '—';
                     const minLength = summary.minLength ?? '—';
 
                     return [
-                        { label: 'Type', value: 'Text' },
+                        { label: 'Type', value: typeLabel },
+                        { label: 'Non-null', value: nonNullCount.toString() },
                         { label: 'Unique', value: uniqueCount.toString() },
                         { label: 'Min / Max', value: `${minLength} / ${maxLength}` },
                         { label: 'Avg length', value: avgLength }
@@ -817,7 +825,8 @@
                 }
 
                 return [
-                    { label: 'Type', value: summary.dataType || '—' },
+                    { label: 'Type', value: typeLabel },
+                    { label: 'Non-null', value: nonNullCount.toString() },
                     { label: 'Unique', value: uniqueCount.toString() }
                 ];
             };
