@@ -37,6 +37,7 @@ namespace Dataportal.Context
         public DbSet<MessageAccueil> MessageAccueil { get; set; }
         public DbSet<NotebookApiToken> NotebookApiTokens { get; set; }
         public DbSet<NotebookApiAccessLog> NotebookApiAccessLogs { get; set; }
+        public DbSet<FichierStocke> FichierStocke { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -125,6 +126,55 @@ namespace Dataportal.Context
                 entity.HasOne(l => l.NotebookApiToken)
                       .WithMany()
                       .HasForeignKey(l => l.IdNotebookApiToken)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+            modelBuilder.Entity<FichierStocke>(entity =>
+            {
+                entity.HasKey(f => f.Id);
+                entity.Property(f => f.Nom)
+                      .IsRequired()
+                      .HasMaxLength(150);
+                entity.Property(f => f.Description)
+                      .HasMaxLength(1000);
+                entity.Property(f => f.AutoriserLeTelechargement)
+                      .HasDefaultValue(true);
+                entity.Property(f => f.NomFichierOriginal)
+                      .IsRequired()
+                      .HasMaxLength(255);
+                entity.Property(f => f.NomFichierStocke)
+                      .IsRequired()
+                      .HasMaxLength(255);
+                entity.Property(f => f.TypeContenu)
+                      .IsRequired()
+                      .HasMaxLength(100);
+                entity.Property(f => f.TailleOctets)
+                      .IsRequired();
+                entity.Property(f => f.HashSha256)
+                      .IsRequired()
+                      .HasMaxLength(64);
+                entity.Property(f => f.DateAjout)
+                      .HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(f => f.NombreDeTelechargements)
+                      .HasDefaultValue(0);
+                entity.HasIndex(f => f.IdVisibilite);
+                entity.HasIndex(f => f.IdUtilisateur);
+                entity.HasIndex(f => f.IdLicence);
+                entity.HasIndex(f => f.IdTypeEnergieRenouvelable);
+                entity.HasOne(f => f.Visibilite)
+                      .WithMany()
+                      .HasForeignKey(f => f.IdVisibilite)
+                      .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(f => f.Utilisateur)
+                      .WithMany()
+                      .HasForeignKey(f => f.IdUtilisateur)
+                      .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(f => f.Licence)
+                      .WithMany()
+                      .HasForeignKey(f => f.IdLicence)
+                      .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(f => f.TypeEnergieRenouvelable)
+                      .WithMany()
+                      .HasForeignKey(f => f.IdTypeEnergieRenouvelable)
                       .OnDelete(DeleteBehavior.Restrict);
             });
             modelBuilder.Entity<DomaineEmail>(entity =>

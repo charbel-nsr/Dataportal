@@ -1,0 +1,32 @@
+﻿@model Dataportal.Models.FichierStocke
+
+@{
+    ViewData["Title"] = "Delete file";
+}
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h1 class="h4 text-danger mb-3">Delete file</h1>
+                    <p class="mb-4">Are you sure you want to delete <strong>@Model.Nom</strong>?</p>
+                    <ul class="list-unstyled mb-4">
+                        <li><strong>Original file:</strong> @Model.NomFichierOriginal</li>
+                        <li><strong>Uploaded:</strong> @Model.DateAjout.ToString("dd/MM/yyyy")</li>
+                    </ul>
+
+                    <form method="post" asp-action="DeleteConfirmed" asp-route-id="@Model.Id">
+                        @Html.AntiForgeryToken()
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-trash"></i> Delete
+                            </button>
+                            <a class="btn btn-outline-secondary" href="@Url.Action("Details", "Files", new { id = Model.Id })">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

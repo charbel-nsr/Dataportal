@@ -1,0 +1,147 @@
+﻿@model Dataportal.ViewModels.FichierStockeUploadViewModel
+@using Dataportal.Classes
+@using Microsoft.AspNetCore.Mvc.Rendering
+
+@{
+    ViewData["Title"] = "Upload file";
+}
+
+<div class="container">
+    <h2 class="mb-4">Upload a file</h2>
+    <form method="post" enctype="multipart/form-data" class="bg-light p-4 rounded shadow-sm">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+        <div class="form-floating mb-3">
+            <input asp-for="Nom" class="form-control" placeholder="Name" required />
+            <label asp-for="Nom">Name</label>
+            <span asp-validation-for="Nom" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Description" class="form-label fw-semibold">Description</label>
+            <div class="rich-text-editor" data-rich-text-editor data-target-input-id="Description">
+                <div class="rich-text-editor__toolbar" role="toolbar" aria-label="Formatting options">
+                    <div class="btn-group me-2" role="group" aria-label="Text emphasis">
+                        <button type="button" class="btn btn-light btn-sm" data-command="bold" aria-label="Bold">
+                            <span class="material-symbols-outlined align-middle">format_bold</span>
+                        </button>
+                        <button type="button" class="btn btn-light btn-sm" data-command="italic" aria-label="Italic">
+                            <span class="material-symbols-outlined align-middle">format_italic</span>
+                        </button>
+                        <button type="button" class="btn btn-light btn-sm" data-command="underline" aria-label="Underline">
+                            <span class="material-symbols-outlined align-middle">format_underlined</span>
+                        </button>
+                    </div>
+                    <div class="btn-group me-2" role="group" aria-label="Lists">
+                        <button type="button" class="btn btn-light btn-sm" data-command="insertUnorderedList" aria-label="Bulleted list">
+                            <span class="material-symbols-outlined align-middle">format_list_bulleted</span>
+                        </button>
+                        <button type="button" class="btn btn-light btn-sm" data-command="insertOrderedList" aria-label="Numbered list">
+                            <span class="material-symbols-outlined align-middle">format_list_numbered</span>
+                        </button>
+                    </div>
+                    <div class="btn-group me-2" role="group" aria-label="Links">
+                        <button type="button" class="btn btn-light btn-sm" data-command="createLink" aria-label="Insert link">
+                            <span class="material-symbols-outlined align-middle">link</span>
+                        </button>
+                        <button type="button" class="btn btn-light btn-sm" data-command="unlink" aria-label="Remove link">
+                            <span class="material-symbols-outlined align-middle">link_off</span>
+                        </button>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <select id="DescriptionFormat" class="form-select form-select-sm" data-format-block>
+                            <option value="p">Paragraph</option>
+                            <option value="h4">Heading 4</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="Description-editor" class="rich-text-editor__content" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Describe the file, sources, and any context."></div>
+                <textarea asp-for="Description" class="d-none"></textarea>
+            </div>
+            <small class="text-muted">Add rich formatting with headings, lists, and links.</small>
+            <span asp-validation-for="Description" class="text-danger"></span>
+        </div>
+
+        <div class="form-floating mb-1">
+            <select asp-for="IdLicence" class="form-select" required data-description-target="licenceDescription">
+                <option value="">Select a license</option>
+                @foreach (var licence in Model.Licences ?? Array.Empty<Dataportal.Models.Licence>())
+                {
+                    <option value="@licence.Id" data-description="@licence.Description">@licence.Libelle</option>
+                }
+            </select>
+            <label asp-for="IdLicence">License</label>
+            <span asp-validation-for="IdLicence" class="text-danger"></span>
+            <div class="mb-3">
+                <small class="form-text text-muted" id="licenceDescription"></small>
+            </div>
+        </div>
+
+        <div class="form-floating mb-3">
+            <select asp-for="IdTypeEnergieRenouvelable" class="form-select" asp-items="@(new SelectList(Model.TypesEnergieRenouvelable ?? Array.Empty<Dataportal.Models.TypeEnergieRenouvelable>(), "Id", "Libelle"))">
+                <option value="">Select an energy type</option>
+            </select>
+            <label asp-for="IdTypeEnergieRenouvelable">Renewable energy type</label>
+            <span asp-validation-for="IdTypeEnergieRenouvelable" class="text-danger"></span>
+        </div>
+
+        <div class="form-floating mb-3">
+            <select asp-for="IdVisibilite" class="form-select" asp-items="@(new SelectList(Model.Visibilites ?? Array.Empty<Dataportal.Models.Visibilite>(), "Id", "Libelle"))" required>
+                <option value="">Select a visibility</option>
+            </select>
+            <label asp-for="IdVisibilite">Visibility</label>
+            <span asp-validation-for="IdVisibilite" class="text-danger"></span>
+        </div>
+
+        <div class="form-check form-switch mb-3">
+            <input class="form-check-input" asp-for="AutoriserLeTelechargement" />
+            <label class="form-check-label" asp-for="AutoriserLeTelechargement">Allow downloads</label>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="UploadedFile" class="form-label">File</label>
+            <input asp-for="UploadedFile" class="form-control" type="file" />
+            <small class="form-text text-muted">Maximum file size: @UploadSizeLimits.StepUploadLimitDisplay.</small>
+            <span asp-validation-for="UploadedFile" class="text-danger"></span>
+        </div>
+
+        <div class="d-flex flex-column flex-md-row gap-2">
+            <button type="submit" class="btn btn-success flex-grow-1">
+                <i class="bi bi-upload"></i> Upload file
+            </button>
+            <a class="btn btn-outline-secondary flex-grow-1" href="@Url.Action("Index", "Files")">Cancel</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/richTextEditor.js" asp-append-version="true"></script>
+    <script>
+        const updateDescription = (selectEl) => {
+            if (!selectEl) {
+                return;
+            }
+
+            const selectedOption = selectEl.options[selectEl.selectedIndex];
+            const descriptionTargetId = selectEl.getAttribute('data-description-target');
+            if (!descriptionTargetId) {
+                return;
+            }
+
+            const descriptionElement = document.getElementById(descriptionTargetId);
+            if (descriptionElement) {
+                descriptionElement.textContent = selectedOption?.getAttribute('data-description') || '';
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const licenceSelect = document.querySelector('[data-description-target="licenceDescription"]');
+            updateDescription(licenceSelect);
+            if (licenceSelect) {
+                licenceSelect.addEventListener('change', () => updateDescription(licenceSelect));
+            }
+        });
+    </script>
+}

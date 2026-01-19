@@ -4,6 +4,7 @@ using Dataportal.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Dataportal.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260119145528_AddStoredFiles")]
+    partial class AddStoredFiles
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -356,11 +359,6 @@ namespace Dataportal.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<bool>("AutoriserLeTelechargement")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
-
                     b.Property<DateTime>("DateAjout")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
@@ -369,17 +367,6 @@ namespace Dataportal.Migrations
                     b.Property<string>("Description")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
-
-                    b.Property<string>("HashSha256")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
-
-                    b.Property<int>("IdLicence")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("IdTypeEnergieRenouvelable")
-                        .HasColumnType("int");
 
                     b.Property<int>("IdUtilisateur")
                         .HasColumnType("int");
@@ -416,10 +403,6 @@ namespace Dataportal.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("IdLicence");
-
-                    b.HasIndex("IdTypeEnergieRenouvelable");
 
                     b.HasIndex("IdUtilisateur");
 
@@ -1028,17 +1011,6 @@ namespace Dataportal.Migrations
 
             modelBuilder.Entity("Dataportal.Models.FichierStocke", b =>
                 {
-                    b.HasOne("Dataportal.Models.Licence", "Licence")
-                        .WithMany()
-                        .HasForeignKey("IdLicence")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Dataportal.Models.TypeEnergieRenouvelable", "TypeEnergieRenouvelable")
-                        .WithMany()
-                        .HasForeignKey("IdTypeEnergieRenouvelable")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("Dataportal.Models.Utilisateur", "Utilisateur")
                         .WithMany()
                         .HasForeignKey("IdUtilisateur")
@@ -1050,10 +1022,6 @@ namespace Dataportal.Migrations
                         .HasForeignKey("IdVisibilite")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.Navigation("Licence");
-
-                    b.Navigation("TypeEnergieRenouvelable");
 
                     b.Navigation("Utilisateur");
 

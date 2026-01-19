@@ -1,0 +1,319 @@
+﻿@model Dataportal.ViewModels.FichierStockeSearchViewModel
+@using Dataportal.Classes
+@using System.Globalization
+
+@{
+    ViewData["Title"] = "Files";
+}
+
+<div class="container">
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="row bg-light rounded shadow p-4 mb-4">
+        <form method="get" class="row gx-3 gy-2">
+            <div class="col-md-6 mt-3">
+                <div class="form-floating">
+                    <input type="text" class="form-control" id="search" name="search" placeholder="Search" value="@Model.Search">
+                    <label for="search">Name, description, or filename</label>
+                </div>
+            </div>
+
+            <div class="col-md-6 mt-3">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <div class="form-floating">
+                            <input type="number" min="0" step="0.1" class="form-control" id="minFileSizeMb" name="minFileSizeMb" value="@(Model.MinFileSizeMb?.ToString(CultureInfo.InvariantCulture) ?? string.Empty)">
+                            <label for="minFileSizeMb">Min size (MB)</label>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="form-floating">
+                            <input type="number" min="0" step="0.1" class="form-control" id="maxFileSizeMb" name="maxFileSizeMb" value="@(Model.MaxFileSizeMb?.ToString(CultureInfo.InvariantCulture) ?? string.Empty)">
+                            <label for="maxFileSizeMb">Max size (MB)</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 mt-3">
+                <div class="row g-3">
+                    <div class="col-12 col-lg-4">
+                        <div class="form-floating">
+                            <select class="form-select" name="idVisibilite" id="idVisibilite">
+                                <option value="">All visibility levels</option>
+                                @foreach (var visibilite in Model.Visibilites ?? Array.Empty<Dataportal.ViewModels.LookupItem>())
+                                {
+                                    <option value="@visibilite.Id" selected="@(visibilite.Id == Model.IdVisibilite ? "selected" : null)">@visibilite.Label</option>
+                                }
+                            </select>
+                            <label for="idVisibilite">Visibility</label>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-4">
+                        <div class="form-floating">
+                            <select class="form-select" name="idCreateur" id="idCreateur">
+                                <option value="">All creators</option>
+                                @foreach (var creator in Model.Createurs ?? Array.Empty<Dataportal.ViewModels.LookupItem>())
+                                {
+                                    <option value="@creator.Id" selected="@(creator.Id == Model.IdCreateur ? "selected" : null)">@creator.Label</option>
+                                }
+                            </select>
+                            <label for="idCreateur">Creator</label>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-4">
+                        <div class="form-floating">
+                            <select class="form-select" name="idEntreprise" id="idEntreprise">
+                                <option value="">All companies</option>
+                                @foreach (var entreprise in Model.Entreprises ?? Array.Empty<Dataportal.ViewModels.LookupItem>())
+                                {
+                                    <option value="@entreprise.Id" selected="@(entreprise.Id == Model.IdEntreprise ? "selected" : null)">@entreprise.Label</option>
+                                }
+                            </select>
+                            <label for="idEntreprise">Company</label>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-4">
+                        <div class="form-floating">
+                            <select class="form-select" name="idLicence" id="idLicence">
+                                <option value="">All licenses</option>
+                                @foreach (var licence in Model.Licences ?? Array.Empty<Dataportal.Models.Licence>())
+                                {
+                                    <option value="@licence.Id" selected="@(licence.Id == Model.IdLicence ? "selected" : null)">@licence.Libelle</option>
+                                }
+                            </select>
+                            <label for="idLicence">License</label>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-4">
+                        <div class="form-floating">
+                            <select class="form-select" name="autoriserLeTelechargement" id="autoriserLeTelechargement">
+                                <option value="">All download statuses</option>
+                                <option value="true" selected="@(Model.AutoriserLeTelechargement == true ? "selected" : null)">Downloads allowed</option>
+                                <option value="false" selected="@(Model.AutoriserLeTelechargement == false ? "selected" : null)">Downloads disabled</option>
+                            </select>
+                            <label for="autoriserLeTelechargement">Allow downloads</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 mt-3 d-flex flex-column flex-md-row">
+                <button type="submit" class="btn btn-primary flex-grow-1 w-100 mb-2 mb-md-0 me-md-2">
+                    Filter
+                </button>
+                <a href="@Url.Action("Index", "Files")" class="btn btn-outline-primary flex-grow-1 w-100">
+                    Reset
+                </a>
+            </div>
+        </form>
+    </div>
+
+    @if (User.IsInRole("administrator") || User.IsInRole("editor"))
+    {
+        <div class="col-12 col-md-auto mb-3">
+            <a class="btn btn-success" href="@Url.Action("Upload", "Files")">
+                <i class="bi bi-upload"></i> Upload file
+            </a>
+        </div>
+    }
+
+    @if (Model.Fichiers != null && Model.Fichiers.Any())
+    {
+        <div class="row">
+            <div class="paginated-table-wrapper" data-page-size="20">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle shadow-sm paginated-table">
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col" data-sortable="true" data-sort-type="string">
+                                    <button type="button" class="table-sort-button">
+                                        Name
+                                        <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" data-sortable="true" data-sort-type="size">
+                                    <button type="button" class="table-sort-button">
+                                        Size
+                                        <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" data-sortable="true" data-sort-type="number">
+                                    <button type="button" class="table-sort-button">
+                                        Downloads
+                                        <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" data-sortable="true" data-sort-type="date">
+                                    <button type="button" class="table-sort-button">
+                                        Uploaded
+                                        <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" data-sortable="true" data-sort-type="string">
+                                    <button type="button" class="table-sort-button">
+                                        Visibility
+                                        <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" data-sortable="true" data-sort-type="string">
+                                    <button type="button" class="table-sort-button">
+                                        License
+                                        <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" data-sortable="true" data-sort-type="string">
+                                    <button type="button" class="table-sort-button">
+                                        Energy type
+                                        <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" data-sortable="true" data-sort-type="boolean">
+                                    <button type="button" class="table-sort-button">
+                                        Downloads allowed
+                                        <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" data-sortable="true" data-sort-type="string">
+                                    <button type="button" class="table-sort-button">
+                                        Creator
+                                        <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
+                                    </button>
+                                </th>
+                                <th scope="col">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var fichier in Model.Fichiers)
+                            {
+                                var sizeMb = fichier.TailleOctets / (1024d * 1024d);
+                                var sizeDisplay = FormatFileSize(fichier.TailleOctets);
+                                string? visibilityLabel;
+                                if (User.IsInRole("administrator") && fichier.IdVisibilite == VisibiliteIds.Interne)
+                                {
+                                    visibilityLabel = fichier.Visibilite?.Libelle + $" ({fichier.Utilisateur?.Entreprise?.Nom})";
+                                }
+                                else if (User.IsInRole("administrator") && fichier.IdVisibilite == VisibiliteIds.Personnelle)
+                                {
+                                    visibilityLabel = fichier.Visibilite?.Libelle + $" ({fichier.Utilisateur?.Prenom} {fichier.Utilisateur?.Nom})";
+                                }
+                                else
+                                {
+                                    visibilityLabel = fichier.Visibilite?.Libelle;
+                                }
+
+                                var visibilityDisplay = string.IsNullOrWhiteSpace(visibilityLabel) ? "—" : visibilityLabel;
+                                var creatorLabel = $"{fichier.Utilisateur?.Prenom} {fichier.Utilisateur?.Nom}".Trim();
+                                var licenceLabel = fichier.Licence?.Libelle ?? "—";
+                                var energyLabel = fichier.TypeEnergieRenouvelable?.Libelle ?? "—";
+
+                                <tr>
+                                    <td data-sort-value="@fichier.Nom">
+                                        <div class="fw-semibold">@fichier.Nom</div>
+                                        <small class="text-muted">@fichier.NomFichierOriginal</small>
+                                    </td>
+                                    <td data-sort-value="@sizeMb.ToString(CultureInfo.InvariantCulture)">@sizeDisplay</td>
+                                    <td data-sort-value="@fichier.NombreDeTelechargements.ToString(CultureInfo.InvariantCulture)">@fichier.NombreDeTelechargements</td>
+                                    <td data-sort-value="@(fichier.DateAjout.ToString("O"))">@fichier.DateAjout.ToString("dd/MM/yyyy")</td>
+                                    <td data-sort-value="@visibilityDisplay">@visibilityDisplay</td>
+                                    <td data-sort-value="@licenceLabel">@licenceLabel</td>
+                                    <td data-sort-value="@energyLabel">@energyLabel</td>
+                                    <td data-sort-value="@(fichier.AutoriserLeTelechargement ? 1 : 0)">
+                                        @if (fichier.AutoriserLeTelechargement)
+                                        {
+                                            <span class="badge bg-success">Yes</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">No</span>
+                                        }
+                                    </td>
+                                    <td data-sort-value="@creatorLabel">@creatorLabel</td>
+                                    <td>
+                                        <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("Details", "Files", new { id = fichier.Id })" title="View details">
+                                            <i class="bi bi-exclamation-circle"></i>
+                                        </a>
+                                        @if (fichier.AutoriserLeTelechargement)
+                                        {
+                                            <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("Download", "Files", new { id = fichier.Id })" title="Download">
+                                                <i class="bi bi-download"></i>
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" title="Downloads disabled" disabled>
+                                                <i class="bi bi-download"></i>
+                                            </button>
+                                        }
+                                        @if (User.IsInRole("administrator") || User.IsInRole("editor") || (User.Identity.IsAuthenticated && User.FindFirst("UserId")?.Value == fichier.IdUtilisateur.ToString()))
+                                        {
+                                            <a class="btn btn-sm btn-outline-danger ms-1" href="@Url.Action("Delete", "Files", new { id = fichier.Id })" title="Delete">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <div class="table-pagination-controls d-flex justify-content-end align-items-center gap-2 mt-3 d-none">
+                    <button type="button" class="table-pagination-button table-pagination-prev" aria-label="Previous page" disabled>
+                        <span class="material-symbols-outlined">
+                            arrow_circle_left
+                        </span>
+                    </button>
+                    <div class="d-flex align-items-center gap-1">
+                        <input type="number" class="form-control table-pagination-input" value="1" min="1" />
+                        <span>/</span>
+                        <span class="table-pagination-total">1</span>
+                    </div>
+                    <button type="button" class="table-pagination-button table-pagination-next" aria-label="Next page" disabled>
+                        <span class="material-symbols-outlined">
+                            arrow_circle_right
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="text-center">
+            <img src="/illustration/empty-search.svg" alt="No files found" class="img-fluid" style="max-height:200px;" />
+            <p class="text-muted mt-2">No files found.</p>
+        </div>
+    }
+</div>
+
+@functions {
+    private static string FormatFileSize(long bytes)
+    {
+        const double scale = 1024d;
+        string[] units = { "B", "KB", "MB", "GB", "TB" };
+        var size = bytes;
+        var unitIndex = 0;
+        double readable = size;
+
+        while (readable >= scale && unitIndex < units.Length - 1)
+        {
+            readable /= scale;
+            unitIndex += 1;
+        }
+
+        return $"{readable:0.##} {units[unitIndex]}";
+    }
+}
