@@ -358,7 +358,7 @@
                         <hr />
                         <h6 class="preview-heading text-center">Data preview</h6>
                         <div class="table-responsive">
-                            <table class="table table-striped table-sm preview-table">
+                            <table class="table table-striped table-sm preview-table" data-table-name="@Model.Donnees.NomDeLaTable" data-fallback-schema="donnees">
                                 <thead>
                                     <tr>
                                         @foreach (var col in Model.DonneesPreviewRows.First().Keys)
@@ -368,6 +368,18 @@
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    <tr class="preview-summary-row is-loading" data-preview-summary>
+                                        @foreach (var _ in Model.DonneesPreviewRows.First().Keys)
+                                        {
+                                            <td>
+                                                <div class="summary-skeleton" aria-hidden="true">
+                                                    <span></span>
+                                                    <span></span>
+                                                    <span></span>
+                                                </div>
+                                            </td>
+                                        }
+                                    </tr>
                                     @foreach (var row in Model.DonneesPreviewRows)
                                     {
                                         <tr>
@@ -447,7 +459,7 @@
                         <hr />
                         <h6 class="preview-heading text-center">Event log preview</h6>
                         <div class="table-responsive">
-                            <table class="table table-striped table-sm preview-table">
+                            <table class="table table-striped table-sm preview-table" data-table-name="@Model.DonneesEventLogs.NomDeLaTable" data-fallback-schema="donnees_event_logs">
                                 <thead>
                                     <tr>
                                         @foreach (var col in Model.EventLogsPreviewRows.First().Keys)
@@ -457,6 +469,18 @@
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    <tr class="preview-summary-row is-loading" data-preview-summary>
+                                        @foreach (var _ in Model.EventLogsPreviewRows.First().Keys)
+                                        {
+                                            <td>
+                                                <div class="summary-skeleton" aria-hidden="true">
+                                                    <span></span>
+                                                    <span></span>
+                                                    <span></span>
+                                                </div>
+                                            </td>
+                                        }
+                                    </tr>
                                     @foreach (var row in Model.EventLogsPreviewRows)
                                     {
                                         <tr>
@@ -533,7 +557,7 @@
                         <hr />
                         <h6 class="preview-heading text-center">Environmental context preview</h6>
                         <div class="table-responsive">
-                            <table class="table table-striped table-sm preview-table">
+                            <table class="table table-striped table-sm preview-table" data-table-name="@Model.DonneesContexteEnvironnemental.NomDeLaTable" data-fallback-schema="donnees_contexte_environnemental">
                                 <thead>
                                     <tr>
                                         @foreach (var col in Model.ContextePreviewRows.First().Keys)
@@ -543,6 +567,18 @@
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    <tr class="preview-summary-row is-loading" data-preview-summary>
+                                        @foreach (var _ in Model.ContextePreviewRows.First().Keys)
+                                        {
+                                            <td>
+                                                <div class="summary-skeleton" aria-hidden="true">
+                                                    <span></span>
+                                                    <span></span>
+                                                    <span></span>
+                                                </div>
+                                            </td>
+                                        }
+                                    </tr>
                                     @foreach (var row in Model.ContextePreviewRows)
                                     {
                                         <tr>
@@ -604,6 +640,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const downloadButtons = Array.from(document.querySelectorAll('.download-table'));
+            const previewTables = Array.from(document.querySelectorAll('.preview-table'));
 
             const parseDownloadParts = (rawParts) => {
                 if (!rawParts) {
@@ -695,6 +732,173 @@
                     }, 1500);
                 });
             });
+
+            const formatNumber = (value) => {
+                if (!Number.isFinite(value)) {
+                    return '—';
+                }
+
+                return new Intl.NumberFormat(undefined, {
+                    maximumFractionDigits: 2
+                }).format(value);
+            };
+
+            const formatDate = (value) => {
+                if (!value) {
+                    return '—';
+                }
+
+                const parsed = new Date(value);
+                if (Number.isNaN(parsed.getTime())) {
+                    return '—';
+                }
+
+                return parsed.toLocaleDateString();
+            };
+
+            const parseNumber = (value) => {
+                if (value === null || value === undefined) {
+                    return null;
+                }
+
+                const parsed = Number(value);
+                return Number.isFinite(parsed) ? parsed : null;
+            };
+
+            const buildSummaryLines = (summary) => {
+                if (!summary) {
+                    return [
+                        { label: 'Type', value: '—' },
+                        { label: 'Unique', value: '—' }
+                    ];
+                }
+
+                const uniqueCount = summary.uniqueCount ?? '—';
+
+                if (summary.dataType === 'Boolean') {
+                    return [
+                        { label: 'Type', value: 'Boolean' },
+                        { label: 'Unique', value: uniqueCount.toString() }
+                    ];
+                }
+
+                if (summary.dataType === 'Number') {
+                    const minValue = formatNumber(parseNumber(summary.minValue));
+                    const maxValue = formatNumber(parseNumber(summary.maxValue));
+                    const avgValue = formatNumber(parseNumber(summary.avgValue));
+
+                    return [
+                        { label: 'Type', value: 'Number' },
+                        { label: 'Min / Max', value: `${minValue} / ${maxValue}` },
+                        { label: 'Avg', value: avgValue },
+                        { label: 'Unique', value: uniqueCount.toString() }
+                    ];
+                }
+
+                if (summary.dataType === 'Date') {
+                    return [
+                        { label: 'Type', value: 'Date' },
+                        { label: 'Min / Max', value: `${formatDate(summary.minValue)} / ${formatDate(summary.maxValue)}` },
+                        { label: 'Unique', value: uniqueCount.toString() }
+                    ];
+                }
+
+                if (summary.dataType === 'Text') {
+                    const avgLength = formatNumber(parseNumber(summary.avgLength));
+                    const maxLength = summary.maxLength ?? '—';
+                    const minLength = summary.minLength ?? '—';
+
+                    return [
+                        { label: 'Type', value: 'Text' },
+                        { label: 'Unique', value: uniqueCount.toString() },
+                        { label: 'Min / Max', value: `${minLength} / ${maxLength}` },
+                        { label: 'Avg length', value: avgLength }
+                    ];
+                }
+
+                return [
+                    { label: 'Type', value: summary.dataType || '—' },
+                    { label: 'Unique', value: uniqueCount.toString() }
+                ];
+            };
+
+            const renderSummaryCell = (cell, lines) => {
+                cell.textContent = '';
+                const container = document.createElement('div');
+                container.className = 'column-summary';
+                lines.forEach((line) => {
+                    const row = document.createElement('div');
+                    row.className = 'column-summary-line';
+                    const label = document.createElement('span');
+                    label.className = 'column-summary-label';
+                    label.textContent = line.label;
+                    const value = document.createElement('span');
+                    value.className = 'column-summary-value';
+                    value.textContent = line.value;
+                    row.appendChild(label);
+                    row.appendChild(value);
+                    container.appendChild(row);
+                });
+                cell.appendChild(container);
+            };
+
+            const buildTableSummaries = async (table) => {
+                const summaryRow = table.querySelector('[data-preview-summary]');
+                if (!summaryRow) {
+                    return;
+                }
+
+                const tableName = table.dataset.tableName;
+                const fallbackSchema = table.dataset.fallbackSchema || '';
+
+                if (!tableName) {
+                    summaryRow.classList.remove('is-loading');
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/api/table-summary?tableName=${encodeURIComponent(tableName)}&fallbackSchema=${encodeURIComponent(fallbackSchema)}`);
+                    if (!response.ok) {
+                        throw new Error('Failed to load summary');
+                    }
+
+                    const payload = await response.json();
+                    const columns = Array.isArray(payload?.columns) ? payload.columns : [];
+                    const columnLookup = new Map(columns.map((column) => [column.name, column]));
+                    const headers = Array.from(table.querySelectorAll('thead th')).map((th) => th.textContent?.trim() ?? '');
+
+                    headers.forEach((header, index) => {
+                        const summary = columnLookup.get(header);
+                        const lines = buildSummaryLines(summary);
+                        renderSummaryCell(summaryRow.children[index], lines);
+                    });
+                } catch (_error) {
+                    const headers = Array.from(table.querySelectorAll('thead th'));
+                    headers.forEach((_, index) => {
+                        renderSummaryCell(summaryRow.children[index], [
+                            { label: 'Type', value: 'Unavailable' },
+                            { label: 'Unique', value: '—' }
+                        ]);
+                    });
+                } finally {
+                    summaryRow.classList.remove('is-loading');
+                }
+            };
+
+            const scheduleSummaries = () => {
+                previewTables.forEach((table, index) => {
+                    const delay = 120 + index * 80;
+                    window.setTimeout(() => buildTableSummaries(table), delay);
+                });
+            };
+
+            if (previewTables.length > 0) {
+                if ('requestIdleCallback' in window) {
+                    window.requestIdleCallback(scheduleSummaries);
+                } else {
+                    scheduleSummaries();
+                }
+            }
         });
     </script>
 }
