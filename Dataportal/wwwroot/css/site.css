@@ -853,6 +853,15 @@ body.upload-confirmation-open {
     min-height: 21vh;
 }
 
+.files-action-column {
+    min-width: 180px;
+    white-space: nowrap;
+}
+
+.file-details-panel {
+    min-height: 100%;
+}
+
 th[data-sortable="true"] {
     white-space: nowrap;
 }

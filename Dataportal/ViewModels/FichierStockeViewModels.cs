@@ -49,4 +49,31 @@ namespace Dataportal.ViewModels
         public IEnumerable<Licence>? Licences { get; set; }
         public IEnumerable<TypeEnergieRenouvelable>? TypesEnergieRenouvelable { get; set; }
     }
+
+    public class FichierStockeEditViewModel
+    {
+        [Required]
+        public int Id { get; set; }
+
+        [Required]
+        [MaxLength(150)]
+        public string Nom { get; set; } = string.Empty;
+
+        [MaxLength(1000)]
+        public string? Description { get; set; }
+
+        [Required]
+        public int IdVisibilite { get; set; }
+
+        [Required]
+        public int IdLicence { get; set; }
+
+        public int? IdTypeEnergieRenouvelable { get; set; }
+
+        public bool AutoriserLeTelechargement { get; set; }
+
+        public IEnumerable<Visibilite>? Visibilites { get; set; }
+        public IEnumerable<Licence>? Licences { get; set; }
+        public IEnumerable<TypeEnergieRenouvelable>? TypesEnergieRenouvelable { get; set; }
+    }
 }

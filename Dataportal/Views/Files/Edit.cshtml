@@ -1,22 +1,22 @@
-﻿@model Dataportal.ViewModels.FichierStockeUploadViewModel
+﻿@model Dataportal.ViewModels.FichierStockeEditViewModel
 @using Dataportal.Classes
 @using Microsoft.AspNetCore.Mvc.Rendering
 
 @{
-    ViewData["Title"] = "Upload file";
+    ViewData["Title"] = "Edit file";
 }
 
 <div class="container">
-    <h2 class="mb-4">Upload a file</h2>
-    <form method="post" enctype="multipart/form-data" class="bg-light p-4 rounded shadow-sm upload-overlay-form">
+    <h2 class="mb-4">Edit file</h2>
+    <form asp-action="Edit" method="post" class="bg-light p-4 rounded shadow-sm">
         @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
         <div class="form-floating mb-3">
-            <input asp-for="Nom" class="form-control" placeholder="Name" required />
+            <input asp-for="Nom" class="form-control" placeholder="Name" readonly />
             <label asp-for="Nom">Name</label>
-            <div class="form-text text-muted">The name must be unique and cannot be changed after upload.</div>
-            <span asp-validation-for="Nom" class="text-danger"></span>
+            <div class="form-text text-muted">The name is unique and cannot be edited after upload.</div>
         </div>
 
         <div class="mb-3">
@@ -64,7 +64,7 @@
             <span asp-validation-for="Description" class="text-danger"></span>
         </div>
 
-        <div class="form-floating mb-3">
+        <div class="form-floating mb-1">
             <select asp-for="IdLicence" class="form-select" required data-description-target="licenceDescription">
                 <option value="">Select a license</option>
                 @foreach (var licence in Model.Licences ?? Array.Empty<Dataportal.Models.Licence>())
@@ -112,28 +112,17 @@
             <label class="form-check-label" asp-for="AutoriserLeTelechargement">Allow downloads</label>
         </div>
 
-        <div class="mb-3">
-            <label asp-for="UploadedFile" class="form-label">File</label>
-            <div class="form-text text-muted">Allowed types: .csv, .xlsx, .xls, .parquet, .zip, .txt, .pdf, .json, .png, .jpg, .jpeg, .wav, .mat.</div>
-            <input asp-for="UploadedFile" class="form-control" type="file" />
-            <small class="form-text text-muted">Maximum file size: @UploadSizeLimits.StepUploadLimitDisplay.</small>
-            <span asp-validation-for="UploadedFile" class="text-danger"></span>
-        </div>
-
         <div class="d-flex flex-column flex-md-row gap-2">
             <button type="submit" class="btn btn-success flex-grow-1">
-                <i class="bi bi-upload"></i> Upload file
+                <i class="bi bi-save"></i> Save changes
             </button>
-            <a class="btn btn-outline-secondary flex-grow-1" href="@Url.Action("Index", "Files")">Cancel</a>
+            <a class="btn btn-outline-secondary flex-grow-1" href="@Url.Action("Details", "Files", new { id = Model.Id })">Cancel</a>
         </div>
     </form>
 </div>
 
-@await Html.PartialAsync("_UploadOverlay")
-
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
-    <script src="~/js/upload-overlay.js" asp-append-version="true"></script>
     <script src="~/js/richTextEditor.js" asp-append-version="true"></script>
     <script>
         const updateDescription = (selectEl) => {
@@ -164,11 +153,6 @@
             if (visibilitySelect) {
                 visibilitySelect.addEventListener('change', () => updateDescription(visibilitySelect));
             }
-
-            const form = document.querySelector('form.upload-overlay-form');
-            initUploadOverlay(form, {
-                confirmMessage: 'We will upload the file and save its metadata. Do you want to continue?'
-            });
         });
     </script>
 }

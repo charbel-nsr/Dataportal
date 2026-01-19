@@ -6,15 +6,19 @@
     var sanitizedDescription = RichTextSanitizer.Sanitize(Model.Description);
     var canManage = User.IsInRole("administrator") || User.IsInRole("editor") ||
                     (User.Identity.IsAuthenticated && User.FindFirst("UserId")?.Value == Model.IdUtilisateur.ToString());
+    var returnUrl = Context.Request.Query["returnUrl"].ToString();
+    var backUrl = !string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl)
+        ? returnUrl
+        : Url.Action("Index", "Files");
 }
 
-<div class="container">
+<div class="container" style="min-height: 50vh;">
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
         <div>
             <h2 class="mb-1">@Model.Nom</h2>
             <p class="text-muted mb-0">@Model.NomFichierOriginal</p>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex align-items-center gap-2">
             @if (Model.AutoriserLeTelechargement)
             {
                 <a class="btn btn-outline-primary" href="@Url.Action("Download", "Files", new { id = Model.Id })">
@@ -23,16 +27,25 @@
             }
             @if (canManage)
             {
-                <a class="btn btn-outline-danger" href="@Url.Action("Delete", "Files", new { id = Model.Id })">
-                    <i class="bi bi-trash"></i> Delete
+                <a class="btn btn-outline-primary" href="@Url.Action("Edit", "Files", new { id = Model.Id })">
+                    <i class="bi bi-pencil"></i> Edit
                 </a>
+                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#fileDeleteModal">
+                    <i class="bi bi-trash"></i> Delete
+                </button>
             }
+            <a class="btn btn-link text-decoration-none text-muted ms-auto d-inline-flex align-items-center justify-content-center p-2 close-details-link"
+               href="@backUrl"
+               title="Close file details">
+                <span class="material-symbols-outlined" aria-hidden="true">cancel</span>
+                <span class="visually-hidden">Return to the previous page</span>
+            </a>
         </div>
     </div>
 
     <div class="row g-4">
-        <div class="col-lg-7">
-            <div class="bg-light p-4 rounded shadow-sm">
+        <div class="col-lg-7 d-flex">
+            <div class="bg-light p-4 rounded shadow-sm flex-fill file-details-panel">
                 <h3 class="h5 mb-3">Description</h3>
                 @if (!string.IsNullOrWhiteSpace(sanitizedDescription))
                 {
@@ -44,8 +57,8 @@
                 }
             </div>
         </div>
-        <div class="col-lg-5">
-            <div class="bg-white border rounded p-4 shadow-sm">
+        <div class="col-lg-5 d-flex">
+            <div class="bg-white border rounded p-4 shadow-sm flex-fill file-details-panel">
                 <dl class="row mb-0">
                     <dt class="col-sm-5 text-muted">Uploaded</dt>
                     <dd class="col-sm-7">@Model.DateAjout.ToString("dd/MM/yyyy")</dd>
@@ -60,18 +73,43 @@
                     <dd class="col-sm-7">@Model.Licence?.Libelle</dd>
 
                     <dt class="col-sm-5 text-muted">Energy type</dt>
-                    <dd class="col-sm-7">@Model.TypeEnergieRenouvelable?.Libelle ?? "—"</dd>
+                    <dd class="col-sm-7">@(Model.TypeEnergieRenouvelable?.Libelle ?? "—")</dd>
 
                     <dt class="col-sm-5 text-muted">Visibility</dt>
                     <dd class="col-sm-7">@Model.Visibilite?.Libelle</dd>
 
-                    <dt class="col-sm-5 text-muted">Downloads allowed</dt>
-                    <dd class="col-sm-7">@((Model.AutoriserLeTelechargement) ? "Yes" : "No")</dd>
-
                     <dt class="col-sm-5 text-muted">SHA-256</dt>
-                    <dd class="col-sm-7 text-break">@Model.HashSha256</dd>
+                    <dd class="col-sm-7 text-break">
+                        <div>@Model.HashSha256</div>
+                        <small class="text-muted">A SHA-256 checksum lets users verify the file integrity after download.</small>
+                    </dd>
                 </dl>
             </div>
         </div>
     </div>
 </div>
+
+@if (canManage)
+{
+    <div class="modal fade" id="fileDeleteModal" tabindex="-1" aria-labelledby="fileDeleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="fileDeleteModalLabel">Delete file</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0">Are you sure you want to delete <strong>@Model.Nom</strong>? This cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form method="post" action="@Url.Action("DeleteConfirmed", "Files")">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+}

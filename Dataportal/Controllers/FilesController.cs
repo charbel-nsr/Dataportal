@@ -173,6 +173,7 @@ namespace Dataportal.Controllers
             model.Visibilites = visibilites;
             model.Licences = _context.Licence.Where(l => l.Actif).ToList();
             model.TypesEnergieRenouvelable = _context.TypeEnergieRenouvelable.OrderBy(t => t.Libelle).ToList();
+            var normalizedName = model.Nom?.Trim() ?? string.Empty;
 
             if (!visibilites.Any(v => v.Id == model.IdVisibilite))
             {
@@ -194,8 +195,18 @@ namespace Dataportal.Controllers
                 ModelState.AddModelError(nameof(model.IdVisibilite), "Standard users can only upload personal files.");
             }
 
+            if (!string.IsNullOrWhiteSpace(normalizedName))
+            {
+                var normalizedNameUpper = normalizedName.ToUpper();
+                if (_context.FichierStocke.Any(f => f.Nom.ToUpper() == normalizedNameUpper))
+                {
+                    ModelState.AddModelError(nameof(model.Nom), "A file with this name already exists. Please choose a unique name.");
+                }
+            }
+
             if (!ModelState.IsValid)
             {
+                model.Nom = normalizedName;
                 return View(model);
             }
 
@@ -244,7 +255,7 @@ namespace Dataportal.Controllers
 
                 var record = new FichierStocke
                 {
-                    Nom = model.Nom.Trim(),
+                    Nom = normalizedName,
                     Description = string.IsNullOrWhiteSpace(model.Description) ? null : model.Description.Trim(),
                     IdLicence = model.IdLicence,
                     IdTypeEnergieRenouvelable = model.IdTypeEnergieRenouvelable,
@@ -344,6 +355,106 @@ namespace Dataportal.Controllers
             }
 
             return View(fileRecord);
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "administrator,editor,user")]
+        public async Task<IActionResult> Edit(int id)
+        {
+            var fileRecord = await _context.FichierStocke
+                .Include(f => f.Visibilite)
+                .Include(f => f.Licence)
+                .Include(f => f.TypeEnergieRenouvelable)
+                .FirstOrDefaultAsync(f => f.Id == id);
+
+            if (fileRecord == null)
+            {
+                return NotFound();
+            }
+
+            if (!CanManageFile(fileRecord))
+            {
+                return Forbid();
+            }
+
+            var visibilites = GetAllowedVisibilites();
+
+            var model = new FichierStockeEditViewModel
+            {
+                Id = fileRecord.Id,
+                Nom = fileRecord.Nom,
+                Description = fileRecord.Description,
+                IdLicence = fileRecord.IdLicence,
+                IdTypeEnergieRenouvelable = fileRecord.IdTypeEnergieRenouvelable,
+                IdVisibilite = fileRecord.IdVisibilite,
+                AutoriserLeTelechargement = fileRecord.AutoriserLeTelechargement,
+                Visibilites = visibilites,
+                Licences = _context.Licence.Where(l => l.Actif).ToList(),
+                TypesEnergieRenouvelable = _context.TypeEnergieRenouvelable.OrderBy(t => t.Libelle).ToList()
+            };
+
+            return View(model);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "administrator,editor,user")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(FichierStockeEditViewModel model)
+        {
+            var fileRecord = await _context.FichierStocke
+                .FirstOrDefaultAsync(f => f.Id == model.Id);
+
+            if (fileRecord == null)
+            {
+                return NotFound();
+            }
+
+            if (!CanManageFile(fileRecord))
+            {
+                return Forbid();
+            }
+
+            var visibilites = GetAllowedVisibilites();
+            model.Visibilites = visibilites;
+            model.Licences = _context.Licence.Where(l => l.Actif).ToList();
+            model.TypesEnergieRenouvelable = _context.TypeEnergieRenouvelable.OrderBy(t => t.Libelle).ToList();
+
+            if (!visibilites.Any(v => v.Id == model.IdVisibilite))
+            {
+                ModelState.AddModelError(nameof(model.IdVisibilite), "Please select a valid visibility level.");
+            }
+
+            if (!model.Licences.Any(l => l.Id == model.IdLicence))
+            {
+                ModelState.AddModelError(nameof(model.IdLicence), "Please select a valid license.");
+            }
+
+            if (model.IdTypeEnergieRenouvelable.HasValue && !model.TypesEnergieRenouvelable.Any(t => t.Id == model.IdTypeEnergieRenouvelable))
+            {
+                ModelState.AddModelError(nameof(model.IdTypeEnergieRenouvelable), "Please select a valid energy type.");
+            }
+
+            if (User.IsInRole("user") && model.IdVisibilite != VisibiliteIds.Personnelle)
+            {
+                ModelState.AddModelError(nameof(model.IdVisibilite), "Standard users can only save personal files.");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                model.Nom = fileRecord.Nom;
+                return View(model);
+            }
+
+            fileRecord.Description = string.IsNullOrWhiteSpace(model.Description) ? null : model.Description.Trim();
+            fileRecord.IdLicence = model.IdLicence;
+            fileRecord.IdTypeEnergieRenouvelable = model.IdTypeEnergieRenouvelable;
+            fileRecord.IdVisibilite = model.IdVisibilite;
+            fileRecord.AutoriserLeTelechargement = model.AutoriserLeTelechargement;
+
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "File details updated successfully.";
+            return RedirectToAction(nameof(Details), new { id = fileRecord.Id });
         }
 
         [HttpGet]

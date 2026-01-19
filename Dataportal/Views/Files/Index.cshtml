@@ -4,6 +4,7 @@
 
 @{
     ViewData["Title"] = "Files";
+    var searchReturnUrl = Context.Request.Path + Context.Request.QueryString;
 }
 
 <div class="container">
@@ -181,19 +182,13 @@
                                         <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
                                     </button>
                                 </th>
-                                <th scope="col" data-sortable="true" data-sort-type="boolean">
-                                    <button type="button" class="table-sort-button">
-                                        Downloads allowed
-                                        <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
-                                    </button>
-                                </th>
                                 <th scope="col" data-sortable="true" data-sort-type="string">
                                     <button type="button" class="table-sort-button">
                                         Creator
                                         <i class="bi bi-arrow-down-up sort-icon ms-1" aria-hidden="true"></i>
                                     </button>
                                 </th>
-                                <th scope="col">Action</th>
+                                <th scope="col" class="files-action-column">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -231,19 +226,9 @@
                                     <td data-sort-value="@visibilityDisplay">@visibilityDisplay</td>
                                     <td data-sort-value="@licenceLabel">@licenceLabel</td>
                                     <td data-sort-value="@energyLabel">@energyLabel</td>
-                                    <td data-sort-value="@(fichier.AutoriserLeTelechargement ? 1 : 0)">
-                                        @if (fichier.AutoriserLeTelechargement)
-                                        {
-                                            <span class="badge bg-success">Yes</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="badge bg-secondary">No</span>
-                                        }
-                                    </td>
                                     <td data-sort-value="@creatorLabel">@creatorLabel</td>
-                                    <td>
-                                        <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("Details", "Files", new { id = fichier.Id })" title="View details">
+                                    <td class="files-action-column">
+                                        <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("Details", "Files", new { id = fichier.Id, returnUrl = searchReturnUrl })" title="View details">
                                             <i class="bi bi-exclamation-circle"></i>
                                         </a>
                                         @if (fichier.AutoriserLeTelechargement)
@@ -260,9 +245,18 @@
                                         }
                                         @if (User.IsInRole("administrator") || User.IsInRole("editor") || (User.Identity.IsAuthenticated && User.FindFirst("UserId")?.Value == fichier.IdUtilisateur.ToString()))
                                         {
-                                            <a class="btn btn-sm btn-outline-danger ms-1" href="@Url.Action("Delete", "Files", new { id = fichier.Id })" title="Delete">
-                                                <i class="bi bi-trash"></i>
+                                            <a class="btn btn-sm btn-outline-primary ms-1" href="@Url.Action("Edit", "Files", new { id = fichier.Id })" title="Edit">
+                                                <i class="bi bi-pencil"></i>
                                             </a>
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-danger ms-1"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#fileDeleteModal"
+                                                    data-file-id="@fichier.Id"
+                                                    data-file-name="@fichier.Nom"
+                                                    title="Delete">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
                                         }
                                     </td>
                                 </tr>
@@ -298,6 +292,58 @@
         </div>
     }
 </div>
+
+<div class="modal fade" id="fileDeleteModal" tabindex="-1" aria-labelledby="fileDeleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="fileDeleteModalLabel">Delete file</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-0">Are you sure you want to delete <strong data-delete-file-name>this file</strong>? This cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" action="@Url.Action("DeleteConfirmed", "Files")">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="" data-delete-file-id />
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const deleteModal = document.getElementById('fileDeleteModal');
+            if (!deleteModal) {
+                return;
+            }
+
+            deleteModal.addEventListener('show.bs.modal', (event) => {
+                const trigger = event.relatedTarget;
+                if (!trigger) {
+                    return;
+                }
+
+                const fileId = trigger.getAttribute('data-file-id');
+                const fileName = trigger.getAttribute('data-file-name');
+                const idInput = deleteModal.querySelector('[data-delete-file-id]');
+                const nameTarget = deleteModal.querySelector('[data-delete-file-name]');
+
+                if (idInput) {
+                    idInput.value = fileId || '';
+                }
+                if (nameTarget) {
+                    nameTarget.textContent = fileName || 'this file';
+                }
+            });
+        });
+    </script>
+}
 
 @functions {
     private static string FormatFileSize(long bytes)
