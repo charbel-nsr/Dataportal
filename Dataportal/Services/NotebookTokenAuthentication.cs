@@ -21,6 +21,7 @@ namespace Dataportal.Services
 
     public class NotebookTokenAuthenticationHandler : AuthenticationHandler<AuthenticationSchemeOptions>
     {
+        private static readonly TimeSpan TokenLifetime = TimeSpan.FromHours(12);
         private const string NotebookTokenHeader = "X-Notebook-Token";
         private const string ApiKeyHeader = "X-Api-Key";
         private const string BearerPrefix = "Bearer ";
@@ -53,6 +54,11 @@ namespace Dataportal.Services
             if (notebookToken == null || notebookToken.RevokedAtUtc.HasValue)
             {
                 return AuthenticateResult.Fail("Invalid token.");
+            }
+
+            if (DateTime.UtcNow - notebookToken.CreatedAtUtc > TokenLifetime)
+            {
+                return AuthenticateResult.Fail("Token expired.");
             }
 
             var user = notebookToken.Utilisateur;
