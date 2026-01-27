@@ -1329,10 +1329,10 @@ namespace Dataportal.Services
             }));
 
             var hasIdColumn = columns.Any(h => string.Equals(h.Name, "id", StringComparison.OrdinalIgnoreCase));
+            var primaryKeyName = hasIdColumn ? "PK_id" : "Id";
 
-            var createTableCommand = hasIdColumn
-                ? $"CREATE TABLE {target.QualifiedNameWithDatabase} ({columnDefs})"
-                : $"CREATE TABLE {target.QualifiedNameWithDatabase} (Id INT IDENTITY(1,1) PRIMARY KEY, {columnDefs})";
+            var createTableCommand =
+                $"CREATE TABLE {target.QualifiedNameWithDatabase} ({primaryKeyName} INT IDENTITY(1,1) PRIMARY KEY, {columnDefs})";
 
             using var cmd = new SqlCommand(createTableCommand, connection);
             await cmd.ExecuteNonQueryAsync();
