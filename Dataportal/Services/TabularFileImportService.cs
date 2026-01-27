@@ -1329,7 +1329,7 @@ namespace Dataportal.Services
             }));
 
             var hasIdColumn = columns.Any(h => string.Equals(h.Name, "id", StringComparison.OrdinalIgnoreCase));
-            var primaryKeyName = hasIdColumn ? "PK_id" : "Id";
+            var primaryKeyName = hasIdColumn ? "MyPK_id" : "Id";
 
             var createTableCommand =
                 $"CREATE TABLE {target.QualifiedNameWithDatabase} ({primaryKeyName} INT IDENTITY(1,1) PRIMARY KEY, {columnDefs})";
