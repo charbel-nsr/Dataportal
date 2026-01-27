@@ -259,7 +259,7 @@
                         </span>
                     </div>
                     <p class="mb-2 text-muted">
-                        The index is primarily based on the time column for fast time-range queries and ordering. Add a sensor/group ID column only when the values are repeated (not unique). Use the include column only if it is commonly looked up.
+                        The index is built on the time column for fast time-range queries and ordering. When you add a sensor/group ID column, it becomes the first column in the index. Add a sensor/group ID column only when the values are repeated (not unique). Use the include column only if it is commonly looked up.
                     </p>
                     <div class="form-check">
                         <input asp-for="IndexEnabled" class="form-check-input" />

@@ -256,10 +256,13 @@ namespace Dataportal.Services
             var safeSchema = QuoteIdentifier(schemaName);
             var safeTable = QuoteIdentifier(tableName);
             var safeTimeColumn = QuoteIdentifier(timeColumn);
-            var idColumnClause = string.IsNullOrWhiteSpace(idColumn) ? string.Empty : $", {QuoteIdentifier(idColumn)}";
+            var safeIdColumn = string.IsNullOrWhiteSpace(idColumn) ? null : QuoteIdentifier(idColumn);
             var includeClause = string.IsNullOrWhiteSpace(includeColumn)
                 ? string.Empty
                 : $" INCLUDE ({QuoteIdentifier(includeColumn)})";
+            var columnClause = safeIdColumn == null
+                ? safeTimeColumn
+                : $"{safeIdColumn}, {safeTimeColumn}";
 
             var fullyQualifiedNameLiteral = EscapeSqlLiteral($"{schemaName}.{tableName}");
             var indexNameLiteral = EscapeSqlLiteral(normalizedIndexName);
@@ -267,7 +270,7 @@ namespace Dataportal.Services
             var sql = $@"
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'{indexNameLiteral}' AND object_id = OBJECT_ID(N'{fullyQualifiedNameLiteral}'))
 BEGIN
-    CREATE INDEX {safeIndexName} ON {safeSchema}.{safeTable} ({safeTimeColumn}{idColumnClause}){includeClause}
+    CREATE INDEX {safeIndexName} ON {safeSchema}.{safeTable} ({columnClause}){includeClause}
 END";
 
             try
@@ -295,7 +298,7 @@ END";
 
         private static string BuildDefaultIndexName(string tableName, string? idColumn)
         {
-            var suffix = string.IsNullOrWhiteSpace(idColumn) ? "time" : "time_id";
+            var suffix = string.IsNullOrWhiteSpace(idColumn) ? "time" : "id_time";
             return $"IX_{tableName}_{suffix}";
         }
 
