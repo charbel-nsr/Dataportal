@@ -28,5 +28,21 @@ namespace Dataportal.Models
         public int IdQualiteDonnees { get; set; }
 
         public QualiteDonnees QualiteDonnees { get; set; }
+
+        public bool IndexEnabled { get; set; }
+
+        public string? IndexTimeColumn { get; set; }
+
+        public string? IndexIdColumn { get; set; }
+
+        public string? IndexIncludeColumn { get; set; }
+
+        public string? IndexType { get; set; }
+
+        public string? IndexName { get; set; }
+
+        public string? IndexStatus { get; set; }
+
+        public string? IndexError { get; set; }
     }
 }

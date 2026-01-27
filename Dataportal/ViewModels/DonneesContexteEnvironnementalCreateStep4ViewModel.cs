@@ -61,6 +61,26 @@ namespace Dataportal.ViewModels
 
         public List<PersistedFileSummary> PersistedFiles { get; set; } = new();
 
+        public bool IsTimeSeries { get; set; }
+
+        [Display(Name = "Index the table after import")]
+        public bool IndexEnabled { get; set; }
+
+        [Display(Name = "Time column")]
+        public string? IndexTimeColumn { get; set; }
+
+        [Display(Name = "Sensor/Group ID column")]
+        public string? IndexIdColumn { get; set; }
+
+        [Display(Name = "Include column")]
+        public string? IndexIncludeColumn { get; set; }
+
+        public IEnumerable<SelectListItem> IndexTimeColumnOptions { get; set; } = new List<SelectListItem>();
+
+        public IEnumerable<SelectListItem> IndexIdColumnOptions { get; set; } = new List<SelectListItem>();
+
+        public IEnumerable<SelectListItem> IndexIncludeColumnOptions { get; set; } = new List<SelectListItem>();
+
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
             if (StartTimestamp > EndTimestamp)
@@ -100,6 +120,13 @@ namespace Dataportal.ViewModels
                         }
                     }
                 }
+            }
+
+            if (IsTimeSeries && IndexEnabled && string.IsNullOrWhiteSpace(IndexTimeColumn))
+            {
+                yield return new ValidationResult(
+                    "Please select a time column for indexing.",
+                    new[] { nameof(IndexTimeColumn) });
             }
         }
     }

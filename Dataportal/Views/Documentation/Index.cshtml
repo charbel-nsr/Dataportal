@@ -2,7 +2,7 @@
     ViewData["Title"] = "Documentation";
 }
 
-<div class="documentation-page">
+<div class="documentation-page" style="margin-bottom: -1rem;">
     <section class="documentation-hero">
         <div class="container py-5">
             <span class="badge rounded-pill text-bg-light border border-light-subtle text-uppercase tracking-wide">Documentation</span>
@@ -85,6 +85,23 @@
                         <li>Account status and profile settings live in Profile &gt; Settings.</li>
                         <li>Request access updates through your administrator.</li>
                         <li>Use the Notebook API logs (admins) to audit access.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="doc-card h-100">
+                    <div class="doc-card-icon">
+                        <i class="bi bi-stack"></i>
+                    </div>
+                    <h3>Indexation</h3>
+                    <p class="text-muted">
+                        Indexation accelerates server-side queries for time-series datasets. Large tables are best
+                        indexed automatically at night (Montreal off-peak hours).
+                    </p>
+                    <ul class="doc-list">
+                        <li>Admins can monitor all index jobs; editors only see their own.</li>
+                        <li>Use “Run now” for smaller tables if you need results quickly.</li>
+                        <li>While a table is being indexed, it cannot be used in JupyterHub.</li>
                     </ul>
                 </div>
             </div>

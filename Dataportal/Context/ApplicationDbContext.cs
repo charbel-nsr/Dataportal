@@ -206,6 +206,20 @@ namespace Dataportal.Context
                       .HasDefaultValueSql("GETUTCDATE()");
                 entity.Property(d => d.StartTimestamp);
                 entity.Property(d => d.EndTimestamp);
+                entity.Property(d => d.IndexTimeColumn)
+                      .HasMaxLength(200);
+                entity.Property(d => d.IndexIdColumn)
+                      .HasMaxLength(200);
+                entity.Property(d => d.IndexIncludeColumn)
+                      .HasMaxLength(200);
+                entity.Property(d => d.IndexType)
+                      .HasMaxLength(50);
+                entity.Property(d => d.IndexName)
+                      .HasMaxLength(200);
+                entity.Property(d => d.IndexStatus)
+                      .HasMaxLength(100);
+                entity.Property(d => d.IndexError)
+                      .HasMaxLength(1000);
                 entity.HasIndex(e => new { e.Libelle, e.Code })
                       .IsUnique();
                 entity.HasIndex(e => e.NomDeLaTable)
@@ -229,6 +243,20 @@ namespace Dataportal.Context
                       .HasDefaultValueSql("GETUTCDATE()");
                 entity.Property(d => d.StartTimestamp);
                 entity.Property(d => d.EndTimestamp);
+                entity.Property(d => d.IndexTimeColumn)
+                      .HasMaxLength(200);
+                entity.Property(d => d.IndexIdColumn)
+                      .HasMaxLength(200);
+                entity.Property(d => d.IndexIncludeColumn)
+                      .HasMaxLength(200);
+                entity.Property(d => d.IndexType)
+                      .HasMaxLength(50);
+                entity.Property(d => d.IndexName)
+                      .HasMaxLength(200);
+                entity.Property(d => d.IndexStatus)
+                      .HasMaxLength(100);
+                entity.Property(d => d.IndexError)
+                      .HasMaxLength(1000);
                 entity.HasIndex(e => new { e.Libelle, e.Code })
                       .IsUnique();
                 entity.HasIndex(e => e.NomDeLaTable)
@@ -253,6 +281,20 @@ namespace Dataportal.Context
                       .HasDefaultValueSql("GETUTCDATE()");
                 entity.Property(e => e.StartTimestamp);
                 entity.Property(e => e.EndTimestamp);
+                entity.Property(e => e.IndexTimeColumn)
+                      .HasMaxLength(200);
+                entity.Property(e => e.IndexIdColumn)
+                      .HasMaxLength(200);
+                entity.Property(e => e.IndexIncludeColumn)
+                      .HasMaxLength(200);
+                entity.Property(e => e.IndexType)
+                      .HasMaxLength(50);
+                entity.Property(e => e.IndexName)
+                      .HasMaxLength(200);
+                entity.Property(e => e.IndexStatus)
+                      .HasMaxLength(100);
+                entity.Property(e => e.IndexError)
+                      .HasMaxLength(1000);
                 entity.HasIndex(e => new { e.Libelle, e.Code })
                       .IsUnique();
                 entity.HasIndex(e => e.NomDeLaTable)

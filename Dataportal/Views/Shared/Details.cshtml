@@ -41,6 +41,8 @@
     }
 
     var siteTooltip = siteTooltipParts.Any() ? string.Join(" • ", siteTooltipParts) : null;
+    var canManage = User.IsInRole("administrator") ||
+                    (User.IsInRole("editor") && User.Identity.IsAuthenticated && User.FindFirst("UserId")?.Value == Model.Metadonnee.IdUtilisateur.ToString());
     Func<string, string> buildQualityBadgeClass = quality =>
     {
         if (string.IsNullOrWhiteSpace(quality))
@@ -352,6 +354,34 @@
                             <p class="detail-value mb-0">@Model.Donnees.StartTimestamp.ToShortDateString() - @Model.Donnees.EndTimestamp.ToShortDateString()</p>
                         </div>
                     </div>
+                    @if (canManage)
+                    {
+                        <br />
+                        <div class="detail-row mb-0">
+                            <div class="detail-field mb-0">
+                                <span class="detail-label">Indexing</span>
+                                @if (Model.Donnees.IndexEnabled)
+                                {
+                                    <ul class="list-unstyled mb-0">
+                                        <li><strong>Time column:</strong> @(Model.Donnees.IndexTimeColumn ?? "—")</li>
+                                        <li><strong>ID column:</strong> @(Model.Donnees.IndexIdColumn ?? "—")</li>
+                                        <li><strong>Include column:</strong> @(Model.Donnees.IndexIncludeColumn ?? "—")</li>
+                                        <li><strong>Index type:</strong> @(Model.Donnees.IndexType ?? "—")</li>
+                                        <li><strong>Index name:</strong> @(Model.Donnees.IndexName ?? "—")</li>
+                                        <li><strong>Status:</strong> @(Model.Donnees.IndexStatus ?? "—")</li>
+                                        @if (!string.IsNullOrWhiteSpace(Model.Donnees.IndexError))
+                                        {
+                                            <li><strong>Error:</strong> @Model.Donnees.IndexError</li>
+                                        }
+                                    </ul>
+                                }
+                                else
+                                {
+                                    <p class="detail-value mb-0">Indexing not enabled.</p>
+                                }
+                            </div>
+                        </div>
+                    }
 
                     @if (Model.DonneesPreviewRows?.Any() == true)
                     {
@@ -453,6 +483,34 @@
                             <p class="detail-value mb-0">@Model.DonneesEventLogs.StartTimestamp.ToShortDateString() - @Model.DonneesEventLogs.EndTimestamp.ToShortDateString()</p>
                         </div>
                     </div>
+                    @if (canManage)
+                    {
+                        <br />
+                        <div class="detail-row mb-0">
+                            <div class="detail-field mb-0">
+                                <span class="detail-label">Indexing</span>
+                                @if (Model.DonneesEventLogs.IndexEnabled)
+                                {
+                                    <ul class="list-unstyled mb-0">
+                                        <li><strong>Time column:</strong> @(Model.DonneesEventLogs.IndexTimeColumn ?? "—")</li>
+                                        <li><strong>ID column:</strong> @(Model.DonneesEventLogs.IndexIdColumn ?? "—")</li>
+                                        <li><strong>Include column:</strong> @(Model.DonneesEventLogs.IndexIncludeColumn ?? "—")</li>
+                                        <li><strong>Index type:</strong> @(Model.DonneesEventLogs.IndexType ?? "—")</li>
+                                        <li><strong>Index name:</strong> @(Model.DonneesEventLogs.IndexName ?? "—")</li>
+                                        <li><strong>Status:</strong> @(Model.DonneesEventLogs.IndexStatus ?? "—")</li>
+                                        @if (!string.IsNullOrWhiteSpace(Model.DonneesEventLogs.IndexError))
+                                        {
+                                            <li><strong>Error:</strong> @Model.DonneesEventLogs.IndexError</li>
+                                        }
+                                    </ul>
+                                }
+                                else
+                                {
+                                    <p class="detail-value mb-0">Indexing not enabled.</p>
+                                }
+                            </div>
+                        </div>
+                    }
 
                     @if (Model.EventLogsPreviewRows?.Any() == true)
                     {
@@ -551,6 +609,34 @@
                             <p class="detail-value mb-0">@Model.DonneesContexteEnvironnemental.StartTimestamp.ToShortDateString() - @Model.DonneesContexteEnvironnemental.EndTimestamp.ToShortDateString()</p>
                         </div>
                     </div>
+                    @if (canManage)
+                    {
+                        <br />
+                        <div class="detail-row mb-0">
+                            <div class="detail-field mb-0">
+                                <span class="detail-label">Indexing</span>
+                                @if (Model.DonneesContexteEnvironnemental.IndexEnabled)
+                                {
+                                    <ul class="list-unstyled mb-0">
+                                        <li><strong>Time column:</strong> @(Model.DonneesContexteEnvironnemental.IndexTimeColumn ?? "—")</li>
+                                        <li><strong>ID column:</strong> @(Model.DonneesContexteEnvironnemental.IndexIdColumn ?? "—")</li>
+                                        <li><strong>Include column:</strong> @(Model.DonneesContexteEnvironnemental.IndexIncludeColumn ?? "—")</li>
+                                        <li><strong>Index type:</strong> @(Model.DonneesContexteEnvironnemental.IndexType ?? "—")</li>
+                                        <li><strong>Index name:</strong> @(Model.DonneesContexteEnvironnemental.IndexName ?? "—")</li>
+                                        <li><strong>Status:</strong> @(Model.DonneesContexteEnvironnemental.IndexStatus ?? "—")</li>
+                                        @if (!string.IsNullOrWhiteSpace(Model.DonneesContexteEnvironnemental.IndexError))
+                                        {
+                                            <li><strong>Error:</strong> @Model.DonneesContexteEnvironnemental.IndexError</li>
+                                        }
+                                    </ul>
+                                }
+                                else
+                                {
+                                    <p class="detail-value mb-0">Indexing not enabled.</p>
+                                }
+                            </div>
+                        </div>
+                    }
 
                     @if (Model.ContextePreviewRows?.Any() == true)
                     {

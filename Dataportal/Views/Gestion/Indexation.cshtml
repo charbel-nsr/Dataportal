@@ -1,0 +1,143 @@
+﻿@model Dataportal.ViewModels.IndexationViewModel
+@{
+    ViewData["Title"] = "Indexation jobs";
+    var returnUrl = Context.Request.Path + Context.Request.QueryString;
+}
+
+<div class="container">
+    <div class="row bg-light rounded shadow p-4 mb-4">
+        <div class="col-12">
+            <h2 class="h4 mb-2">Indexation jobs</h2>
+            <p class="text-muted mb-0">
+                If the table is large, it is better to leave indexation to the nightly job (Montreal off-peak hours).
+                Manual runs are best for smaller tables.
+            </p>
+        </div>
+    </div>
+
+    <div class="row bg-light rounded shadow p-4 mb-4">
+        <form method="get" class="row g-3">
+            <div class="col-md-4 mt-2">
+                <div class="form-floating">
+                    <input type="text" class="form-control" name="search" id="search" placeholder="Search datasets" value="@Model.Search">
+                    <label for="search">Dataset or table name</label>
+                </div>
+            </div>
+            <div class="col-md-3 mt-2">
+                <div class="form-floating">
+                    <select class="form-select" name="status" id="status">
+                        <option value="">All statuses</option>
+                        <option value="pending" selected="@(Model.Status == "pending")">Pending</option>
+                        <option value="running" selected="@(Model.Status == "running")">Running</option>
+                        <option value="completed" selected="@(Model.Status == "completed")">Completed</option>
+                        <option value="failed" selected="@(Model.Status == "failed")">Failed</option>
+                    </select>
+                    <label for="status">Status</label>
+                </div>
+            </div>
+            <div class="col-md-3 mt-2">
+                <div class="form-floating">
+                    <select class="form-select" name="type" id="type">
+                        <option value="">All types</option>
+                        <option value="donnees" selected="@(Model.Type == "donnees")">Data</option>
+                        <option value="eventlogs" selected="@(Model.Type == "eventlogs")">Event logs</option>
+                        <option value="contexte" selected="@(Model.Type == "contexte")">Environmental context</option>
+                    </select>
+                    <label for="type">Dataset type</label>
+                </div>
+            </div>
+            <div class="col-md-2 mt-2">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <button type="submit" class="btn btn-primary w-100">Filter</button>
+                    </div>
+                    <div class="col-6">
+                        <a href="@Url.Action("Indexation", "Gestion")" class="btn btn-outline-primary w-100">Reset</a>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    @if (Model.Jobs != null && Model.Jobs.Any())
+    {
+        <div class="paginated-table-wrapper" data-page-size="10">
+            <div class="table-responsive">
+                <table class="table table-hover shadow-sm paginated-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">Dataset</th>
+                            <th scope="col">Type</th>
+                            <th scope="col">Table</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Index</th>
+                            <th scope="col">Time column</th>
+                            <th scope="col">ID column</th>
+                            <th scope="col">Include</th>
+                            <th scope="col">Error</th>
+                            <th scope="col">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var job in Model.Jobs)
+                        {
+                            var typeLabel = job.RecordType switch
+                            {
+                                "eventlogs" => "Event logs",
+                                "contexte" => "Environmental context",
+                                _ => "Data"
+                            };
+                            <tr>
+                                <td>
+                                    <a href="@Url.Action("Details", "Donnees", new { id = job.MetadonneeId })">@job.DatasetName</a>
+                                </td>
+                                <td>@typeLabel</td>
+                                <td class="text-break">@job.TableName</td>
+                                <td>
+                                    <span class="badge @(job.IndexStatus == "failed" ? "bg-danger" : job.IndexStatus == "completed" ? "bg-success" : job.IndexStatus == "running" ? "bg-warning text-dark" : "bg-secondary")">
+                                        @job.IndexStatus
+                                    </span>
+                                </td>
+                                <td>@job.IndexName</td>
+                                <td>@(job.IndexTimeColumn ?? "-")</td>
+                                <td>@(job.IndexIdColumn ?? "-")</td>
+                                <td>@(job.IndexIncludeColumn ?? "-")</td>
+                                <td class="text-break">@(!string.IsNullOrWhiteSpace(job.IndexError) ? job.IndexError : "-")</td>
+                                <td>
+                                    <form method="post" action="@Url.Action("RunIndexationNow", "Gestion")">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="type" value="@job.RecordType" />
+                                        <input type="hidden" name="id" value="@job.RecordId" />
+                                        <input type="hidden" name="returnUrl" value="@returnUrl" />
+                                        <button type="submit" class="btn btn-sm btn-outline-primary" @(job.IndexStatus == "running" ? "disabled" : string.Empty)>Run now</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-pagination-controls d-flex justify-content-end align-items-center gap-2 mt-3 d-none">
+                <button type="button" class="table-pagination-button table-pagination-prev" aria-label="Previous page" disabled>
+                    <span class="material-symbols-outlined">
+                        arrow_circle_left
+                    </span>
+                </button>
+                <div class="d-flex align-items-center gap-1">
+                    <input type="number" class="form-control table-pagination-input" value="1" min="1" />
+                    <span>/</span>
+                    <span class="table-pagination-total">1</span>
+                </div>
+                <button type="button" class="table-pagination-button table-pagination-next" aria-label="Next page" disabled>
+                    <span class="material-symbols-outlined">
+                        arrow_circle_right
+                    </span>
+                </button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-info">No indexation jobs match the selected filters.</div>
+    }
+</div>

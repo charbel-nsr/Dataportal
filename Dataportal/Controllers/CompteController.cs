@@ -16,8 +16,6 @@ using Microsoft.Extensions.Logging;
 using Dataportal.Services.Email;
 using Microsoft.Extensions.Options;
 
-//TODO: Add recaptcha for login and account request forms
-
 namespace Dataportal.Controllers
 {
     public class CompteController : Controller
@@ -291,8 +289,6 @@ namespace Dataportal.Controllers
 
                 TempData["Success"] = "Your account request has been received. Please check your email to verify your address.";
                 return RedirectToAction("SeConnecter");
-
-                //TODO: Send email to admin for approval
             }
 
             // If model state is invalid, reload the entreprises dropdown.
@@ -582,7 +578,6 @@ namespace Dataportal.Controllers
                 await _context.SaveChangesAsync();
                 await _accountEmailService.SendPasswordChangedAsync(utilisateur);
 
-                //TODO: Send email to user for password change Notification
                 _logger.LogInformation("Password updated successfully for {Email}.", userEmail);
                 TempData["SuccessMessage"] = "Your password has been updated successfully!";
                 return RedirectToAction("Profil");

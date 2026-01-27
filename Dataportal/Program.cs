@@ -115,8 +115,10 @@ builder.Services.AddSingleton<JupyterSsoTokenService>();
 builder.Services.AddScoped<IEmailTemplateRenderer, ThemedEmailTemplateRenderer>();
 builder.Services.AddScoped<IPortalEmailSender, MailKitEmailSender>();
 builder.Services.AddScoped<IAccountEmailService, AccountEmailService>();
+builder.Services.AddScoped<IndexMaintenanceService>();
 builder.Services.AddHostedService<PendingRequestReminderHostedService>();
 builder.Services.AddHostedService<UploadCleanupHostedService>();
+builder.Services.AddHostedService<IndexMaintenanceHostedService>();
 
 var app = builder.Build();
 
@@ -124,7 +126,6 @@ var app = builder.Build();
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Accueil/Error");
-    // TODO: change HSTS in production
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }

@@ -6,13 +6,11 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Dataportal.Services.Email;
-
-//TODO: only allow rquestes from users who have verified there emails to be accepted
-//TODO: send emails to user accepting or rejecting there request
-//TODO: send email asking users to rechange ther password if there requeast is accepted
+using Dataportal.Services;
 
 namespace Dataportal.Controllers
 {
@@ -20,11 +18,182 @@ namespace Dataportal.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IAccountEmailService _accountEmailService;
+        private readonly IndexMaintenanceService _indexMaintenanceService;
 
-        public GestionController(ApplicationDbContext context, IAccountEmailService accountEmailService)
+        public GestionController(ApplicationDbContext context, IAccountEmailService accountEmailService, IndexMaintenanceService indexMaintenanceService)
         {
             _context = context;
             _accountEmailService = accountEmailService;
+            _indexMaintenanceService = indexMaintenanceService;
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "administrator,editor")]
+        public async Task<IActionResult> Indexation(string? search, string? status, string? type)
+        {
+            var userId = HttpContextUserHelper.TryGetCurrentUserId(User);
+            var isAdmin = User.IsInRole("administrator");
+
+            var donneesQuery = _context.Donnees
+                .AsNoTracking()
+                .Include(d => d.Metadonnee)
+                .Where(d => d.IndexEnabled)
+                .AsQueryable();
+
+            var eventLogsQuery = _context.DonneesEventLogs
+                .AsNoTracking()
+                .Include(d => d.Metadonnee)
+                .Where(d => d.IndexEnabled)
+                .AsQueryable();
+
+            var contexteQuery = _context.DonneesContexteEnvironnemental
+                .AsNoTracking()
+                .Include(d => d.Metadonnee)
+                .Where(d => d.IndexEnabled)
+                .AsQueryable();
+
+            if (!isAdmin && userId.HasValue)
+            {
+                donneesQuery = donneesQuery.Where(d => d.Metadonnee != null && d.Metadonnee.IdUtilisateur == userId.Value);
+                eventLogsQuery = eventLogsQuery.Where(d => d.Metadonnee != null && d.Metadonnee.IdUtilisateur == userId.Value);
+                contexteQuery = contexteQuery.Where(d => d.Metadonnee != null && d.Metadonnee.IdUtilisateur == userId.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                donneesQuery = donneesQuery.Where(d => d.IndexStatus == status);
+                eventLogsQuery = eventLogsQuery.Where(d => d.IndexStatus == status);
+                contexteQuery = contexteQuery.Where(d => d.IndexStatus == status);
+            }
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                donneesQuery = donneesQuery.Where(d =>
+                    d.Libelle.Contains(search) ||
+                    d.NomDeLaTable.Contains(search));
+                eventLogsQuery = eventLogsQuery.Where(d =>
+                    d.Libelle.Contains(search) ||
+                    d.NomDeLaTable.Contains(search));
+                contexteQuery = contexteQuery.Where(d =>
+                    d.Libelle.Contains(search) ||
+                    d.NomDeLaTable.Contains(search));
+            }
+
+            var jobs = new List<IndexationJobItemViewModel>();
+
+            if (string.IsNullOrWhiteSpace(type) || type == "donnees")
+            {
+                jobs.AddRange(await donneesQuery
+                    .Select(d => new IndexationJobItemViewModel
+                    {
+                        RecordId = d.Id,
+                        RecordType = "donnees",
+                        MetadonneeId = d.IdMetadonnee,
+                        DatasetName = d.Metadonnee != null ? d.Metadonnee.Nom : d.Libelle,
+                        TableName = d.NomDeLaTable,
+                        IndexName = d.IndexName ?? string.Empty,
+                        IndexStatus = d.IndexStatus ?? "not enabled",
+                        IndexTimeColumn = d.IndexTimeColumn,
+                        IndexIdColumn = d.IndexIdColumn,
+                        IndexIncludeColumn = d.IndexIncludeColumn,
+                        IndexError = d.IndexError
+                    })
+                    .ToListAsync());
+            }
+
+            if (string.IsNullOrWhiteSpace(type) || type == "eventlogs")
+            {
+                jobs.AddRange(await eventLogsQuery
+                    .Select(d => new IndexationJobItemViewModel
+                    {
+                        RecordId = d.Id,
+                        RecordType = "eventlogs",
+                        MetadonneeId = d.IdMetadonnee,
+                        DatasetName = d.Metadonnee != null ? d.Metadonnee.Nom : d.Libelle,
+                        TableName = d.NomDeLaTable,
+                        IndexName = d.IndexName ?? string.Empty,
+                        IndexStatus = d.IndexStatus ?? "not enabled",
+                        IndexTimeColumn = d.IndexTimeColumn,
+                        IndexIdColumn = d.IndexIdColumn,
+                        IndexIncludeColumn = d.IndexIncludeColumn,
+                        IndexError = d.IndexError
+                    })
+                    .ToListAsync());
+            }
+
+            if (string.IsNullOrWhiteSpace(type) || type == "contexte")
+            {
+                jobs.AddRange(await contexteQuery
+                    .Select(d => new IndexationJobItemViewModel
+                    {
+                        RecordId = d.Id,
+                        RecordType = "contexte",
+                        MetadonneeId = d.IdMetadonnee,
+                        DatasetName = d.Metadonnee != null ? d.Metadonnee.Nom : d.Libelle,
+                        TableName = d.NomDeLaTable,
+                        IndexName = d.IndexName ?? string.Empty,
+                        IndexStatus = d.IndexStatus ?? "not enabled",
+                        IndexTimeColumn = d.IndexTimeColumn,
+                        IndexIdColumn = d.IndexIdColumn,
+                        IndexIncludeColumn = d.IndexIncludeColumn,
+                        IndexError = d.IndexError
+                    })
+                    .ToListAsync());
+            }
+
+            var vm = new IndexationViewModel
+            {
+                Search = search,
+                Status = status,
+                Type = type,
+                Jobs = jobs
+                    .OrderByDescending(j => j.IndexStatus == "failed")
+                    .ThenBy(j => j.DatasetName)
+                    .ToList()
+            };
+
+            return View(vm);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "administrator,editor")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RunIndexationNow(string type, int id, string? returnUrl)
+        {
+            var userId = HttpContextUserHelper.TryGetCurrentUserId(User);
+            var isAdmin = User.IsInRole("administrator");
+            var target = IndexationTarget.From(type, id);
+            if (string.IsNullOrWhiteSpace(target.Type))
+            {
+                TempData["Error"] = "Unknown indexation target.";
+                return RedirectToAction("Indexation");
+            }
+
+            if (!isAdmin && userId.HasValue)
+            {
+                var ownsData = target.Type switch
+                {
+                    "donnees" => await _context.Donnees.AnyAsync(d => d.Id == id && d.Metadonnee.IdUtilisateur == userId.Value),
+                    "eventlogs" => await _context.DonneesEventLogs.AnyAsync(d => d.Id == id && d.Metadonnee.IdUtilisateur == userId.Value),
+                    "contexte" => await _context.DonneesContexteEnvironnemental.AnyAsync(d => d.Id == id && d.Metadonnee.IdUtilisateur == userId.Value),
+                    _ => false
+                };
+
+                if (!ownsData)
+                {
+                    return Forbid();
+                }
+            }
+
+            var result = await _indexMaintenanceService.RunIndexNowAsync(target, HttpContext.RequestAborted);
+            TempData[result.Success ? "Success" : "Error"] = result.Message;
+
+            if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+            {
+                return Redirect(returnUrl);
+            }
+
+            return RedirectToAction("Indexation");
         }
 
         // GET: /Gestion/NotebookApiAccessLogs

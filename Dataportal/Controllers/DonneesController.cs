@@ -366,6 +366,88 @@ namespace Dataportal.Controllers
             return columns;
         }
 
+        private static void PopulateIndexOptions(DonneesCreateStep2ViewModel model)
+        {
+            if (!model.IsTimeSeries || !model.ColumnTypesConfirmed || model.ColumnTypes == null || model.ColumnTypes.Count == 0)
+            {
+                model.IndexTimeColumnOptions = new List<SelectListItem>();
+                model.IndexIdColumnOptions = new List<SelectListItem>();
+                model.IndexIncludeColumnOptions = new List<SelectListItem>();
+                return;
+            }
+
+            var (timeColumns, idColumns, includeColumns) = BuildIndexColumnOptions(model.ColumnTypes);
+            model.IndexTimeColumnOptions = timeColumns;
+            model.IndexIdColumnOptions = idColumns;
+            model.IndexIncludeColumnOptions = includeColumns;
+        }
+
+        private static void PopulateIndexOptions(DonneesEventLogsCreateStep3ViewModel model)
+        {
+            if (!model.IsTimeSeries || !model.ColumnTypesConfirmed || model.ColumnTypes == null || model.ColumnTypes.Count == 0)
+            {
+                model.IndexTimeColumnOptions = new List<SelectListItem>();
+                model.IndexIdColumnOptions = new List<SelectListItem>();
+                model.IndexIncludeColumnOptions = new List<SelectListItem>();
+                return;
+            }
+
+            var (timeColumns, idColumns, includeColumns) = BuildIndexColumnOptions(model.ColumnTypes);
+            model.IndexTimeColumnOptions = timeColumns;
+            model.IndexIdColumnOptions = idColumns;
+            model.IndexIncludeColumnOptions = includeColumns;
+        }
+
+        private static void PopulateIndexOptions(DonneesContexteEnvironnementalCreateStep4ViewModel model)
+        {
+            if (!model.IsTimeSeries || !model.ColumnTypesConfirmed || model.ColumnTypes == null || model.ColumnTypes.Count == 0)
+            {
+                model.IndexTimeColumnOptions = new List<SelectListItem>();
+                model.IndexIdColumnOptions = new List<SelectListItem>();
+                model.IndexIncludeColumnOptions = new List<SelectListItem>();
+                return;
+            }
+
+            var (timeColumns, idColumns, includeColumns) = BuildIndexColumnOptions(model.ColumnTypes);
+            model.IndexTimeColumnOptions = timeColumns;
+            model.IndexIdColumnOptions = idColumns;
+            model.IndexIncludeColumnOptions = includeColumns;
+        }
+
+        private static (List<SelectListItem> TimeColumns, List<SelectListItem> IdColumns, List<SelectListItem> IncludeColumns)
+            BuildIndexColumnOptions(IReadOnlyCollection<ColumnTypeSelectionViewModel> columnTypes)
+        {
+            if (columnTypes == null || columnTypes.Count == 0)
+            {
+                return (new List<SelectListItem>(), new List<SelectListItem>(), new List<SelectListItem>());
+            }
+
+            var eligibleColumns = columnTypes
+                .Select(c =>
+                {
+                    var parsed = Enum.TryParse<TabularColumnType>(c.SelectedType, out var t) ? t : TabularColumnType.NVarChar;
+                    return new { c.ColumnName, ColumnType = parsed };
+                })
+                .Where(c => c.ColumnType != TabularColumnType.NVarChar)
+                .ToList();
+
+            var timeColumns = eligibleColumns
+                .Where(c => c.ColumnType == TabularColumnType.DateTime2)
+                .Select(c => new SelectListItem { Value = c.ColumnName, Text = c.ColumnName })
+                .ToList();
+
+            var idColumns = eligibleColumns
+                .Where(c => c.ColumnType != TabularColumnType.DateTime2)
+                .Select(c => new SelectListItem { Value = c.ColumnName, Text = c.ColumnName })
+                .ToList();
+
+            var includeColumns = eligibleColumns
+                .Select(c => new SelectListItem { Value = c.ColumnName, Text = c.ColumnName })
+                .ToList();
+
+            return (timeColumns, idColumns, includeColumns);
+        }
+
         private string GetUploadSessionPath(string sessionId)
         {
             return Path.Combine(Path.GetTempPath(), UploadCacheFolderName, sessionId);
@@ -560,6 +642,8 @@ namespace Dataportal.Controllers
                 return RedirectToAction("CreateStep1");
             }
 
+            var step1Data = JsonConvert.DeserializeObject<MetadonneeCreateViewModel>(step1Json);
+
             // show the upload + Donnees form
             var qualiteData = BuildQualiteOptions();
             var vm = new DonneesCreateStep2ViewModel
@@ -569,7 +653,8 @@ namespace Dataportal.Controllers
                 QualiteOptions = qualiteData.Options,
                 QualiteDescriptions = qualiteData.Descriptions,
                 Code = await GenerateNextCodeForLabelAsync(null, ExistingLabelSource.Donnees),
-                ExistingLabelOptions = await BuildExistingLabelOptionsAsync(ExistingLabelSource.Donnees)
+                ExistingLabelOptions = await BuildExistingLabelOptionsAsync(ExistingLabelSource.Donnees),
+                IsTimeSeries = step1Data?.SeriesTemporelles == true
             };
             return View(vm);
         }
@@ -587,15 +672,33 @@ namespace Dataportal.Controllers
             }
 
             var step1Data = JsonConvert.DeserializeObject<MetadonneeCreateViewModel>(step1Json);
+            model.IsTimeSeries = step1Data?.SeriesTemporelles == true;
 
             void RepopulateQualiteSelections()
             {
                 var qualiteDataLocal = BuildQualiteOptions();
                 model.QualiteOptions = qualiteDataLocal.Options;
                 model.QualiteDescriptions = qualiteDataLocal.Descriptions;
+                PopulateIndexOptions(model);
             }
 
             model.ExistingLabelOptions = await BuildExistingLabelOptionsAsync(ExistingLabelSource.Donnees);
+            var canConfigureIndex = User.IsInRole("administrator") || User.IsInRole("editor");
+
+            if (!model.IsTimeSeries)
+            {
+                model.IndexEnabled = false;
+                model.IndexTimeColumn = null;
+                model.IndexIdColumn = null;
+                model.IndexIncludeColumn = null;
+            }
+            else if (!canConfigureIndex)
+            {
+                model.IndexEnabled = false;
+                model.IndexTimeColumn = null;
+                model.IndexIdColumn = null;
+                model.IndexIncludeColumn = null;
+            }
 
             if (User.IsInRole("user") && step1Data.IdVisibilite != VisibiliteIds.Personnelle)
             {
@@ -768,6 +871,18 @@ namespace Dataportal.Controllers
                 TempData["ImportWarnings"] = $"Imported with {importResult.Errors.Count} parsing issue(s). Invalid values were stored as NULL.";
             }
 
+            var trimmedTimeColumn = model.IndexTimeColumn?.Trim();
+            var trimmedIdColumn = model.IndexIdColumn?.Trim();
+            var trimmedIncludeColumn = model.IndexIncludeColumn?.Trim();
+            var indexAllowed = model.IsTimeSeries && model.IndexEnabled && canConfigureIndex;
+            var indexType = indexAllowed
+                ? (string.IsNullOrWhiteSpace(trimmedIdColumn) ? "time only" : "time and ids")
+                : null;
+            var indexName = indexAllowed
+                ? $"IX_{baseTableName}_{(string.IsNullOrWhiteSpace(trimmedIdColumn) ? "time" : "time_id")}"
+                : null;
+            var indexStatus = indexAllowed ? "pending" : null;
+
             // Create Donnees
             var donnees = new Donnees
             {
@@ -780,7 +895,15 @@ namespace Dataportal.Controllers
                 DateAjouter = DateTime.Now,
                 StartTimestamp = model.StartTimestamp,
                 EndTimestamp = model.EndTimestamp,
-                IdQualiteDonnees = model.IdQualiteDonnees!.Value
+                IdQualiteDonnees = model.IdQualiteDonnees!.Value,
+                IndexEnabled = indexAllowed,
+                IndexTimeColumn = indexAllowed ? trimmedTimeColumn : null,
+                IndexIdColumn = indexAllowed ? trimmedIdColumn : null,
+                IndexIncludeColumn = indexAllowed ? trimmedIncludeColumn : null,
+                IndexType = indexAllowed ? indexType : null,
+                IndexName = indexAllowed ? indexName : null,
+                IndexStatus = indexAllowed ? indexStatus : null,
+                IndexError = null
             };
 
             _context.Donnees.Add(donnees);
@@ -880,7 +1003,8 @@ namespace Dataportal.Controllers
                 QualiteOptions = qualiteData.Options,
                 QualiteDescriptions = qualiteData.Descriptions,
                 Code = await GenerateNextCodeForLabelAsync(null, ExistingLabelSource.EventLogs),
-                ExistingLabelOptions = await BuildExistingLabelOptionsAsync(ExistingLabelSource.EventLogs)
+                ExistingLabelOptions = await BuildExistingLabelOptionsAsync(ExistingLabelSource.EventLogs),
+                IsTimeSeries = metadonnee.SeriesTemporelles
             };
             return View(vm);
         }
@@ -890,14 +1014,33 @@ namespace Dataportal.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateStep3(DonneesEventLogsCreateStep3ViewModel model)
         {
+            var metadonnee = await _context.Metadonnee.FindAsync(model.IdMetadonnee);
+            if (metadonnee == null)
+            {
+                TempData["Error"] = "Metadata not found.";
+                return RedirectToAction("CreateStep1");
+            }
+
+            model.IsTimeSeries = metadonnee.SeriesTemporelles;
+            var canConfigureIndex = User.IsInRole("administrator") || User.IsInRole("editor");
+
             void RepopulateQualiteSelections()
             {
                 var qualiteDataLocal = BuildQualiteOptions();
                 model.QualiteOptions = qualiteDataLocal.Options;
                 model.QualiteDescriptions = qualiteDataLocal.Descriptions;
+                PopulateIndexOptions(model);
             }
 
             model.ExistingLabelOptions = await BuildExistingLabelOptionsAsync(ExistingLabelSource.EventLogs);
+
+            if (!model.IsTimeSeries || !canConfigureIndex)
+            {
+                model.IndexEnabled = false;
+                model.IndexTimeColumn = null;
+                model.IndexIdColumn = null;
+                model.IndexIncludeColumn = null;
+            }
 
             if (model.IdExistingMetadonnee.HasValue)
             {
@@ -925,13 +1068,6 @@ namespace Dataportal.Controllers
             {
                 RepopulateQualiteSelections();
                 return View(model);
-            }
-
-            var metadonnee = await _context.Metadonnee.FindAsync(model.IdMetadonnee);
-            if (metadonnee == null)
-            {
-                TempData["Error"] = "Metadata not found.";
-                return RedirectToAction("CreateStep1");
             }
 
             if (User.IsInRole("user") && metadonnee.IdVisibilite != VisibiliteIds.Personnelle)
@@ -1081,6 +1217,18 @@ namespace Dataportal.Controllers
                 TempData["ImportWarnings"] = $"Imported with {importResult.Errors.Count} parsing issue(s). Invalid values were stored as NULL.";
             }
 
+            var trimmedTimeColumn = model.IndexTimeColumn?.Trim();
+            var trimmedIdColumn = model.IndexIdColumn?.Trim();
+            var trimmedIncludeColumn = model.IndexIncludeColumn?.Trim();
+            var indexAllowed = model.IsTimeSeries && model.IndexEnabled && canConfigureIndex;
+            var indexType = indexAllowed
+                ? (string.IsNullOrWhiteSpace(trimmedIdColumn) ? "time only" : "time and ids")
+                : null;
+            var indexName = indexAllowed
+                ? $"IX_{baseTableName}_{(string.IsNullOrWhiteSpace(trimmedIdColumn) ? "time" : "time_id")}"
+                : null;
+            var indexStatus = indexAllowed ? "pending" : null;
+
             // Create DonneesEventLogs
             var eventLogs = new DonneesEventLogs
             {
@@ -1093,7 +1241,15 @@ namespace Dataportal.Controllers
                 EndTimestamp = model.EndTimestamp,
                 NombreDEvents = model.NombreDEvents,
                 IdMetadonnee = model.IdMetadonnee,
-                IdQualiteDonnees = model.IdQualiteDonnees!.Value
+                IdQualiteDonnees = model.IdQualiteDonnees!.Value,
+                IndexEnabled = indexAllowed,
+                IndexTimeColumn = indexAllowed ? trimmedTimeColumn : null,
+                IndexIdColumn = indexAllowed ? trimmedIdColumn : null,
+                IndexIncludeColumn = indexAllowed ? trimmedIncludeColumn : null,
+                IndexType = indexAllowed ? indexType : null,
+                IndexName = indexAllowed ? indexName : null,
+                IndexStatus = indexAllowed ? indexStatus : null,
+                IndexError = null
             };
 
             _context.DonneesEventLogs.Add(eventLogs);
@@ -1171,7 +1327,8 @@ namespace Dataportal.Controllers
                 QualiteOptions = qualiteData.Options,
                 QualiteDescriptions = qualiteData.Descriptions,
                 Code = await GenerateNextCodeForLabelAsync(null, ExistingLabelSource.Contexte),
-                ExistingLabelOptions = await BuildExistingLabelOptionsAsync(ExistingLabelSource.Contexte)
+                ExistingLabelOptions = await BuildExistingLabelOptionsAsync(ExistingLabelSource.Contexte),
+                IsTimeSeries = metadonnee.SeriesTemporelles
             };
             return View(vm);
         }
@@ -1182,14 +1339,33 @@ namespace Dataportal.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateStep4(DonneesContexteEnvironnementalCreateStep4ViewModel model)
         {
+            var metadonnee = await _context.Metadonnee.FindAsync(model.IdMetadonnee);
+            if (metadonnee == null)
+            {
+                TempData["Error"] = "Metadata not found.";
+                return RedirectToAction("CreateStep1");
+            }
+
+            model.IsTimeSeries = metadonnee.SeriesTemporelles;
+            var canConfigureIndex = User.IsInRole("administrator") || User.IsInRole("editor");
+
             void RepopulateQualiteSelections()
             {
                 var qualiteDataLocal = BuildQualiteOptions();
                 model.QualiteOptions = qualiteDataLocal.Options;
                 model.QualiteDescriptions = qualiteDataLocal.Descriptions;
+                PopulateIndexOptions(model);
             }
 
             model.ExistingLabelOptions = await BuildExistingLabelOptionsAsync(ExistingLabelSource.Contexte);
+
+            if (!model.IsTimeSeries || !canConfigureIndex)
+            {
+                model.IndexEnabled = false;
+                model.IndexTimeColumn = null;
+                model.IndexIdColumn = null;
+                model.IndexIncludeColumn = null;
+            }
 
             if (model.IdExistingMetadonnee.HasValue)
             {
@@ -1218,13 +1394,6 @@ namespace Dataportal.Controllers
             {
                 RepopulateQualiteSelections();
                 return View(model);
-            }
-
-            var metadonnee = await _context.Metadonnee.FindAsync(model.IdMetadonnee);
-            if (metadonnee == null)
-            {
-                TempData["Error"] = "Metadata not found.";
-                return RedirectToAction("CreateStep1");
             }
 
             if (User.IsInRole("user") && metadonnee.IdVisibilite != VisibiliteIds.Personnelle)
@@ -1376,6 +1545,18 @@ namespace Dataportal.Controllers
                 TempData["ImportWarnings"] = $"Imported with {importResult.Errors.Count} parsing issue(s). Invalid values were stored as NULL.";
             }
 
+            var trimmedTimeColumn = model.IndexTimeColumn?.Trim();
+            var trimmedIdColumn = model.IndexIdColumn?.Trim();
+            var trimmedIncludeColumn = model.IndexIncludeColumn?.Trim();
+            var indexAllowed = model.IsTimeSeries && model.IndexEnabled && canConfigureIndex;
+            var indexType = indexAllowed
+                ? (string.IsNullOrWhiteSpace(trimmedIdColumn) ? "time only" : "time and ids")
+                : null;
+            var indexName = indexAllowed
+                ? $"IX_{baseTableName}_{(string.IsNullOrWhiteSpace(trimmedIdColumn) ? "time" : "time_id")}"
+                : null;
+            var indexStatus = indexAllowed ? "pending" : null;
+
             // Save DonneesContexteEnvironnemental
             var donneesContext = new DonneesContexteEnvironnemental
             {
@@ -1387,7 +1568,15 @@ namespace Dataportal.Controllers
                 StartTimestamp = model.StartTimestamp,
                 EndTimestamp = model.EndTimestamp,
                 IdMetadonnee = metadonnee.Id,
-                IdQualiteDonnees = model.IdQualiteDonnees!.Value
+                IdQualiteDonnees = model.IdQualiteDonnees!.Value,
+                IndexEnabled = indexAllowed,
+                IndexTimeColumn = indexAllowed ? trimmedTimeColumn : null,
+                IndexIdColumn = indexAllowed ? trimmedIdColumn : null,
+                IndexIncludeColumn = indexAllowed ? trimmedIncludeColumn : null,
+                IndexType = indexAllowed ? indexType : null,
+                IndexName = indexAllowed ? indexName : null,
+                IndexStatus = indexAllowed ? indexStatus : null,
+                IndexError = null
             };
 
             _context.DonneesContexteEnvironnemental.Add(donneesContext);
