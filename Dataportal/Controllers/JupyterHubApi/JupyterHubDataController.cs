@@ -6,7 +6,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Options;
+using Parquet;
+using Parquet.Data;
+using Parquet.Schema;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -21,9 +26,12 @@ namespace Dataportal.Controllers.JupyterHubApi
     [Route("api/jupyterhub")]
     public class JupyterHubDataController : NotebookApi.NotebookApiBaseController
     {
-        public JupyterHubDataController(ApplicationDbContext context, IOptions<NotebookApiOptions> options)
+        private readonly NotebookReplaceSessionService _replaceSessionService;
+
+        public JupyterHubDataController(ApplicationDbContext context, IOptions<NotebookApiOptions> options, NotebookReplaceSessionService replaceSessionService)
             : base(context, options)
         {
+            _replaceSessionService = replaceSessionService ?? throw new ArgumentNullException(nameof(replaceSessionService));
         }
 
         [HttpGet("normal/parquet")]
@@ -485,6 +493,479 @@ namespace Dataportal.Controllers.JupyterHubApi
                 cancellationToken);
         }
 
+        [HttpPost("/api/tables/{schema}/{table}/replace/start")]
+        public async Task<IActionResult> StartReplaceSessionAsync(
+            [FromRoute] string schema,
+            [FromRoute] string table,
+            CancellationToken cancellationToken)
+        {
+            await AbortExpiredReplaceSessionsAsync(cancellationToken);
+            var (resolution, errorResult) = await TryResolveDatasetAsync(schema, table, cancellationToken);
+            if (errorResult != null)
+            {
+                return errorResult;
+            }
+
+            if (resolution!.Metadonnee.TraitementEnCours == true)
+            {
+                return Conflict(new ProblemDetails
+                {
+                    Title = "Table locked",
+                    Detail = "A replace session is already in progress for this dataset.",
+                    Status = StatusCodes.Status409Conflict,
+                    Type = "https://httpstatuses.com/409"
+                });
+            }
+
+            var jobId = Guid.NewGuid();
+            var stagingTableName = BuildStagingTableName(resolution.Target.TableName, jobId);
+
+            if (!IsValidTableName(stagingTableName))
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Invalid staging table name",
+                    Detail = "The generated staging table name is not valid.",
+                    Status = StatusCodes.Status400BadRequest,
+                    Type = "https://httpstatuses.com/400"
+                });
+            }
+
+            await using var transaction = await Context.Database.BeginTransactionAsync(cancellationToken);
+
+            var locked = await TryLockMetadonneeAsync(resolution.Metadonnee.Id, cancellationToken);
+            if (!locked)
+            {
+                return Conflict(new ProblemDetails
+                {
+                    Title = "Table locked",
+                    Detail = "A replace session is already in progress for this dataset.",
+                    Status = StatusCodes.Status409Conflict,
+                    Type = "https://httpstatuses.com/409"
+                });
+            }
+
+            var session = new NotebookReplaceSession
+            {
+                Id = jobId,
+                IdMetadonnee = resolution.Metadonnee.Id,
+                Schema = resolution.Target.Schema,
+                TableName = resolution.Target.TableName,
+                StagingTableName = stagingTableName,
+                Status = NotebookReplaceStatus.Started,
+                IdUtilisateur = HttpContextUserHelper.TryGetCurrentUserId(User)
+            };
+
+            var connection = (SqlConnection)Context.Database.GetDbConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                await connection.OpenAsync(cancellationToken);
+            }
+
+            var sqlTransaction = Context.Database.CurrentTransaction?.GetDbTransaction() as SqlTransaction;
+            var stagingTarget = new TableImportTarget(resolution.Target.Schema, stagingTableName);
+
+            try
+            {
+                await CreateStagingTableAsync(resolution.Target, stagingTarget, connection, sqlTransaction, cancellationToken);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Unable to create staging table",
+                    Detail = ex.Message,
+                    Status = StatusCodes.Status400BadRequest,
+                    Type = "https://httpstatuses.com/400"
+                });
+            }
+
+            Context.NotebookReplaceSessions.Add(session);
+            await Context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            return Created($"/api/jupyterhub/replace/{jobId}", new ReplaceStartResponse(jobId, stagingTableName));
+        }
+
+        [HttpPost("replace/{jobId:guid}/chunk")]
+        public async Task<IActionResult> UploadReplaceChunkAsync(
+            [FromRoute] Guid jobId,
+            [FromForm] IFormFile? file,
+            CancellationToken cancellationToken)
+        {
+            await AbortExpiredReplaceSessionsAsync(cancellationToken);
+            var session = await LoadReplaceSessionAsync(jobId, cancellationToken);
+            if (session == null)
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Title = "Replace session not found",
+                    Detail = "No replace session matches the provided job id.",
+                    Status = StatusCodes.Status404NotFound,
+                    Type = "https://httpstatuses.com/404"
+                });
+            }
+
+            var accessError = EnsureReplaceSessionAccess(session);
+            if (accessError != null)
+            {
+                return accessError;
+            }
+
+            if (session.Status == NotebookReplaceStatus.Committed || session.Status == NotebookReplaceStatus.Aborted || session.Status == NotebookReplaceStatus.Pushed)
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Replace session closed",
+                    Detail = "This replace session can no longer accept uploads.",
+                    Status = StatusCodes.Status400BadRequest,
+                    Type = "https://httpstatuses.com/400"
+                });
+            }
+
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Chunk required",
+                    Detail = "A Parquet chunk must be provided.",
+                    Status = StatusCodes.Status400BadRequest,
+                    Type = "https://httpstatuses.com/400"
+                });
+            }
+
+            var stagingTarget = new TableImportTarget(session.Schema, session.StagingTableName);
+            var connectionString = GetConnectionStringOrThrow();
+            await using var connection = new SqlConnection(connectionString);
+            await connection.OpenAsync(cancellationToken);
+
+            if (!await TableExistsAsync(stagingTarget, connection, null, cancellationToken))
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Title = "Staging table missing",
+                    Detail = "The staging table for this replace session could not be found.",
+                    Status = StatusCodes.Status404NotFound,
+                    Type = "https://httpstatuses.com/404"
+                });
+            }
+
+            var columns = await GetTableColumnsAsync(stagingTarget, connection, null, cancellationToken);
+            var dataColumns = columns.Where(c => !c.IsIdentity).ToList();
+            if (dataColumns.Count == 0)
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Table schema missing",
+                    Detail = "The staging table does not contain any data columns.",
+                    Status = StatusCodes.Status400BadRequest,
+                    Type = "https://httpstatuses.com/400"
+                });
+            }
+
+            var columnDefinitions = dataColumns.Select(BuildTabularColumnDefinition).ToList();
+
+            await using var stream = file.OpenReadStream();
+            using var reader = await ParquetReader.CreateAsync(stream, cancellationToken: cancellationToken);
+            var headerInfo = ReadNormalizedParquetHeader(reader);
+            if (headerInfo == null || headerInfo.Value.Headers.Length == 0)
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Empty parquet",
+                    Detail = "The Parquet chunk does not contain any columns.",
+                    Status = StatusCodes.Status400BadRequest,
+                    Type = "https://httpstatuses.com/400"
+                });
+            }
+
+            try
+            {
+                EnsureUniqueHeaders(headerInfo.Value.Headers);
+                ValidateHeadersAgainstColumns(headerInfo.Value.Headers, columnDefinitions, "Parquet");
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Invalid parquet schema",
+                    Detail = ex.Message,
+                    Status = StatusCodes.Status400BadRequest,
+                    Type = "https://httpstatuses.com/400"
+                });
+            }
+
+            using var bulkCopy = CreateBulkCopy(connection, stagingTarget, columnDefinitions, ReplaceBulkBatchSize);
+            using var buffer = CreateBufferTable(columnDefinitions);
+            var errors = new List<TabularImportError>();
+
+            var rowsCopied = await BulkCopyParquetRowsAsync(
+                bulkCopy,
+                buffer,
+                columnDefinitions,
+                reader,
+                headerInfo.Value.Fields,
+                errors,
+                file.FileName,
+                ReplaceBulkBatchSize,
+                cancellationToken);
+
+            session.Status = NotebookReplaceStatus.Uploading;
+            session.UpdatedAtUtc = DateTime.UtcNow;
+            await Context.SaveChangesAsync(cancellationToken);
+
+            return Ok(new ReplaceChunkResponse(rowsCopied, errors));
+        }
+
+        [HttpPost("replace/{jobId:guid}/commit")]
+        public async Task<IActionResult> CommitReplaceSessionAsync(
+            [FromRoute] Guid jobId,
+            CancellationToken cancellationToken)
+        {
+            await AbortExpiredReplaceSessionsAsync(cancellationToken);
+
+            var session = await LoadReplaceSessionAsync(jobId, cancellationToken);
+            if (session == null)
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Title = "Replace session not found",
+                    Detail = "No replace session matches the provided job id.",
+                    Status = StatusCodes.Status404NotFound,
+                    Type = "https://httpstatuses.com/404"
+                });
+            }
+
+            var accessError = EnsureReplaceSessionAccess(session);
+            if (accessError != null)
+            {
+                return accessError;
+            }
+
+            if (session.Status == NotebookReplaceStatus.Committed || session.Status == NotebookReplaceStatus.Aborted || session.Status == NotebookReplaceStatus.Pushed)
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Replace session closed",
+                    Detail = "This replace session has already been finalized.",
+                    Status = StatusCodes.Status400BadRequest,
+                    Type = "https://httpstatuses.com/400"
+                });
+            }
+
+            var sourceTarget = new TableImportTarget(session.Schema, session.TableName);
+            var stagingTarget = new TableImportTarget(session.Schema, session.StagingTableName);
+            var oldTableName = BuildOldTableName(session.TableName, session.Id);
+            var oldTarget = new TableImportTarget(session.Schema, oldTableName);
+
+            await using var transaction = await Context.Database.BeginTransactionAsync(cancellationToken);
+            var connection = (SqlConnection)Context.Database.GetDbConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                await connection.OpenAsync(cancellationToken);
+            }
+
+            var sqlTransaction = Context.Database.CurrentTransaction?.GetDbTransaction() as SqlTransaction;
+
+            if (!await TableExistsAsync(stagingTarget, connection, sqlTransaction, cancellationToken))
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Title = "Staging table missing",
+                    Detail = "The staging table for this replace session could not be found.",
+                    Status = StatusCodes.Status404NotFound,
+                    Type = "https://httpstatuses.com/404"
+                });
+            }
+
+            if (!await TableHasRowsAsync(stagingTarget, connection, sqlTransaction, cancellationToken))
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "No data uploaded",
+                    Detail = "The staging table does not contain any rows.",
+                    Status = StatusCodes.Status400BadRequest,
+                    Type = "https://httpstatuses.com/400"
+                });
+            }
+
+            if (await TableExistsAsync(oldTarget, connection, sqlTransaction, cancellationToken))
+            {
+                return Conflict(new ProblemDetails
+                {
+                    Title = "Old table already exists",
+                    Detail = "The old table name is already in use.",
+                    Status = StatusCodes.Status409Conflict,
+                    Type = "https://httpstatuses.com/409"
+                });
+            }
+
+            await RenameTableAsync(sourceTarget, oldTableName, connection, sqlTransaction, cancellationToken);
+            await RenameTableAsync(stagingTarget, session.TableName, connection, sqlTransaction, cancellationToken);
+
+            session.Status = NotebookReplaceStatus.Committed;
+            session.OldTableName = oldTableName;
+            session.CommittedAtUtc = DateTime.UtcNow;
+            session.UpdatedAtUtc = session.CommittedAtUtc;
+
+            await Context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            return Ok(new ReplaceCommitResponse(oldTableName, "Replace committed. Review the dataset stats on the website before pushing."));
+        }
+
+        [HttpPost("replace/{jobId:guid}/abort")]
+        public async Task<IActionResult> AbortReplaceSessionAsync(
+            [FromRoute] Guid jobId,
+            CancellationToken cancellationToken)
+        {
+            await AbortExpiredReplaceSessionsAsync(cancellationToken);
+
+            var session = await LoadReplaceSessionAsync(jobId, cancellationToken);
+            if (session == null)
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Title = "Replace session not found",
+                    Detail = "No replace session matches the provided job id.",
+                    Status = StatusCodes.Status404NotFound,
+                    Type = "https://httpstatuses.com/404"
+                });
+            }
+
+            var accessError = EnsureReplaceSessionAccess(session);
+            if (accessError != null)
+            {
+                return accessError;
+            }
+
+            if (session.Status == NotebookReplaceStatus.Aborted || session.Status == NotebookReplaceStatus.Pushed)
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Replace session closed",
+                    Detail = "This replace session has already been finalized.",
+                    Status = StatusCodes.Status400BadRequest,
+                    Type = "https://httpstatuses.com/400"
+                });
+            }
+
+            var sourceTarget = new TableImportTarget(session.Schema, session.TableName);
+            var stagingTarget = new TableImportTarget(session.Schema, session.StagingTableName);
+            var oldTarget = session.OldTableName == null
+                ? null
+                : new TableImportTarget(session.Schema, session.OldTableName);
+
+            await using var transaction = await Context.Database.BeginTransactionAsync(cancellationToken);
+            var connection = (SqlConnection)Context.Database.GetDbConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                await connection.OpenAsync(cancellationToken);
+            }
+
+            var sqlTransaction = Context.Database.CurrentTransaction?.GetDbTransaction() as SqlTransaction;
+
+            if (session.Status == NotebookReplaceStatus.Committed && oldTarget != null)
+            {
+                if (!await TableExistsAsync(oldTarget, connection, sqlTransaction, cancellationToken))
+                {
+                    return NotFound(new ProblemDetails
+                    {
+                        Title = "Old table missing",
+                        Detail = "The previous version of the table could not be found.",
+                        Status = StatusCodes.Status404NotFound,
+                        Type = "https://httpstatuses.com/404"
+                    });
+                }
+
+                if (await TableExistsAsync(sourceTarget, connection, sqlTransaction, cancellationToken))
+                {
+                    await DropTableAsync(sourceTarget, connection, sqlTransaction, cancellationToken);
+                }
+
+                await RenameTableAsync(oldTarget, session.TableName, connection, sqlTransaction, cancellationToken);
+            }
+            else if (await TableExistsAsync(stagingTarget, connection, sqlTransaction, cancellationToken))
+            {
+                await DropTableAsync(stagingTarget, connection, sqlTransaction, cancellationToken);
+            }
+
+            await UnlockMetadonneeAsync(session.IdMetadonnee, cancellationToken);
+
+            session.Status = NotebookReplaceStatus.Aborted;
+            session.CompletedAtUtc = DateTime.UtcNow;
+            session.UpdatedAtUtc = session.CompletedAtUtc;
+
+            await Context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            return Ok(new ReplaceCompletionResponse("Replace session aborted and the dataset has been unlocked."));
+        }
+
+        [HttpPost("replace/{jobId:guid}/push")]
+        public async Task<IActionResult> PushReplaceSessionAsync(
+            [FromRoute] Guid jobId,
+            CancellationToken cancellationToken)
+        {
+            await AbortExpiredReplaceSessionsAsync(cancellationToken);
+
+            var session = await LoadReplaceSessionAsync(jobId, cancellationToken);
+            if (session == null)
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Title = "Replace session not found",
+                    Detail = "No replace session matches the provided job id.",
+                    Status = StatusCodes.Status404NotFound,
+                    Type = "https://httpstatuses.com/404"
+                });
+            }
+
+            var accessError = EnsureReplaceSessionAccess(session);
+            if (accessError != null)
+            {
+                return accessError;
+            }
+
+            if (session.Status != NotebookReplaceStatus.Committed || string.IsNullOrWhiteSpace(session.OldTableName))
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Replace session not ready",
+                    Detail = "This replace session must be committed before pushing.",
+                    Status = StatusCodes.Status400BadRequest,
+                    Type = "https://httpstatuses.com/400"
+                });
+            }
+
+            var oldTarget = new TableImportTarget(session.Schema, session.OldTableName);
+
+            await using var transaction = await Context.Database.BeginTransactionAsync(cancellationToken);
+            var connection = (SqlConnection)Context.Database.GetDbConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                await connection.OpenAsync(cancellationToken);
+            }
+
+            var sqlTransaction = Context.Database.CurrentTransaction?.GetDbTransaction() as SqlTransaction;
+
+            if (await TableExistsAsync(oldTarget, connection, sqlTransaction, cancellationToken))
+            {
+                await DropTableAsync(oldTarget, connection, sqlTransaction, cancellationToken);
+            }
+
+            await UnlockMetadonneeAsync(session.IdMetadonnee, cancellationToken);
+
+            session.Status = NotebookReplaceStatus.Pushed;
+            session.CompletedAtUtc = DateTime.UtcNow;
+            session.UpdatedAtUtc = session.CompletedAtUtc;
+
+            await Context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            return Ok(new ReplaceCompletionResponse("Replace session pushed. The dataset is unlocked."));
+        }
+
         private async Task<(DatasetResolution? Resolution, IActionResult? Error)> TryResolveDatasetAsync(
             string? schema,
             string? table,
@@ -843,6 +1324,606 @@ namespace Dataportal.Controllers.JupyterHubApi
 
             return columns;
         }
+
+        private const int ReplaceBulkBatchSize = 5000;
+        private const int MaxTableNameLength = 128;
+
+        private static string BuildStagingTableName(string baseTableName, Guid jobId)
+        {
+            return BuildReplaceTableName(baseTableName, "staging", jobId);
+        }
+
+        private static string BuildOldTableName(string baseTableName, Guid jobId)
+        {
+            return BuildReplaceTableName(baseTableName, "old", jobId);
+        }
+
+        private static string BuildReplaceTableName(string baseTableName, string label, Guid jobId)
+        {
+            var suffix = $"__{label}__{jobId:N}";
+            var maxBaseLength = MaxTableNameLength - suffix.Length;
+            if (maxBaseLength <= 0)
+            {
+                throw new InvalidOperationException("The replace table name is too long.");
+            }
+
+            var trimmedBase = baseTableName.Length > maxBaseLength
+                ? baseTableName[..maxBaseLength]
+                : baseTableName;
+
+            return $"{trimmedBase}{suffix}";
+        }
+
+        private async Task<NotebookReplaceSession?> LoadReplaceSessionAsync(Guid jobId, CancellationToken cancellationToken)
+        {
+            return await Context.NotebookReplaceSessions
+                .Include(s => s.Metadonnee)
+                .FirstOrDefaultAsync(s => s.Id == jobId, cancellationToken);
+        }
+
+        private IActionResult? EnsureReplaceSessionAccess(NotebookReplaceSession session)
+        {
+            if (session.Metadonnee == null)
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Title = "Dataset not found",
+                    Detail = "The dataset metadata could not be resolved.",
+                    Status = StatusCodes.Status404NotFound,
+                    Type = "https://httpstatuses.com/404"
+                });
+            }
+
+            var roleId = HttpContextUserHelper.GetCurrentUserRole(HttpContext, Context);
+            var userId = HttpContextUserHelper.TryGetCurrentUserId(User);
+            var isAdmin = roleId == RoleIds.Administrateur;
+            var isEditorOwner = roleId == RoleIds.Editeur && userId.HasValue && session.Metadonnee.IdUtilisateur == userId.Value;
+
+            if (!isAdmin && !isEditorOwner)
+            {
+                return Forbid();
+            }
+
+            return null;
+        }
+
+        private async Task<bool> TryLockMetadonneeAsync(int metadonneeId, CancellationToken cancellationToken)
+        {
+            var affected = await Context.Database.ExecuteSqlInterpolatedAsync(
+                $"UPDATE Metadonnee SET TraitementEnCours = 1 WHERE Id = {metadonneeId} AND (TraitementEnCours IS NULL OR TraitementEnCours = 0)",
+                cancellationToken);
+
+            return affected > 0;
+        }
+
+        private async Task UnlockMetadonneeAsync(int metadonneeId, CancellationToken cancellationToken)
+        {
+            await Context.Database.ExecuteSqlInterpolatedAsync(
+                $"UPDATE Metadonnee SET TraitementEnCours = 0 WHERE Id = {metadonneeId}",
+                cancellationToken);
+        }
+
+        private async Task AbortExpiredReplaceSessionsAsync(CancellationToken cancellationToken)
+        {
+            var cutoffUtc = DateTime.UtcNow.AddHours(-1);
+            await _replaceSessionService.AbortExpiredSessionsAsync(cutoffUtc, cancellationToken);
+        }
+
+        private string GetConnectionStringOrThrow()
+        {
+            return Context.Database.GetConnectionString()
+                   ?? throw new InvalidOperationException("The database connection string could not be found.");
+        }
+
+        private static async Task<bool> TableExistsAsync(TableImportTarget target, SqlConnection connection, SqlTransaction? transaction, CancellationToken cancellationToken)
+        {
+            const string sql = @"
+SELECT 1
+FROM sys.tables t
+JOIN sys.schemas s ON t.schema_id = s.schema_id
+WHERE s.name = @schema AND t.name = @table;";
+
+            using var cmd = new SqlCommand(sql, connection, transaction);
+            cmd.Parameters.Add(new SqlParameter("@schema", SqlDbType.NVarChar, 128) { Value = target.Schema });
+            cmd.Parameters.Add(new SqlParameter("@table", SqlDbType.NVarChar, 128) { Value = target.TableName });
+            var result = await cmd.ExecuteScalarAsync(cancellationToken);
+            return result != null;
+        }
+
+        private static async Task<bool> TableHasRowsAsync(TableImportTarget target, SqlConnection connection, SqlTransaction? transaction, CancellationToken cancellationToken)
+        {
+            var sql = $"SELECT TOP 1 1 FROM {target.SchemaQualifiedName};";
+            using var cmd = new SqlCommand(sql, connection, transaction);
+            var result = await cmd.ExecuteScalarAsync(cancellationToken);
+            return result != null;
+        }
+
+        private static async Task DropTableAsync(TableImportTarget target, SqlConnection connection, SqlTransaction? transaction, CancellationToken cancellationToken)
+        {
+            var sql = $"DROP TABLE {target.SchemaQualifiedName};";
+            using var cmd = new SqlCommand(sql, connection, transaction);
+            await cmd.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        private static async Task RenameTableAsync(TableImportTarget target, string newTableName, SqlConnection connection, SqlTransaction? transaction, CancellationToken cancellationToken)
+        {
+            using var cmd = new SqlCommand("EXEC sp_rename @qualifiedName, @newName;", connection, transaction);
+            cmd.Parameters.Add(new SqlParameter("@qualifiedName", SqlDbType.NVarChar, 260) { Value = target.SchemaQualifiedName });
+            cmd.Parameters.Add(new SqlParameter("@newName", SqlDbType.NVarChar, 128) { Value = newTableName });
+            await cmd.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        private static async Task CreateStagingTableAsync(
+            TableImportTarget sourceTarget,
+            TableImportTarget stagingTarget,
+            SqlConnection connection,
+            SqlTransaction? transaction,
+            CancellationToken cancellationToken)
+        {
+            if (await TableExistsAsync(stagingTarget, connection, transaction, cancellationToken))
+            {
+                throw new InvalidOperationException("The staging table already exists.");
+            }
+
+            var columns = await GetTableColumnsAsync(sourceTarget, connection, transaction, cancellationToken);
+            if (columns.Count == 0)
+            {
+                throw new InvalidOperationException("The source table schema could not be resolved.");
+            }
+
+            var columnDefinitions = columns.Select(BuildColumnDefinition).ToList();
+            var sql = $"CREATE TABLE {stagingTarget.SchemaQualifiedName} ({string.Join(", ", columnDefinitions)});";
+
+            using var cmd = new SqlCommand(sql, connection, transaction);
+            await cmd.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        private static async Task<List<ColumnMetadata>> GetTableColumnsAsync(
+            TableImportTarget target,
+            SqlConnection connection,
+            SqlTransaction? transaction,
+            CancellationToken cancellationToken)
+        {
+            const string sql = @"
+SELECT c.name,
+       t.name AS type_name,
+       c.max_length,
+       c.precision,
+       c.scale,
+       c.is_nullable,
+       c.is_identity,
+       ic.seed_value,
+       ic.increment_value
+FROM sys.columns c
+JOIN sys.types t ON c.user_type_id = t.user_type_id
+LEFT JOIN sys.identity_columns ic ON c.object_id = ic.object_id AND c.column_id = ic.column_id
+WHERE c.object_id = OBJECT_ID(@objectId)
+ORDER BY c.column_id;";
+
+            using var cmd = new SqlCommand(sql, connection, transaction);
+            cmd.Parameters.Add(new SqlParameter("@objectId", SqlDbType.NVarChar, 260) { Value = target.SchemaQualifiedName });
+
+            using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+            var columns = new List<ColumnMetadata>();
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                columns.Add(new ColumnMetadata(
+                    reader.GetString(0),
+                    reader.GetString(1),
+                    reader.GetInt16(2),
+                    reader.GetByte(3),
+                    reader.GetByte(4),
+                    reader.GetBoolean(5),
+                    reader.GetBoolean(6),
+                    reader.IsDBNull(7) ? null : reader.GetDecimal(7),
+                    reader.IsDBNull(8) ? null : reader.GetDecimal(8)));
+            }
+
+            return columns;
+        }
+
+        private static string BuildColumnDefinition(ColumnMetadata column)
+        {
+            var safeName = column.Name.Replace("]", "]]", StringComparison.Ordinal);
+            var sqlType = BuildSqlType(column);
+            var nullability = column.IsNullable ? "NULL" : "NOT NULL";
+            var identity = column.IsIdentity
+                ? $" IDENTITY({column.IdentitySeed ?? 1}, {column.IdentityIncrement ?? 1})"
+                : string.Empty;
+
+            return $"[{safeName}] {sqlType}{identity} {nullability}";
+        }
+
+        private static string BuildSqlType(ColumnMetadata column)
+        {
+            var typeName = column.TypeName;
+            var lower = typeName.ToLowerInvariant();
+
+            switch (lower)
+            {
+                case "nvarchar":
+                case "nchar":
+                case "varchar":
+                case "char":
+                case "varbinary":
+                case "binary":
+                    if (column.MaxLength == -1)
+                    {
+                        return $"{typeName}(MAX)";
+                    }
+
+                    var length = column.MaxLength;
+                    if (lower is "nvarchar" or "nchar")
+                    {
+                        length /= 2;
+                    }
+
+                    return $"{typeName}({length})";
+                case "decimal":
+                case "numeric":
+                    return $"{typeName}({column.Precision},{column.Scale})";
+                case "datetime2":
+                case "datetimeoffset":
+                case "time":
+                    return $"{typeName}({column.Scale})";
+                default:
+                    return typeName;
+            }
+        }
+
+        private static TabularColumnDefinition BuildTabularColumnDefinition(ColumnMetadata column)
+        {
+            var typeName = column.TypeName.ToLowerInvariant();
+            var columnType = typeName switch
+            {
+                "bit" => TabularColumnType.Bit,
+                "int" => TabularColumnType.Int,
+                "smallint" => TabularColumnType.Int,
+                "tinyint" => TabularColumnType.Int,
+                "bigint" => TabularColumnType.BigInt,
+                "decimal" => TabularColumnType.Decimal,
+                "numeric" => TabularColumnType.Decimal,
+                "money" => TabularColumnType.Decimal,
+                "smallmoney" => TabularColumnType.Decimal,
+                "float" => TabularColumnType.Float,
+                "real" => TabularColumnType.Float,
+                "date" => TabularColumnType.DateTime2,
+                "datetime" => TabularColumnType.DateTime2,
+                "datetime2" => TabularColumnType.DateTime2,
+                "smalldatetime" => TabularColumnType.DateTime2,
+                "datetimeoffset" => TabularColumnType.DateTime2,
+                "time" => TabularColumnType.DateTime2,
+                _ => TabularColumnType.NVarChar
+            };
+
+            int? maxLength = null;
+            if (columnType == TabularColumnType.NVarChar && column.MaxLength > 0)
+            {
+                if (column.MaxLength == -1)
+                {
+                    maxLength = null;
+                }
+                else if (typeName is "nvarchar" or "nchar")
+                {
+                    maxLength = column.MaxLength / 2;
+                }
+                else
+                {
+                    maxLength = column.MaxLength;
+                }
+            }
+
+            return new TabularColumnDefinition(column.Name, columnType, maxLength);
+        }
+
+        private static SqlBulkCopy CreateBulkCopy(SqlConnection connection, TableImportTarget target, IReadOnlyList<TabularColumnDefinition> columns, int batchSize)
+        {
+            var bulkCopy = new SqlBulkCopy(connection, SqlBulkCopyOptions.TableLock, null)
+            {
+                DestinationTableName = target.QualifiedNameWithDatabase,
+                BulkCopyTimeout = 0,
+                BatchSize = batchSize
+            };
+
+            foreach (var column in columns)
+            {
+                bulkCopy.ColumnMappings.Add(column.Name, column.Name);
+            }
+
+            return bulkCopy;
+        }
+
+        private static DataTable CreateBufferTable(IReadOnlyList<TabularColumnDefinition> columns)
+        {
+            var table = new DataTable();
+            foreach (var column in columns)
+            {
+                var dataType = column.ColumnType switch
+                {
+                    TabularColumnType.Bit => typeof(bool),
+                    TabularColumnType.Int => typeof(int),
+                    TabularColumnType.BigInt => typeof(long),
+                    TabularColumnType.Decimal => typeof(decimal),
+                    TabularColumnType.Float => typeof(double),
+                    TabularColumnType.DateTime2 => typeof(DateTime),
+                    _ => typeof(string)
+                };
+
+                var columnDef = table.Columns.Add(column.Name, dataType);
+                columnDef.AllowDBNull = true;
+            }
+
+            return table;
+        }
+
+        private static (string[] Headers, DataField[] Fields)? ReadNormalizedParquetHeader(ParquetReader reader)
+        {
+            var dataFields = reader.Schema.GetDataFields();
+            if (dataFields == null || dataFields.Length == 0)
+            {
+                return null;
+            }
+
+            var headers = dataFields
+                .Select(f => (f?.Name ?? string.Empty).Trim())
+                .ToArray();
+
+            return (headers, dataFields);
+        }
+
+        private static async Task<int> BulkCopyParquetRowsAsync(
+            SqlBulkCopy bulkCopy,
+            DataTable buffer,
+            IReadOnlyList<TabularColumnDefinition> columns,
+            ParquetReader reader,
+            IReadOnlyList<DataField> fields,
+            List<TabularImportError> errors,
+            string fileName,
+            int batchSize,
+            CancellationToken cancellationToken)
+        {
+            var totalCopied = 0;
+            var rowNumber = 0L;
+
+            for (var rowGroupIndex = 0; rowGroupIndex < reader.RowGroupCount; rowGroupIndex++)
+            {
+                using var rowGroupReader = reader.OpenRowGroupReader(rowGroupIndex);
+
+                var parquetColumns = new Parquet.Data.DataColumn[fields.Count];
+                for (var fieldIndex = 0; fieldIndex < fields.Count; fieldIndex++)
+                {
+                    parquetColumns[fieldIndex] = await rowGroupReader.ReadColumnAsync(fields[fieldIndex]);
+                }
+
+                if (parquetColumns.Length == 0)
+                {
+                    continue;
+                }
+
+                var rowCount = parquetColumns[0].Data.Length;
+
+                for (var rowIndex = 0; rowIndex < rowCount; rowIndex++)
+                {
+                    var rowValues = new object[columns.Count];
+                    var hasValue = false;
+                    rowNumber++;
+
+                    for (var columnIndex = 0; columnIndex < columns.Count; columnIndex++)
+                    {
+                        var dataColumn = parquetColumns[columnIndex];
+                        var value = dataColumn.Data.GetValue(rowIndex);
+                        var converted = ConvertValue(value, columns[columnIndex], errors, fileName, rowNumber);
+
+                        if (converted != DBNull.Value)
+                        {
+                            hasValue = true;
+                        }
+
+                        rowValues[columnIndex] = converted ?? DBNull.Value;
+                    }
+
+                    if (!hasValue)
+                    {
+                        continue;
+                    }
+
+                    buffer.Rows.Add(rowValues);
+
+                    if (buffer.Rows.Count >= batchSize)
+                    {
+                        await bulkCopy.WriteToServerAsync(buffer, cancellationToken);
+                        totalCopied += buffer.Rows.Count;
+                        buffer.Clear();
+                    }
+                }
+            }
+
+            if (buffer.Rows.Count > 0)
+            {
+                await bulkCopy.WriteToServerAsync(buffer, cancellationToken);
+                totalCopied += buffer.Rows.Count;
+                buffer.Clear();
+            }
+
+            return totalCopied;
+        }
+
+        private static void ValidateHeadersAgainstColumns(IReadOnlyList<string> headers, IReadOnlyList<TabularColumnDefinition> columns, string formatLabel)
+        {
+            if (headers.Count != columns.Count)
+            {
+                throw new InvalidOperationException($"The {formatLabel} files must share the same columns as the selected schema.");
+            }
+
+            for (var i = 0; i < headers.Count; i++)
+            {
+                if (!string.Equals(headers[i], columns[i].Name, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException($"The {formatLabel} files must share the same columns as the selected schema.");
+                }
+            }
+        }
+
+        private static void EnsureUniqueHeaders(IEnumerable<string> headers)
+        {
+            var duplicates = headers
+                .GroupBy(h => h, StringComparer.OrdinalIgnoreCase)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .ToList();
+
+            if (duplicates.Count > 0)
+            {
+                throw new InvalidOperationException("Column headers must be unique.");
+            }
+        }
+
+        private static object? ConvertValue(object? rawValue, TabularColumnDefinition column, List<TabularImportError> errors, string fileName, long rowNumber)
+        {
+            if (rawValue == null)
+            {
+                return DBNull.Value;
+            }
+
+            if (rawValue is DBNull)
+            {
+                return DBNull.Value;
+            }
+
+            if (rawValue is string stringValue)
+            {
+                stringValue = stringValue.Trim();
+                if (string.IsNullOrWhiteSpace(stringValue))
+                {
+                    return DBNull.Value;
+                }
+
+                return ConvertFromString(stringValue, column, errors, fileName, rowNumber);
+            }
+
+            if (column.ColumnType == TabularColumnType.DateTime2 && rawValue is DateTime dateTimeValue)
+            {
+                return dateTimeValue;
+            }
+
+            if ((column.ColumnType == TabularColumnType.Int || column.ColumnType == TabularColumnType.BigInt) && rawValue is long longValue)
+            {
+                return column.ColumnType == TabularColumnType.Int ? (object)(int)longValue : longValue;
+            }
+
+            if ((column.ColumnType == TabularColumnType.Int || column.ColumnType == TabularColumnType.BigInt) && rawValue is int intValue)
+            {
+                return column.ColumnType == TabularColumnType.Int ? intValue : (object)(long)intValue;
+            }
+
+            if (column.ColumnType == TabularColumnType.Decimal && rawValue is decimal decimalValue)
+            {
+                return decimalValue;
+            }
+
+            if (column.ColumnType == TabularColumnType.Float && rawValue is double doubleValue)
+            {
+                return doubleValue;
+            }
+
+            if (column.ColumnType == TabularColumnType.Float && rawValue is float floatValue)
+            {
+                return (double)floatValue;
+            }
+
+            if (column.ColumnType == TabularColumnType.Bit && rawValue is bool boolValue)
+            {
+                return boolValue;
+            }
+
+            if (column.ColumnType == TabularColumnType.NVarChar)
+            {
+                return rawValue.ToString()?.Trim();
+            }
+
+            return rawValue;
+        }
+
+        private static object ConvertFromString(string value, TabularColumnDefinition column, List<TabularImportError> errors, string fileName, long rowNumber)
+        {
+            switch (column.ColumnType)
+            {
+                case TabularColumnType.Bit:
+                    if (bool.TryParse(value, out var boolValue))
+                    {
+                        return boolValue;
+                    }
+
+                    if (value == "0" || value == "1")
+                    {
+                        return value == "1";
+                    }
+
+                    errors.Add(new TabularImportError(fileName, rowNumber, column.Name, value, "Value must be a boolean."));
+                    return DBNull.Value;
+                case TabularColumnType.Int:
+                    if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var intValue))
+                    {
+                        return intValue;
+                    }
+
+                    errors.Add(new TabularImportError(fileName, rowNumber, column.Name, value, "Value must be an integer."));
+                    return DBNull.Value;
+                case TabularColumnType.BigInt:
+                    if (long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var longValue))
+                    {
+                        return longValue;
+                    }
+
+                    errors.Add(new TabularImportError(fileName, rowNumber, column.Name, value, "Value must be a 64-bit integer."));
+                    return DBNull.Value;
+                case TabularColumnType.Decimal:
+                    if (decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var decimalValue))
+                    {
+                        return decimalValue;
+                    }
+
+                    errors.Add(new TabularImportError(fileName, rowNumber, column.Name, value, "Value must be a decimal number."));
+                    return DBNull.Value;
+                case TabularColumnType.Float:
+                    if (double.TryParse(value, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out var doubleValue))
+                    {
+                        return doubleValue;
+                    }
+
+                    errors.Add(new TabularImportError(fileName, rowNumber, column.Name, value, "Value must be a floating-point number."));
+                    return DBNull.Value;
+                case TabularColumnType.DateTime2:
+                    if (DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var dateValue))
+                    {
+                        return dateValue;
+                    }
+
+                    errors.Add(new TabularImportError(fileName, rowNumber, column.Name, value, "Value must be a valid date/time."));
+                    return DBNull.Value;
+                default:
+                    return value;
+            }
+        }
+
+        private sealed record ColumnMetadata(
+            string Name,
+            string TypeName,
+            short MaxLength,
+            byte Precision,
+            byte Scale,
+            bool IsNullable,
+            bool IsIdentity,
+            decimal? IdentitySeed,
+            decimal? IdentityIncrement);
+
+        private sealed record ReplaceStartResponse(Guid JobId, string StagingTable);
+
+        private sealed record ReplaceChunkResponse(int RowsInserted, IReadOnlyList<TabularImportError> Errors);
+
+        private sealed record ReplaceCommitResponse(string OldTableName, string Message);
+
+        private sealed record ReplaceCompletionResponse(string Message);
 
         private sealed record DatasetResolution(Metadonnee Metadonnee, NotebookApi.NotebookApiBaseController.NotebookApiTableType TableType, TableImportTarget Target);
 

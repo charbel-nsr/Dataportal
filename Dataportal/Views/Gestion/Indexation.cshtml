@@ -16,7 +16,7 @@
     </div>
 
     <div class="row bg-light rounded shadow p-4 mb-4">
-        <form method="get" class="row g-3">
+        <form method="get" class="row gx-3 gy-2 align-items-center w-100">
             <div class="col-md-4 mt-2">
                 <div class="form-floating">
                     <input type="text" class="form-control" name="search" id="search" placeholder="Search datasets" value="@Model.Search">
@@ -138,6 +138,9 @@
     }
     else
     {
-        <div class="alert alert-info">No indexation jobs match the selected filters.</div>
+        <div class="text-center">
+            <img src="/illustration/empty-search.svg" alt="No data found" class="img-fluid" style="max-height:200px;" />
+            <p class="text-muted mt-2">No indexation jobs found.</p>
+        </div>
     }
 </div>

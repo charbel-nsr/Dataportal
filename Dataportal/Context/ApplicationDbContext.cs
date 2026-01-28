@@ -37,6 +37,7 @@ namespace Dataportal.Context
         public DbSet<MessageAccueil> MessageAccueil { get; set; }
         public DbSet<NotebookApiToken> NotebookApiTokens { get; set; }
         public DbSet<NotebookApiAccessLog> NotebookApiAccessLogs { get; set; }
+        public DbSet<NotebookReplaceSession> NotebookReplaceSessions { get; set; }
         public DbSet<FichierStocke> FichierStocke { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -126,6 +127,35 @@ namespace Dataportal.Context
                 entity.HasOne(l => l.NotebookApiToken)
                       .WithMany()
                       .HasForeignKey(l => l.IdNotebookApiToken)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+            modelBuilder.Entity<NotebookReplaceSession>(entity =>
+            {
+                entity.HasKey(s => s.Id);
+                entity.Property(s => s.Schema)
+                      .IsRequired()
+                      .HasMaxLength(128);
+                entity.Property(s => s.TableName)
+                      .IsRequired()
+                      .HasMaxLength(128);
+                entity.Property(s => s.StagingTableName)
+                      .IsRequired()
+                      .HasMaxLength(128);
+                entity.Property(s => s.OldTableName)
+                      .HasMaxLength(128);
+                entity.Property(s => s.Status)
+                      .IsRequired();
+                entity.Property(s => s.CreatedAtUtc)
+                      .HasDefaultValueSql("GETUTCDATE()");
+                entity.HasIndex(s => s.IdMetadonnee);
+                entity.HasIndex(s => s.IdUtilisateur);
+                entity.HasOne(s => s.Metadonnee)
+                      .WithMany()
+                      .HasForeignKey(s => s.IdMetadonnee)
+                      .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(s => s.Utilisateur)
+                      .WithMany()
+                      .HasForeignKey(s => s.IdUtilisateur)
                       .OnDelete(DeleteBehavior.Restrict);
             });
             modelBuilder.Entity<FichierStocke>(entity =>

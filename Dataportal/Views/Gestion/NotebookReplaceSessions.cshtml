@@ -1,6 +1,7 @@
-﻿@model Dataportal.ViewModels.NotebookApiAccessLogsViewModel
+﻿@model Dataportal.ViewModels.NotebookReplaceSessionsViewModel
+
 @{
-    ViewData["Title"] = "Notebook API access logs";
+    ViewData["Title"] = "Notebook replace sessions";
 }
 
 <div class="container">
@@ -12,28 +13,37 @@
                     <label for="datasetId">Dataset id</label>
                 </div>
             </div>
+            @if (Model.IsAdminView)
+            {
+                <div class="col-md-3 mt-2">
+                    <div class="form-floating">
+                        <input type="number" class="form-control" name="userId" id="userId" placeholder="User id" value="@Model.UserId">
+                        <label for="userId">User id</label>
+                    </div>
+                </div>
+            }
             <div class="col-md-3 mt-2">
                 <div class="form-floating">
-                    <input type="number" class="form-control" name="userId" id="userId" placeholder="User id" value="@Model.UserId">
-                    <label for="userId">User id</label>
+                    <select class="form-select" name="status" id="status">
+                        <option value="">All statuses</option>
+                        @foreach (var option in Model.StatusOptions)
+                        {
+                            <option value="@option.Value" selected="@option.Selected">@option.Text</option>
+                        }
+                    </select>
+                    <label for="status">Status</label>
                 </div>
             </div>
             <div class="col-md-3 mt-2">
                 <div class="form-floating">
-                    <input type="number" class="form-control" name="tokenId" id="tokenId" placeholder="Token id" value="@Model.TokenId">
-                    <label for="tokenId">Token id</label>
+                    <input type="datetime-local" class="form-control" name="createdFromUtc" id="createdFromUtc" value="@(Model.CreatedFromUtc?.ToString("yyyy-MM-ddTHH:mm"))">
+                    <label for="createdFromUtc">From (UTC)</label>
                 </div>
             </div>
             <div class="col-md-3 mt-2">
                 <div class="form-floating">
-                    <input type="datetime-local" class="form-control" name="dateFromUtc" id="dateFromUtc" value="@(Model.DateFromUtc?.ToString("yyyy-MM-ddTHH:mm"))">
-                    <label for="dateFromUtc">From (UTC)</label>
-                </div>
-            </div>
-            <div class="col-md-3 mt-2">
-                <div class="form-floating">
-                    <input type="datetime-local" class="form-control" name="dateToUtc" id="dateToUtc" value="@(Model.DateToUtc?.ToString("yyyy-MM-ddTHH:mm"))">
-                    <label for="dateToUtc">To (UTC)</label>
+                    <input type="datetime-local" class="form-control" name="createdToUtc" id="createdToUtc" value="@(Model.CreatedToUtc?.ToString("yyyy-MM-ddTHH:mm"))">
+                    <label for="createdToUtc">To (UTC)</label>
                 </div>
             </div>
             <div class="col-md-9 mt-2">
@@ -42,45 +52,53 @@
                         <button type="submit" class="btn btn-primary w-100">Filter</button>
                     </div>
                     <div class="col-6">
-                        <a href="@Url.Action("NotebookApiAccessLogs", "Gestion")" class="btn btn-outline-primary w-100">Reset</a>
+                        <a href="@Url.Action("NotebookReplaceSessions", "Gestion")" class="btn btn-outline-primary w-100">Reset</a>
                     </div>
                 </div>
             </div>
             <div class="col-12 mt-2">
-                <small class="text-muted">Showing the 500 most recent matches.</small>
+                <small class="text-muted">Showing the 500 most recent matches. Sessions older than one hour are auto-aborted.</small>
             </div>
         </form>
     </div>
 
-    @if (Model.Logs != null && Model.Logs.Any())
+    @if (Model.Sessions != null && Model.Sessions.Any())
     {
         <div class="paginated-table-wrapper" data-page-size="20">
             <div class="table-responsive">
                 <table class="table table-hover shadow-sm paginated-table">
                     <thead class="table-light">
                         <tr>
-                            <th scope="col">Accessed (UTC)</th>
+                            <th scope="col">Created (UTC)</th>
+                            <th scope="col">Status</th>
                             <th scope="col">Dataset</th>
                             <th scope="col">Dataset id</th>
+                            <th scope="col">Schema</th>
+                            <th scope="col">Table</th>
+                            <th scope="col">Staging table</th>
+                            <th scope="col">Old table</th>
                             <th scope="col">User</th>
                             <th scope="col">User id</th>
-                            <th scope="col">Token</th>
-                            <th scope="col">Token id</th>
-                            <th scope="col">Bytes returned</th>
+                            <th scope="col">Updated (UTC)</th>
+                            <th scope="col">Completed (UTC)</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var log in Model.Logs)
+                        @foreach (var session in Model.Sessions)
                         {
                             <tr>
-                                <td>@log.AccessedAtUtc.ToString("yyyy-MM-dd HH:mm:ss")</td>
-                                <td>@log.DatasetName</td>
-                                <td>@log.DatasetId</td>
-                                <td>@(log.UserDisplayName ?? "-")</td>
-                                <td>@(log.UserId?.ToString() ?? "-")</td>
-                                <td>@(log.TokenLabel ?? "-")</td>
-                                <td>@(log.TokenId?.ToString() ?? "-")</td>
-                                <td>@log.BytesReturned</td>
+                                <td>@session.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                <td>@session.Status</td>
+                                <td>@session.DatasetName</td>
+                                <td>@session.DatasetId</td>
+                                <td>@session.Schema</td>
+                                <td>@session.TableName</td>
+                                <td>@session.StagingTableName</td>
+                                <td>@(session.OldTableName ?? "-")</td>
+                                <td>@(session.UserDisplayName ?? "-")</td>
+                                <td>@(session.UserId?.ToString() ?? "-")</td>
+                                <td>@(session.UpdatedAtUtc?.ToString("yyyy-MM-dd HH:mm:ss") ?? "-")</td>
+                                <td>@(session.CompletedAtUtc?.ToString("yyyy-MM-dd HH:mm:ss") ?? "-")</td>
                             </tr>
                         }
                     </tbody>
@@ -109,7 +127,7 @@
     {
         <div class="text-center">
             <img src="/illustration/empty-search.svg" alt="No data found" class="img-fluid" style="max-height:200px;" />
-            <p class="text-muted mt-2">No access logs found.</p>
+            <p class="text-muted mt-2">No replace sessions found.</p>
         </div>
     }
 </div>

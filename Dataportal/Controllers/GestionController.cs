@@ -19,12 +19,14 @@ namespace Dataportal.Controllers
         private readonly ApplicationDbContext _context;
         private readonly IAccountEmailService _accountEmailService;
         private readonly IndexMaintenanceService _indexMaintenanceService;
+        private readonly NotebookReplaceSessionService _replaceSessionService;
 
-        public GestionController(ApplicationDbContext context, IAccountEmailService accountEmailService, IndexMaintenanceService indexMaintenanceService)
+        public GestionController(ApplicationDbContext context, IAccountEmailService accountEmailService, IndexMaintenanceService indexMaintenanceService, NotebookReplaceSessionService replaceSessionService)
         {
             _context = context;
             _accountEmailService = accountEmailService;
             _indexMaintenanceService = indexMaintenanceService;
+            _replaceSessionService = replaceSessionService;
         }
 
         [HttpGet]
@@ -258,6 +260,98 @@ namespace Dataportal.Controllers
                 DateFromUtc = dateFromUtc,
                 DateToUtc = dateToUtc,
                 Logs = logs
+            };
+
+            return View(viewModel);
+        }
+
+        // GET: /Gestion/NotebookReplaceSessions
+        [HttpGet]
+        [Authorize(Roles = "administrator,editor")]
+        public async Task<IActionResult> NotebookReplaceSessions(int? datasetId, int? userId, NotebookReplaceStatus? status, DateTime? createdFromUtc, DateTime? createdToUtc)
+        {
+            await _replaceSessionService.AbortExpiredSessionsAsync(DateTime.UtcNow.AddHours(-1), HttpContext.RequestAborted);
+
+            var isAdmin = User.IsInRole("administrator");
+            var currentUserId = HttpContextUserHelper.TryGetCurrentUserId(User);
+
+            var query = _context.NotebookReplaceSessions
+                .AsNoTracking()
+                .Include(s => s.Metadonnee)
+                .Include(s => s.Utilisateur)
+                .AsQueryable();
+
+            if (!isAdmin && currentUserId.HasValue)
+            {
+                query = query.Where(s => s.Metadonnee != null && s.Metadonnee.IdUtilisateur == currentUserId.Value);
+            }
+
+            if (datasetId.HasValue)
+            {
+                query = query.Where(s => s.IdMetadonnee == datasetId.Value);
+            }
+
+            if (userId.HasValue && isAdmin)
+            {
+                query = query.Where(s => s.IdUtilisateur == userId.Value);
+            }
+
+            if (status.HasValue)
+            {
+                query = query.Where(s => s.Status == status.Value);
+            }
+
+            if (createdFromUtc.HasValue)
+            {
+                query = query.Where(s => s.CreatedAtUtc >= createdFromUtc.Value);
+            }
+
+            if (createdToUtc.HasValue)
+            {
+                query = query.Where(s => s.CreatedAtUtc <= createdToUtc.Value);
+            }
+
+            var sessions = await query
+                .OrderByDescending(s => s.CreatedAtUtc)
+                .Take(500)
+                .Select(s => new NotebookReplaceSessionItemViewModel
+                {
+                    Id = s.Id,
+                    DatasetId = s.IdMetadonnee,
+                    DatasetName = s.Metadonnee != null ? s.Metadonnee.Nom : string.Empty,
+                    Schema = s.Schema,
+                    TableName = s.TableName,
+                    StagingTableName = s.StagingTableName,
+                    OldTableName = s.OldTableName,
+                    Status = s.Status,
+                    CreatedAtUtc = s.CreatedAtUtc,
+                    UpdatedAtUtc = s.UpdatedAtUtc,
+                    CompletedAtUtc = s.CompletedAtUtc,
+                    UserId = s.IdUtilisateur,
+                    UserDisplayName = s.Utilisateur != null ? $"{s.Utilisateur.Prenom} {s.Utilisateur.Nom}".Trim() : null
+                })
+                .ToListAsync();
+
+            var statusOptions = Enum.GetValues(typeof(NotebookReplaceStatus))
+                .Cast<NotebookReplaceStatus>()
+                .Select(value => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
+                {
+                    Value = value.ToString(),
+                    Text = value.ToString(),
+                    Selected = status.HasValue && status.Value == value
+                })
+                .ToList();
+
+            var viewModel = new NotebookReplaceSessionsViewModel
+            {
+                DatasetId = datasetId,
+                UserId = userId,
+                Status = status,
+                CreatedFromUtc = createdFromUtc,
+                CreatedToUtc = createdToUtc,
+                StatusOptions = statusOptions,
+                Sessions = sessions,
+                IsAdminView = isAdmin
             };
 
             return View(viewModel);

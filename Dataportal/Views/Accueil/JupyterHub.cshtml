@@ -4,6 +4,11 @@
     var normalEndpoint = $"{baseUrl}/api/jupyterhub/normal/parquet";
     var indexedEndpoint = $"{baseUrl}/api/jupyterhub/indexed/parquet";
     var includeEndpoint = $"{baseUrl}/api/jupyterhub/include/parquet";
+    var replaceStartTemplate = $"{baseUrl}/api/tables/{{schema}}/{{table}}/replace/start";
+    var replaceChunkTemplate = $"{baseUrl}/api/jupyterhub/replace/{{jobId}}/chunk";
+    var replaceCommitTemplate = $"{baseUrl}/api/jupyterhub/replace/{{jobId}}/commit";
+    var replaceAbortTemplate = $"{baseUrl}/api/jupyterhub/replace/{{jobId}}/abort";
+    var replacePushTemplate = $"{baseUrl}/api/jupyterhub/replace/{{jobId}}/push";
 }
 
 <section class="notebook-api-hero py-5">
@@ -420,6 +425,96 @@ resp.raise_for_status()
 
 df = pd.read_parquet(io.BytesIO(resp.content), engine="pyarrow")
 print(df.head())</code></pre>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="py-5">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-lg-12">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <h2 class="h4 mb-3">Replace a full table (update workflow)</h2>
+                        <p class="text-muted small mb-3">
+                            Use the replace session endpoints to upload a full table replacement from JupyterHub. The dataset
+                            is locked while the session is active so no one else can modify it. Editors can only replace their
+                            own datasets; administrators can replace any dataset.
+                        </p>
+                        <div class="row g-3 mb-3">
+                            <div class="col-lg-6">
+                                <h3 class="h6 text-uppercase text-muted">Endpoints</h3>
+                                <ul class="list-unstyled small mb-0">
+                                    <li><strong>Start:</strong> <code>@replaceStartTemplate</code></li>
+                                    <li><strong>Upload chunk:</strong> <code>@replaceChunkTemplate</code></li>
+                                    <li><strong>Commit swap:</strong> <code>@replaceCommitTemplate</code></li>
+                                    <li><strong>Abort rollback:</strong> <code>@replaceAbortTemplate</code></li>
+                                    <li><strong>Push finalize:</strong> <code>@replacePushTemplate</code></li>
+                                </ul>
+                            </div>
+                            <div class="col-lg-6">
+                                <h3 class="h6 text-uppercase text-muted">Workflow</h3>
+                                <ol class="small">
+                                    <li>Start a replace session and receive a staging table name + job id.</li>
+                                    <li>Upload Parquet chunks into the staging table.</li>
+                                    <li>Commit swaps the staging table into place and keeps the old table for review.</li>
+                                    <li>Push deletes the old table and unlocks the dataset (or abort to roll back).</li>
+                                </ol>
+                            </div>
+                        </div>
+                        <div class="text-muted small">Example notebook (replace a full table)</div>
+                        <pre class="code-block"><code>import os
+import requests
+
+BASE_URL = "@baseUrl"
+HEADERS = {"Authorization": "Bearer TOKEN"}
+
+SCHEMA = "donnees"
+TABLE = "hall_table"
+
+# 1) Start the replace session
+start_url = f"{BASE_URL}/api/tables/{SCHEMA}/{TABLE}/replace/start"
+start_resp = requests.post(start_url, headers=HEADERS, timeout=60)
+start_resp.raise_for_status()
+
+payload = start_resp.json()
+job_id = payload["jobId"]
+staging_table = payload["stagingTable"]
+print("Job:", job_id, "Staging:", staging_table)
+
+# 2) Upload processed data in Parquet chunks
+chunk_url = f"{BASE_URL}/api/jupyterhub/replace/{job_id}/chunk"
+
+parquet_chunks = [
+    "exports/hall_table_part1.parquet",
+    "exports/hall_table_part2.parquet",
+]
+
+for path in parquet_chunks:
+    with open(path, "rb") as f:
+        files = {"file": (os.path.basename(path), f, "application/octet-stream")}
+        resp = requests.post(chunk_url, headers=HEADERS, files=files, timeout=300)
+        resp.raise_for_status()
+        print(resp.json())
+
+# 3) Commit the swap (keeps old table for review)
+commit_url = f"{BASE_URL}/api/jupyterhub/replace/{job_id}/commit"
+commit_resp = requests.post(commit_url, headers=HEADERS, timeout=60)
+commit_resp.raise_for_status()
+print(commit_resp.json())
+
+# 4) Push to finalize (or abort to roll back)
+push_url = f"{BASE_URL}/api/jupyterhub/replace/{job_id}/push"
+push_resp = requests.post(push_url, headers=HEADERS, timeout=60)
+push_resp.raise_for_status()
+print(push_resp.json())</code></pre>
+                        <p class="text-muted small mb-0">
+                            After <strong>commit</strong>, review the dataset statistics in the portal. If the data looks wrong,
+                            call the abort endpoint instead of push to roll back. Sessions are auto-aborted after one hour.
+                        </p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

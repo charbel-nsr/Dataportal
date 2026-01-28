@@ -38,6 +38,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 });
 
 builder.Services.AddScoped<ITabularFileImporter, TabularFileImportService>();
+builder.Services.AddScoped<NotebookReplaceSessionService>();
 
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
