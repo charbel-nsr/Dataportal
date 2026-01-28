@@ -873,6 +873,7 @@ WHERE s.name = @schema AND tbl.name = @table AND c.name = @column";
             int limit,
             IReadOnlyList<SqlParameter> parameters,
             object?[]? cursorValues,
+            IReadOnlyList<string>? selectColumns,
             NotebookApiAccessContext? accessContext,
             NotebookApiRateLimitContext? rateLimitContext,
             CancellationToken cancellationToken)
@@ -882,6 +883,7 @@ WHERE s.name = @schema AND tbl.name = @table AND c.name = @column";
             var combinedWhere = CombineWhereClauses(whereClause, cursorPredicate);
             var normalizedWhere = string.IsNullOrWhiteSpace(combinedWhere) ? string.Empty : $"WHERE {combinedWhere}";
             var normalizedOrder = string.IsNullOrWhiteSpace(orderByClause) ? string.Empty : $"ORDER BY {orderByClause}";
+            var selectList = BuildSelectList(selectColumns);
 
             var limitPlusOne = limit + 1;
             var pkSelectList = string.Join(", ", primaryKeyColumns.Select(column => EscapeColumn(column.Name)));
@@ -940,7 +942,7 @@ WHERE s.name = @schema AND tbl.name = @table AND c.name = @column";
                 await using var connection = new SqlConnection(Context.Database.GetConnectionString());
                 await connection.OpenAsync(cancellationToken);
                 await using var command = new SqlCommand(
-                    $"SELECT TOP (@limit) * FROM {qualifiedTable} {normalizedWhere} {normalizedOrder}",
+                    $"SELECT TOP (@limit) {selectList} FROM {qualifiedTable} {normalizedWhere} {normalizedOrder}",
                     connection);
                 command.CommandTimeout = Options.CommandTimeoutSeconds;
                 command.Parameters.AddWithValue("@limit", limit);
@@ -1009,6 +1011,30 @@ WHERE s.name = @schema AND tbl.name = @table AND c.name = @column";
 
             return new EmptyResult();
         }
+
+        protected Task<IActionResult> StreamParquetAsync(
+            TableImportTarget target,
+            IReadOnlyList<PrimaryKeyColumn> primaryKeyColumns,
+            string? whereClause,
+            string? orderByClause,
+            int limit,
+            IReadOnlyList<SqlParameter> parameters,
+            object?[]? cursorValues,
+            NotebookApiAccessContext? accessContext,
+            NotebookApiRateLimitContext? rateLimitContext,
+            CancellationToken cancellationToken)
+            => StreamParquetAsync(
+                target,
+                primaryKeyColumns,
+                whereClause,
+                orderByClause,
+                limit,
+                parameters,
+                cursorValues,
+                null,
+                accessContext,
+                rateLimitContext,
+                cancellationToken);
 
         protected Task<IActionResult> StreamParquetAsync(
             TableImportTarget target,
@@ -1180,6 +1206,19 @@ WHERE s.name = @schema AND tbl.name = @table AND c.name = @column";
             }
 
             return $"({left}) AND ({right})";
+        }
+
+        private static string BuildSelectList(IReadOnlyList<string>? selectColumns)
+        {
+            if (selectColumns == null || selectColumns.Count == 0)
+            {
+                return "*";
+            }
+
+            return string.Join(", ", selectColumns
+                .Where(column => !string.IsNullOrWhiteSpace(column))
+                .Distinct()
+                .Select(column => EscapeColumn(column)));
         }
 
         private static void AddQueryParameters(SqlCommand command, IReadOnlyList<SqlParameter> parameters)

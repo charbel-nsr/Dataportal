@@ -156,19 +156,12 @@ namespace Dataportal.Controllers.JupyterHubApi
                 return indexError;
             }
 
-            if (string.IsNullOrWhiteSpace(startDate) || string.IsNullOrWhiteSpace(endDate))
-            {
-                return BadRequest(new ProblemDetails
-                {
-                    Title = "Date range required",
-                    Detail = "StartDate and EndDate are required for indexed queries.",
-                    Status = StatusCodes.Status400BadRequest,
-                    Type = "https://httpstatuses.com/400"
-                });
-            }
-
             var timeColumnType = await GetColumnTypeAsync(resolution.Target, indexMetadata!.TimeColumn!, cancellationToken) ?? SqlDbType.DateTime2;
-            if (!TryParseSqlFilterValue(startDate, timeColumnType, out var startValue, out var startError))
+            object? startValue = null;
+            object? endValue = null;
+
+            if (!string.IsNullOrWhiteSpace(startDate)
+                && !TryParseSqlFilterValue(startDate, timeColumnType, out startValue, out var startError))
             {
                 return BadRequest(new ProblemDetails
                 {
@@ -179,7 +172,8 @@ namespace Dataportal.Controllers.JupyterHubApi
                 });
             }
 
-            if (!TryParseSqlFilterValue(endDate, timeColumnType, out var endValue, out var endError))
+            if (!string.IsNullOrWhiteSpace(endDate)
+                && !TryParseSqlFilterValue(endDate, timeColumnType, out endValue, out var endError))
             {
                 return BadRequest(new ProblemDetails
                 {
@@ -190,7 +184,9 @@ namespace Dataportal.Controllers.JupyterHubApi
                 });
             }
 
-            if (startValue is IComparable comparableStart && endValue is IComparable comparableEnd && comparableStart.CompareTo(endValue) > 0)
+            if (startValue is IComparable comparableStart
+                && endValue is IComparable comparableEnd
+                && comparableStart.CompareTo(endValue) > 0)
             {
                 return BadRequest(new ProblemDetails
                 {
@@ -201,48 +197,32 @@ namespace Dataportal.Controllers.JupyterHubApi
                 });
             }
 
-            var parameters = new List<SqlParameter>
-            {
-                new("@startDate", timeColumnType) { Value = startValue! },
-                new("@endDate", timeColumnType) { Value = endValue! }
-            };
-
-            var whereParts = new List<string>
-            {
-                $"{EscapeColumn(indexMetadata.TimeColumn!)} >= @startDate",
-                $"{EscapeColumn(indexMetadata.TimeColumn!)} <= @endDate"
-            };
+            var parameters = new List<SqlParameter>();
+            var whereParts = new List<string>();
 
             var orderByColumns = new List<string>();
 
             if (!string.IsNullOrWhiteSpace(indexMetadata.IdColumn))
             {
-                if (string.IsNullOrWhiteSpace(indexId))
-                {
-                    return BadRequest(new ProblemDetails
-                    {
-                        Title = "Index id required",
-                        Detail = "IndexId is required when the dataset index includes an id column.",
-                        Status = StatusCodes.Status400BadRequest,
-                        Type = "https://httpstatuses.com/400"
-                    });
-                }
-
-                var idColumnType = await GetColumnTypeAsync(resolution.Target, indexMetadata.IdColumn, cancellationToken) ?? SqlDbType.NVarChar;
-                if (!TryParseSqlFilterValue(indexId, idColumnType, out var parsedIdValue, out var idError))
-                {
-                    return BadRequest(new ProblemDetails
-                    {
-                        Title = "Invalid index id",
-                        Detail = idError,
-                        Status = StatusCodes.Status400BadRequest,
-                        Type = "https://httpstatuses.com/400"
-                    });
-                }
-
-                parameters.Add(new SqlParameter("@indexId", idColumnType) { Value = parsedIdValue! });
-                whereParts.Insert(0, $"{EscapeColumn(indexMetadata.IdColumn)} = @indexId");
                 orderByColumns.Add(indexMetadata.IdColumn);
+
+                if (!string.IsNullOrWhiteSpace(indexId))
+                {
+                    var idColumnType = await GetColumnTypeAsync(resolution.Target, indexMetadata.IdColumn, cancellationToken) ?? SqlDbType.NVarChar;
+                    if (!TryParseSqlFilterValue(indexId, idColumnType, out var parsedIdValue, out var idError))
+                    {
+                        return BadRequest(new ProblemDetails
+                        {
+                            Title = "Invalid index id",
+                            Detail = idError,
+                            Status = StatusCodes.Status400BadRequest,
+                            Type = "https://httpstatuses.com/400"
+                        });
+                    }
+
+                    parameters.Add(new SqlParameter("@indexId", idColumnType) { Value = parsedIdValue! });
+                    whereParts.Add($"{EscapeColumn(indexMetadata.IdColumn)} = @indexId");
+                }
             }
             else if (!string.IsNullOrWhiteSpace(indexId))
             {
@@ -253,6 +233,18 @@ namespace Dataportal.Controllers.JupyterHubApi
                     Status = StatusCodes.Status400BadRequest,
                     Type = "https://httpstatuses.com/400"
                 });
+            }
+
+            if (startValue != null)
+            {
+                parameters.Add(new SqlParameter("@startDate", timeColumnType) { Value = startValue });
+                whereParts.Add($"{EscapeColumn(indexMetadata.TimeColumn!)} >= @startDate");
+            }
+
+            if (endValue != null)
+            {
+                parameters.Add(new SqlParameter("@endDate", timeColumnType) { Value = endValue });
+                whereParts.Add($"{EscapeColumn(indexMetadata.TimeColumn!)} <= @endDate");
             }
 
             orderByColumns.Add(indexMetadata.TimeColumn!);
@@ -269,7 +261,7 @@ namespace Dataportal.Controllers.JupyterHubApi
             return await StreamParquetAsync(
                 resolution.Target,
                 primaryKeyColumns,
-                string.Join(" AND ", whereParts),
+                whereParts.Count == 0 ? null : string.Join(" AND ", whereParts),
                 BuildOrderByClause(orderByColumns),
                 limit!.Value,
                 parameters,
@@ -284,6 +276,9 @@ namespace Dataportal.Controllers.JupyterHubApi
             [FromQuery] string? schema,
             [FromQuery] string? table,
             [FromQuery] string? includeValue,
+            [FromQuery] string? startDate,
+            [FromQuery] string? endDate,
+            [FromQuery] string? indexId,
             [FromQuery] string? cursor,
             [FromQuery] int? limit,
             CancellationToken cancellationToken)
@@ -331,17 +326,6 @@ namespace Dataportal.Controllers.JupyterHubApi
                 }
             }
 
-            if (string.IsNullOrWhiteSpace(includeValue))
-            {
-                return BadRequest(new ProblemDetails
-                {
-                    Title = "Include value required",
-                    Detail = "IncludeValue is required for include queries.",
-                    Status = StatusCodes.Status400BadRequest,
-                    Type = "https://httpstatuses.com/400"
-                });
-            }
-
             var (indexMetadata, indexError) = TryGetIndexMetadata(resolution!.Metadonnee, resolution.TableType);
             if (indexError != null)
             {
@@ -359,35 +343,124 @@ namespace Dataportal.Controllers.JupyterHubApi
                 });
             }
 
-            var includeColumnType = await GetColumnTypeAsync(resolution.Target, indexMetadata.IncludeColumn, cancellationToken) ?? SqlDbType.NVarChar;
-            if (!TryParseSqlFilterValue(includeValue, includeColumnType, out var parsedInclude, out var includeError))
+            var timeColumnType = await GetColumnTypeAsync(resolution.Target, indexMetadata.TimeColumn!, cancellationToken) ?? SqlDbType.DateTime2;
+            object? startValue = null;
+            object? endValue = null;
+
+            if (!string.IsNullOrWhiteSpace(startDate)
+                && !TryParseSqlFilterValue(startDate, timeColumnType, out startValue, out var startError))
             {
                 return BadRequest(new ProblemDetails
                 {
-                    Title = "Invalid include value",
-                    Detail = includeError,
+                    Title = "Invalid start date",
+                    Detail = startError,
                     Status = StatusCodes.Status400BadRequest,
                     Type = "https://httpstatuses.com/400"
                 });
             }
 
-            var parameters = new List<SqlParameter>
+            if (!string.IsNullOrWhiteSpace(endDate)
+                && !TryParseSqlFilterValue(endDate, timeColumnType, out endValue, out var endError))
             {
-                new("@includeValue", includeColumnType) { Value = parsedInclude! }
-            };
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Invalid end date",
+                    Detail = endError,
+                    Status = StatusCodes.Status400BadRequest,
+                    Type = "https://httpstatuses.com/400"
+                });
+            }
 
-            var whereClause = $"{EscapeColumn(indexMetadata.IncludeColumn)} = @includeValue";
-            var orderByColumns = new List<string> { indexMetadata.IncludeColumn };
+            if (startValue is IComparable comparableStart
+                && endValue is IComparable comparableEnd
+                && comparableStart.CompareTo(endValue) > 0)
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Invalid date range",
+                    Detail = "StartDate must be before EndDate.",
+                    Status = StatusCodes.Status400BadRequest,
+                    Type = "https://httpstatuses.com/400"
+                });
+            }
+
+            var parameters = new List<SqlParameter>();
+            var whereParts = new List<string>();
+
+            if (!string.IsNullOrWhiteSpace(includeValue))
+            {
+                var includeColumnType = await GetColumnTypeAsync(resolution.Target, indexMetadata.IncludeColumn, cancellationToken) ?? SqlDbType.NVarChar;
+                if (!TryParseSqlFilterValue(includeValue, includeColumnType, out var parsedInclude, out var includeError))
+                {
+                    return BadRequest(new ProblemDetails
+                    {
+                        Title = "Invalid include value",
+                        Detail = includeError,
+                        Status = StatusCodes.Status400BadRequest,
+                        Type = "https://httpstatuses.com/400"
+                    });
+                }
+
+                parameters.Add(new SqlParameter("@includeValue", includeColumnType) { Value = parsedInclude! });
+                whereParts.Add($"{EscapeColumn(indexMetadata.IncludeColumn)} = @includeValue");
+            }
+
+            if (!string.IsNullOrWhiteSpace(indexMetadata.IdColumn))
+            {
+                if (!string.IsNullOrWhiteSpace(indexId))
+                {
+                    var idColumnType = await GetColumnTypeAsync(resolution.Target, indexMetadata.IdColumn, cancellationToken) ?? SqlDbType.NVarChar;
+                    if (!TryParseSqlFilterValue(indexId, idColumnType, out var parsedIdValue, out var idError))
+                    {
+                        return BadRequest(new ProblemDetails
+                        {
+                            Title = "Invalid index id",
+                            Detail = idError,
+                            Status = StatusCodes.Status400BadRequest,
+                            Type = "https://httpstatuses.com/400"
+                        });
+                    }
+
+                    parameters.Add(new SqlParameter("@indexId", idColumnType) { Value = parsedIdValue! });
+                    whereParts.Add($"{EscapeColumn(indexMetadata.IdColumn)} = @indexId");
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(indexId))
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Index id not supported",
+                    Detail = "This dataset does not have an indexed id column.",
+                    Status = StatusCodes.Status400BadRequest,
+                    Type = "https://httpstatuses.com/400"
+                });
+            }
+
+            if (startValue != null)
+            {
+                parameters.Add(new SqlParameter("@startDate", timeColumnType) { Value = startValue });
+                whereParts.Add($"{EscapeColumn(indexMetadata.TimeColumn!)} >= @startDate");
+            }
+
+            if (endValue != null)
+            {
+                parameters.Add(new SqlParameter("@endDate", timeColumnType) { Value = endValue });
+                whereParts.Add($"{EscapeColumn(indexMetadata.TimeColumn!)} <= @endDate");
+            }
+
+            var orderByColumns = new List<string>();
+
+            if (!string.IsNullOrWhiteSpace(indexMetadata.IdColumn))
+            {
+                orderByColumns.Add(indexMetadata.IdColumn);
+            }
 
             if (!string.IsNullOrWhiteSpace(indexMetadata.TimeColumn))
             {
                 orderByColumns.Add(indexMetadata.TimeColumn);
             }
 
-            if (!string.IsNullOrWhiteSpace(indexMetadata.IdColumn))
-            {
-                orderByColumns.Add(indexMetadata.IdColumn);
-            }
+            orderByColumns.Add(indexMetadata.IncludeColumn);
 
             var tokenId = TryGetNotebookTokenId();
             var rateLimitContext = tokenId.HasValue ? BuildPrivateTokenRateLimitContext(tokenId.Value) : null;
@@ -401,11 +474,12 @@ namespace Dataportal.Controllers.JupyterHubApi
             return await StreamParquetAsync(
                 resolution.Target,
                 primaryKeyColumns,
-                whereClause,
+                whereParts.Count == 0 ? null : string.Join(" AND ", whereParts),
                 BuildOrderByClause(orderByColumns),
                 limit!.Value,
                 parameters,
                 cursorValues,
+                BuildIncludeSelectColumns(indexMetadata),
                 accessContext,
                 rateLimitContext,
                 cancellationToken);
@@ -746,6 +820,28 @@ namespace Dataportal.Controllers.JupyterHubApi
                     parsedValue = rawValue;
                     return true;
             }
+        }
+
+        private static IReadOnlyList<string> BuildIncludeSelectColumns(IndexMetadata metadata)
+        {
+            var columns = new List<string>();
+
+            if (!string.IsNullOrWhiteSpace(metadata.IdColumn))
+            {
+                columns.Add(metadata.IdColumn);
+            }
+
+            if (!string.IsNullOrWhiteSpace(metadata.TimeColumn))
+            {
+                columns.Add(metadata.TimeColumn);
+            }
+
+            if (!string.IsNullOrWhiteSpace(metadata.IncludeColumn))
+            {
+                columns.Add(metadata.IncludeColumn);
+            }
+
+            return columns;
         }
 
         private sealed record DatasetResolution(Metadonnee Metadonnee, NotebookApi.NotebookApiBaseController.NotebookApiTableType TableType, TableImportTarget Target);

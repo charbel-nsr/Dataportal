@@ -14,7 +14,8 @@
                 <h1 class="display-5 fw-bold mb-3">Fetch dataset slices directly from notebooks</h1>
                 <p class="lead text-muted mb-4">
                     JupyterHub data APIs are built for notebook-only access. Use them to stream Parquet pages, query indexed
-                    datasets by time or sensor/group ID, and fetch include-based slices without mixing with the public Notebook API.
+                    datasets by time or sensor/group ID, and fetch include-based slices.
+                    These endpoints are restricted to editors accessing their own datasets and administrators.
                 </p>
                 <div class="d-flex flex-wrap gap-2">
                     <span class="badge text-bg-light border">Notebook-only</span>
@@ -84,13 +85,15 @@
                         <ul class="list-unstyled small">
                             <li><strong>schema</strong> (required)</li>
                             <li><strong>table</strong> (required)</li>
-                            <li><strong>startDate</strong> (required) — ISO date or datetime.</li>
-                            <li><strong>endDate</strong> (required) — ISO date or datetime.</li>
-                            <li><strong>indexId</strong> (required when the index has an id column)</li>
+                            <li><strong>startDate</strong> (optional) — ISO date or datetime.</li>
+                            <li><strong>endDate</strong> (optional) — ISO date or datetime.</li>
+                            <li><strong>indexId</strong> (optional) — required only if you want to filter by id.</li>
                             <li><strong>cursor</strong> (optional) — cursor from the previous page.</li>
                             <li><strong>limit</strong> (required)</li>
                         </ul>
-                        <div class="text-muted small">If the index only has a date column, omit indexId.</div>
+                        <div class="text-muted small">
+                            Results are ordered by index id (when present) then date. Filters are applied when provided.
+                        </div>
                     </div>
                 </div>
             </div>
@@ -111,11 +114,16 @@
                         <ul class="list-unstyled small">
                             <li><strong>schema</strong> (required)</li>
                             <li><strong>table</strong> (required)</li>
-                            <li><strong>includeValue</strong> (required) — value present in the include index.</li>
+                            <li><strong>includeValue</strong> (optional) — value present in the include index.</li>
+                            <li><strong>startDate</strong> (optional) — ISO date or datetime.</li>
+                            <li><strong>endDate</strong> (optional) — ISO date or datetime.</li>
+                            <li><strong>indexId</strong> (optional) — id filter when available.</li>
                             <li><strong>cursor</strong> (optional) — cursor from the previous page.</li>
                             <li><strong>limit</strong> (required)</li>
                         </ul>
-                        <div class="text-muted small">Returns rows where the include column matches the value.</div>
+                        <div class="text-muted small">
+                            Returns only indexed columns (id, date, include) and applies filters when provided.
+                        </div>
                     </div>
                 </div>
             </div>
@@ -204,7 +212,7 @@ print(full_df.shape)</code></pre>
                     <div class="card-body">
                         <h2 class="h4 mb-3">Example notebook (indexed fetch)</h2>
                         <p class="text-muted small mb-3">
-                            Stream a full time-range slice using the indexed endpoint (with optional id).
+                            Stream indexed slices with optional date and id filters.
                         </p>
                         <div class="mb-3">
                             <div class="text-muted small">Part 1 — Setup and paging helper</div>
@@ -216,15 +224,20 @@ import requests
 ENDPOINT = "@indexedEndpoint"
 HEADERS = {"Authorization": "Bearer TOKEN"}
 
-def iter_indexed(schema: str, table: str, start_date: str, end_date: str, index_id: str | None = None,
-                 limit: int = 100_000, timeout: int = 60):
-    params = {
-        "schema": schema,
-        "table": table,
-        "startDate": start_date,
-        "endDate": end_date,
-        "limit": limit,
-    }
+def iter_indexed(
+    schema: str,
+    table: str,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    index_id: str | None = None,
+    limit: int = 100_000,
+    timeout: int = 60,
+):
+    params = {"schema": schema, "table": table, "limit": limit}
+    if start_date:
+        params["startDate"] = start_date
+    if end_date:
+        params["endDate"] = end_date
     if index_id:
         params["indexId"] = index_id
 
@@ -258,8 +271,8 @@ def iter_indexed(schema: str, table: str, start_date: str, end_date: str, index_
                             <div class="text-muted small">Part 2 — Iterate pages and build the full table</div>
                             <pre class="code-block"><code>SCHEMA = "donnees"
 TABLE = "table_name"
-START = "2024-01-01"
-END = "2024-01-31"
+START = "2024-01-01"  # optional
+END = "2024-01-31"    # optional
 INDEX_ID = "sensor-42"  # optional when the index has only a date column
 
 all_pages = []
@@ -269,7 +282,9 @@ for df_page, headers in iter_indexed(SCHEMA, TABLE, START, END, index_id=INDEX_I
 full_df = pd.concat(all_pages, ignore_index=True)
 print(full_df.shape)</code></pre>
                         </div>
-                        <p class="text-muted small mb-0">For date-only indexes, omit <code>INDEX_ID</code>.</p>
+                        <p class="text-muted small mb-0">
+                            Omit <code>START</code>, <code>END</code>, or <code>INDEX_ID</code> to widen the slice.
+                        </p>
                     </div>
                 </div>
             </div>
@@ -285,7 +300,7 @@ print(full_df.shape)</code></pre>
                     <div class="card-body">
                         <h2 class="h4 mb-3">Example notebook (include fetch)</h2>
                         <p class="text-muted small mb-3">
-                            Stream all rows for a specific include value with cursor paging.
+                            Stream include slices with optional include, date, and id filters.
                         </p>
                         <div class="mb-3">
                             <div class="text-muted small">Part 1 — Setup and paging helper</div>
@@ -297,8 +312,25 @@ import requests
 ENDPOINT = "@includeEndpoint"
 HEADERS = {"Authorization": "Bearer TOKEN"}
 
-def iter_include(schema: str, table: str, include_value: str, limit: int = 100_000, timeout: int = 60):
-    params = {"schema": schema, "table": table, "includeValue": include_value, "limit": limit}
+def iter_include(
+    schema: str,
+    table: str,
+    include_value: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    index_id: str | None = None,
+    limit: int = 100_000,
+    timeout: int = 60,
+):
+    params = {"schema": schema, "table": table, "limit": limit}
+    if include_value:
+        params["includeValue"] = include_value
+    if start_date:
+        params["startDate"] = start_date
+    if end_date:
+        params["endDate"] = end_date
+    if index_id:
+        params["indexId"] = index_id
     cursor = None
 
     while True:
@@ -330,7 +362,7 @@ def iter_include(schema: str, table: str, include_value: str, limit: int = 100_0
                             <div class="text-muted small">Part 2 — Iterate pages and build the full table</div>
                             <pre class="code-block"><code>SCHEMA = "donnees"
 TABLE = "table_name"
-INCLUDE_VALUE = "group-7"
+INCLUDE_VALUE = "group-7"  # optional
 
 all_pages = []
 for df_page, headers in iter_include(SCHEMA, TABLE, INCLUDE_VALUE, limit=25_000):
@@ -339,7 +371,9 @@ for df_page, headers in iter_include(SCHEMA, TABLE, INCLUDE_VALUE, limit=25_000)
 full_df = pd.concat(all_pages, ignore_index=True)
 print(full_df.shape)</code></pre>
                         </div>
-                        <p class="text-muted small mb-0">Use include values that exist in the indexed include column.</p>
+                        <p class="text-muted small mb-0">
+                            Use include values that exist in the indexed include column when filtering by include.
+                        </p>
                     </div>
                 </div>
             </div>
@@ -364,7 +398,7 @@ print(full_df.shape)</code></pre>
             </div>
             <div class="col-lg-6">
                 <h2 class="h4 mb-3">Python example (indexed)</h2>
-                <p class="text-muted small">Fetch a time range with an optional sensor/group id.</p>
+                <p class="text-muted small">Fetch a time range with optional sensor/group id and date filters.</p>
                 <pre class="code-block"><code>import io
 import pandas as pd
 import requests
