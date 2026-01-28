@@ -954,6 +954,8 @@ namespace Dataportal.Controllers.JupyterHubApi
                 await DropTableAsync(oldTarget, connection, sqlTransaction, cancellationToken);
             }
 
+            await ClearIndexMetadataAsync(session, cancellationToken);
+
             await UnlockMetadonneeAsync(session.IdMetadonnee, cancellationToken);
 
             session.Status = NotebookReplaceStatus.Pushed;
@@ -1352,6 +1354,104 @@ namespace Dataportal.Controllers.JupyterHubApi
                 : baseTableName;
 
             return $"{trimmedBase}{suffix}";
+        }
+
+        private async Task ClearIndexMetadataAsync(NotebookReplaceSession session, CancellationToken cancellationToken)
+        {
+            if (!TryResolveReplaceTableType(session.Schema, out var tableType))
+            {
+                return;
+            }
+
+            var metadonnee = await Context.Metadonnee
+                .Include(m => m.Donnees)
+                .Include(m => m.DonneesEventLogs)
+                .Include(m => m.DonneesContexteEnvironnemental)
+                .FirstOrDefaultAsync(m => m.Id == session.IdMetadonnee, cancellationToken);
+            if (metadonnee == null)
+            {
+                return;
+            }
+
+            switch (tableType)
+            {
+                case NotebookApi.NotebookApiBaseController.NotebookApiTableType.Donnees when metadonnee.Donnees != null:
+                    ClearIndexMetadata(metadonnee.Donnees);
+                    break;
+                case NotebookApi.NotebookApiBaseController.NotebookApiTableType.EventLogs when metadonnee.DonneesEventLogs != null:
+                    ClearIndexMetadata(metadonnee.DonneesEventLogs);
+                    break;
+                case NotebookApi.NotebookApiBaseController.NotebookApiTableType.ContexteEnvironnemental when metadonnee.DonneesContexteEnvironnemental != null:
+                    ClearIndexMetadata(metadonnee.DonneesContexteEnvironnemental);
+                    break;
+            }
+        }
+
+        private static bool TryResolveReplaceTableType(
+            string? schema,
+            out NotebookApi.NotebookApiBaseController.NotebookApiTableType tableType)
+        {
+            tableType = default;
+            if (string.IsNullOrWhiteSpace(schema))
+            {
+                return false;
+            }
+
+            if (schema.Equals(TableImportSchemas.Donnees, StringComparison.OrdinalIgnoreCase))
+            {
+                tableType = NotebookApi.NotebookApiBaseController.NotebookApiTableType.Donnees;
+                return true;
+            }
+
+            if (schema.Equals(TableImportSchemas.DonneesEventLogs, StringComparison.OrdinalIgnoreCase))
+            {
+                tableType = NotebookApi.NotebookApiBaseController.NotebookApiTableType.EventLogs;
+                return true;
+            }
+
+            if (schema.Equals(TableImportSchemas.DonneesContexteEnvironnemental, StringComparison.OrdinalIgnoreCase))
+            {
+                tableType = NotebookApi.NotebookApiBaseController.NotebookApiTableType.ContexteEnvironnemental;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static void ClearIndexMetadata(Models.Donnees donnees)
+        {
+            donnees.IndexEnabled = false;
+            donnees.IndexTimeColumn = null;
+            donnees.IndexIdColumn = null;
+            donnees.IndexIncludeColumn = null;
+            donnees.IndexType = null;
+            donnees.IndexName = null;
+            donnees.IndexStatus = null;
+            donnees.IndexError = null;
+        }
+
+        private static void ClearIndexMetadata(Models.DonneesEventLogs donneesEventLogs)
+        {
+            donneesEventLogs.IndexEnabled = false;
+            donneesEventLogs.IndexTimeColumn = null;
+            donneesEventLogs.IndexIdColumn = null;
+            donneesEventLogs.IndexIncludeColumn = null;
+            donneesEventLogs.IndexType = null;
+            donneesEventLogs.IndexName = null;
+            donneesEventLogs.IndexStatus = null;
+            donneesEventLogs.IndexError = null;
+        }
+
+        private static void ClearIndexMetadata(Models.DonneesContexteEnvironnemental donneesContexteEnvironnemental)
+        {
+            donneesContexteEnvironnemental.IndexEnabled = false;
+            donneesContexteEnvironnemental.IndexTimeColumn = null;
+            donneesContexteEnvironnemental.IndexIdColumn = null;
+            donneesContexteEnvironnemental.IndexIncludeColumn = null;
+            donneesContexteEnvironnemental.IndexType = null;
+            donneesContexteEnvironnemental.IndexName = null;
+            donneesContexteEnvironnemental.IndexStatus = null;
+            donneesContexteEnvironnemental.IndexError = null;
         }
 
         private async Task<NotebookReplaceSession?> LoadReplaceSessionAsync(Guid jobId, CancellationToken cancellationToken)
