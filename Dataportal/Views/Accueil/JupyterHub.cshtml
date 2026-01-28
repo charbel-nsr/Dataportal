@@ -1,0 +1,444 @@
+﻿@{
+    ViewData["Title"] = "JupyterHub";
+    var baseUrl = $"{Context.Request.Scheme}://{Context.Request.Host}";
+    var normalEndpoint = $"{baseUrl}/api/jupyterhub/normal/parquet";
+    var indexedEndpoint = $"{baseUrl}/api/jupyterhub/indexed/parquet";
+    var includeEndpoint = $"{baseUrl}/api/jupyterhub/include/parquet";
+}
+
+<section class="notebook-api-hero py-5">
+    <div class="container">
+        <div class="row align-items-center g-4">
+            <div class="col-lg-7">
+                <span class="badge rounded-pill text-bg-dark mb-3">JupyterHub</span>
+                <h1 class="display-5 fw-bold mb-3">Fetch dataset slices directly from notebooks</h1>
+                <p class="lead text-muted mb-4">
+                    JupyterHub data APIs are built for notebook-only access. Use them to stream Parquet pages, query indexed
+                    datasets by time or sensor/group ID, and fetch include-based slices without mixing with the public Notebook API.
+                </p>
+                <div class="d-flex flex-wrap gap-2">
+                    <span class="badge text-bg-light border">Notebook-only</span>
+                    <span class="badge text-bg-light border">Index aware</span>
+                    <span class="badge text-bg-light border">Parquet streaming</span>
+                    <span class="badge text-bg-light border">Token auth</span>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div class="card notebook-api-hero-card border-0 shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">Quickstart</h5>
+                        <p class="text-muted mb-3">Fetch a page of data with your notebook token.</p>
+                        <pre class="code-block"><code>GET @normalEndpoint
+  ?schema=donnees
+  &amp;table=donnees_123
+  &amp;limit=50_000</code></pre>
+                        <div class="text-muted small">Add <strong>Authorization: Bearer &lt;token&gt;</strong>.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="py-5">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-lg-4">
+                <div class="card h-100 shadow-sm border-0">
+                    <div class="card-body">
+                        <div class="d-flex align-items-start justify-content-between">
+                            <div>
+                                <h2 class="h5 mb-2">Normal fetch</h2>
+                                <p class="text-muted small">Cursor-paged fetch, just like the Notebook API.</p>
+                            </div>
+                            <span class="badge rounded-pill text-bg-primary">Normal</span>
+                        </div>
+                        <div class="notebook-api-endpoint mb-3">
+                            <code>@normalEndpoint</code>
+                        </div>
+                        <h3 class="h6 text-uppercase text-muted">Query parameters</h3>
+                        <ul class="list-unstyled small">
+                            <li><strong>schema</strong> (required) — donnees, donnees_event_logs, donnees_contexte_environnemental.</li>
+                            <li><strong>table</strong> (required) — dataset table name.</li>
+                            <li><strong>limit</strong> (required) — rows per page (1 → 100,000).</li>
+                            <li><strong>cursor</strong> (optional) — cursor from the previous page.</li>
+                        </ul>
+                        <div class="text-muted small">Response headers: X-Row-Count, X-Has-More, X-Next-Cursor.</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card h-100 shadow-sm border-0">
+                    <div class="card-body">
+                        <div class="d-flex align-items-start justify-content-between">
+                            <div>
+                                <h2 class="h5 mb-2">Index-aware fetch</h2>
+                                <p class="text-muted small">Use time-only or id+time indices for faster slices.</p>
+                            </div>
+                            <span class="badge rounded-pill text-bg-success">Indexed</span>
+                        </div>
+                        <div class="notebook-api-endpoint mb-3">
+                            <code>@indexedEndpoint</code>
+                        </div>
+                        <h3 class="h6 text-uppercase text-muted">Query parameters</h3>
+                        <ul class="list-unstyled small">
+                            <li><strong>schema</strong> (required)</li>
+                            <li><strong>table</strong> (required)</li>
+                            <li><strong>startDate</strong> (required) — ISO date or datetime.</li>
+                            <li><strong>endDate</strong> (required) — ISO date or datetime.</li>
+                            <li><strong>indexId</strong> (required when the index has an id column)</li>
+                            <li><strong>cursor</strong> (optional) — cursor from the previous page.</li>
+                            <li><strong>limit</strong> (required)</li>
+                        </ul>
+                        <div class="text-muted small">If the index only has a date column, omit indexId.</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card h-100 shadow-sm border-0">
+                    <div class="card-body">
+                        <div class="d-flex align-items-start justify-content-between">
+                            <div>
+                                <h2 class="h5 mb-2">Include fetch</h2>
+                                <p class="text-muted small">Fetch by include values when an include column is indexed.</p>
+                            </div>
+                            <span class="badge rounded-pill text-bg-warning">Include</span>
+                        </div>
+                        <div class="notebook-api-endpoint mb-3">
+                            <code>@includeEndpoint</code>
+                        </div>
+                        <h3 class="h6 text-uppercase text-muted">Query parameters</h3>
+                        <ul class="list-unstyled small">
+                            <li><strong>schema</strong> (required)</li>
+                            <li><strong>table</strong> (required)</li>
+                            <li><strong>includeValue</strong> (required) — value present in the include index.</li>
+                            <li><strong>cursor</strong> (optional) — cursor from the previous page.</li>
+                            <li><strong>limit</strong> (required)</li>
+                        </ul>
+                        <div class="text-muted small">Returns rows where the include column matches the value.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="py-5">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-lg-12">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <h2 class="h4 mb-3">Example notebook (normal fetch)</h2>
+                        <p class="text-muted small mb-3">
+                            Stream a full table with cursor paging using the normal endpoint.
+                        </p>
+                        <div class="mb-3">
+                            <div class="text-muted small">Part 1 — Setup and paging helper</div>
+                            <pre class="code-block"><code>import io
+import time
+import pandas as pd
+import requests
+
+ENDPOINT = "@normalEndpoint"
+HEADERS = {"Authorization": "Bearer TOKEN"}
+
+def iter_table(schema: str, table: str, limit: int = 100_000, timeout: int = 60):
+    params = {"schema": schema, "table": table, "limit": limit}
+    cursor = None
+
+    while True:
+        if cursor:
+            params["cursor"] = cursor
+        else:
+            params.pop("cursor", None)
+
+        r = requests.get(ENDPOINT, params=params, headers=HEADERS, timeout=timeout)
+
+        if r.status_code == 429:
+            retry_after = int(r.headers.get("Retry-After", "2"))
+            time.sleep(retry_after)
+            continue
+
+        if r.status_code == 204:
+            return
+
+        if r.status_code in (401, 403):
+            raise RuntimeError("Token missing or not authorized for this dataset.")
+
+        r.raise_for_status()
+
+        df = pd.read_parquet(io.BytesIO(r.content), engine="pyarrow")
+        yield df, r.headers
+
+        cursor = r.headers.get("X-Next-Cursor")
+        if not cursor:
+            break</code></pre>
+                        </div>
+                        <div>
+                            <div class="text-muted small">Part 2 — Iterate pages and build the full table</div>
+                            <pre class="code-block"><code>SCHEMA = "donnees"
+TABLE = "table_name"
+LIMIT = 25_000
+
+all_pages = []
+for df_page, headers in iter_table(SCHEMA, TABLE, limit=LIMIT, timeout=60):
+    all_pages.append(df_page)
+
+full_df = pd.concat(all_pages, ignore_index=True)
+print(full_df.shape)</code></pre>
+                        </div>
+                        <p class="text-muted small mb-0">Use smaller limits for large tables to avoid timeouts.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="py-5">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-lg-12">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <h2 class="h4 mb-3">Example notebook (indexed fetch)</h2>
+                        <p class="text-muted small mb-3">
+                            Stream a full time-range slice using the indexed endpoint (with optional id).
+                        </p>
+                        <div class="mb-3">
+                            <div class="text-muted small">Part 1 — Setup and paging helper</div>
+                            <pre class="code-block"><code>import io
+import time
+import pandas as pd
+import requests
+
+ENDPOINT = "@indexedEndpoint"
+HEADERS = {"Authorization": "Bearer TOKEN"}
+
+def iter_indexed(schema: str, table: str, start_date: str, end_date: str, index_id: str | None = None,
+                 limit: int = 100_000, timeout: int = 60):
+    params = {
+        "schema": schema,
+        "table": table,
+        "startDate": start_date,
+        "endDate": end_date,
+        "limit": limit,
+    }
+    if index_id:
+        params["indexId"] = index_id
+
+    cursor = None
+    while True:
+        if cursor:
+            params["cursor"] = cursor
+        else:
+            params.pop("cursor", None)
+
+        r = requests.get(ENDPOINT, params=params, headers=HEADERS, timeout=timeout)
+
+        if r.status_code == 429:
+            retry_after = int(r.headers.get("Retry-After", "2"))
+            time.sleep(retry_after)
+            continue
+
+        if r.status_code == 204:
+            return
+
+        r.raise_for_status()
+
+        df = pd.read_parquet(io.BytesIO(r.content), engine="pyarrow")
+        yield df, r.headers
+
+        cursor = r.headers.get("X-Next-Cursor")
+        if not cursor:
+            break</code></pre>
+                        </div>
+                        <div>
+                            <div class="text-muted small">Part 2 — Iterate pages and build the full table</div>
+                            <pre class="code-block"><code>SCHEMA = "donnees"
+TABLE = "table_name"
+START = "2024-01-01"
+END = "2024-01-31"
+INDEX_ID = "sensor-42"  # optional when the index has only a date column
+
+all_pages = []
+for df_page, headers in iter_indexed(SCHEMA, TABLE, START, END, index_id=INDEX_ID, limit=25_000):
+    all_pages.append(df_page)
+
+full_df = pd.concat(all_pages, ignore_index=True)
+print(full_df.shape)</code></pre>
+                        </div>
+                        <p class="text-muted small mb-0">For date-only indexes, omit <code>INDEX_ID</code>.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="py-5">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-lg-12">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <h2 class="h4 mb-3">Example notebook (include fetch)</h2>
+                        <p class="text-muted small mb-3">
+                            Stream all rows for a specific include value with cursor paging.
+                        </p>
+                        <div class="mb-3">
+                            <div class="text-muted small">Part 1 — Setup and paging helper</div>
+                            <pre class="code-block"><code>import io
+import time
+import pandas as pd
+import requests
+
+ENDPOINT = "@includeEndpoint"
+HEADERS = {"Authorization": "Bearer TOKEN"}
+
+def iter_include(schema: str, table: str, include_value: str, limit: int = 100_000, timeout: int = 60):
+    params = {"schema": schema, "table": table, "includeValue": include_value, "limit": limit}
+    cursor = None
+
+    while True:
+        if cursor:
+            params["cursor"] = cursor
+        else:
+            params.pop("cursor", None)
+
+        r = requests.get(ENDPOINT, params=params, headers=HEADERS, timeout=timeout)
+
+        if r.status_code == 429:
+            retry_after = int(r.headers.get("Retry-After", "2"))
+            time.sleep(retry_after)
+            continue
+
+        if r.status_code == 204:
+            return
+
+        r.raise_for_status()
+
+        df = pd.read_parquet(io.BytesIO(r.content), engine="pyarrow")
+        yield df, r.headers
+
+        cursor = r.headers.get("X-Next-Cursor")
+        if not cursor:
+            break</code></pre>
+                        </div>
+                        <div>
+                            <div class="text-muted small">Part 2 — Iterate pages and build the full table</div>
+                            <pre class="code-block"><code>SCHEMA = "donnees"
+TABLE = "table_name"
+INCLUDE_VALUE = "group-7"
+
+all_pages = []
+for df_page, headers in iter_include(SCHEMA, TABLE, INCLUDE_VALUE, limit=25_000):
+    all_pages.append(df_page)
+
+full_df = pd.concat(all_pages, ignore_index=True)
+print(full_df.shape)</code></pre>
+                        </div>
+                        <p class="text-muted small mb-0">Use include values that exist in the indexed include column.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <h2 class="h4 mb-3">Authentication</h2>
+                <p class="text-muted">
+                    JupyterHub APIs require a notebook token. Send the token in an Authorization header or the
+                    X-Notebook-Token / X-Api-Key header.
+                </p>
+                <pre class="code-block"><code>HEADERS = {
+    "Authorization": f"Bearer {NOTEBOOK_TOKEN}"
+    # or "X-Notebook-Token": NOTEBOOK_TOKEN
+    # or "X-Api-Key": NOTEBOOK_TOKEN
+}</code></pre>
+            </div>
+            <div class="col-lg-6">
+                <h2 class="h4 mb-3">Python example (indexed)</h2>
+                <p class="text-muted small">Fetch a time range with an optional sensor/group id.</p>
+                <pre class="code-block"><code>import io
+import pandas as pd
+import requests
+
+ENDPOINT = "@indexedEndpoint"
+HEADERS = {"Authorization": "Bearer TOKEN"}
+
+params = {
+    "schema": "donnees",
+    "table": "table_name",
+    "startDate": "2024-01-01",
+    "endDate": "2024-01-31",
+    "indexId": "sensor-42",
+    "limit": 50_000,
+}
+
+resp = requests.get(ENDPOINT, params=params, headers=HEADERS, timeout=60)
+resp.raise_for_status()
+
+df = pd.read_parquet(io.BytesIO(resp.content), engine="pyarrow")
+print(df.head())</code></pre>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="py-5">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <h2 class="h4 mb-3">Limits &amp; defaults</h2>
+                        <ul class="list-unstyled">
+                            <li><strong>Max rows per page:</strong> 100,000</li>
+                            <li><strong>Max response size:</strong> 200 MB</li>
+                            <li><strong>Default row group size:</strong> 10,000</li>
+                            <li><strong>Command timeout:</strong> 60 seconds</li>
+                            <li><strong>Private token limit:</strong> 1 GB per 60-minute window</li>
+                        </ul>
+                        <p class="text-muted small mb-0">
+                            JupyterHub APIs share the same limits as the private Notebook API.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <h2 class="h4 mb-3">Error responses</h2>
+                        <p class="text-muted">Errors use the standard Problem Details JSON format.</p>
+                        <ul class="list-unstyled mb-0">
+                            <li><strong>400</strong> — Missing/invalid parameters or cursor.</li>
+                            <li><strong>401</strong> — Missing/invalid token.</li>
+                            <li><strong>403</strong> — Not authorized for this dataset.</li>
+                            <li><strong>404</strong> — Dataset not found.</li>
+                            <li><strong>413</strong> — Response exceeded size limit.</li>
+                            <li><strong>429</strong> — Rate limit exceeded.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="py-5">
+    <div class="container">
+        <div class="row">
+            <div class="col text-center">
+                <h2 class="h4 mb-3">Ready to open JupyterHub?</h2>
+                <p class="text-muted mb-4">Launch the notebook environment in a new tab when you're ready.</p>
+                <a class="btn btn-primary btn-lg" href="/jupyter/launch" target="_blank" rel="noopener">Open JupyterHub</a>
+            </div>
+        </div>
+    </div>
+</section>

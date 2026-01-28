@@ -35,6 +35,7 @@ namespace Dataportal.Controllers.NotebookApi
         }
 
         private static readonly Regex TableNameRegex = new Regex("^[A-Za-z0-9_-]+$", RegexOptions.Compiled);
+        private static readonly Regex ColumnNameRegex = new Regex("^[A-Za-z0-9_-]+$", RegexOptions.Compiled);
 
         protected NotebookApiBaseController(ApplicationDbContext context, IOptions<NotebookApiOptions> options)
         {
@@ -215,6 +216,11 @@ namespace Dataportal.Controllers.NotebookApi
             return TableNameRegex.IsMatch(tableName);
         }
 
+        protected bool IsValidColumnName(string columnName)
+        {
+            return ColumnNameRegex.IsMatch(columnName);
+        }
+
         private static string? GetSchemaName(NotebookApiTableType tableType)
         {
             return tableType switch
@@ -294,6 +300,31 @@ ORDER BY ic.key_ordinal";
             }
 
             return columns;
+        }
+
+        protected async Task<SqlDbType?> GetColumnTypeAsync(TableImportTarget target, string columnName, CancellationToken cancellationToken)
+        {
+            var query = @"SELECT t.name
+FROM sys.columns c
+INNER JOIN sys.tables tbl ON c.object_id = tbl.object_id
+INNER JOIN sys.schemas s ON tbl.schema_id = s.schema_id
+INNER JOIN sys.types t ON c.user_type_id = t.user_type_id
+WHERE s.name = @schema AND tbl.name = @table AND c.name = @column";
+
+            await using var connection = new SqlConnection(Context.Database.GetConnectionString());
+            await connection.OpenAsync(cancellationToken);
+            await using var command = new SqlCommand(query, connection);
+            command.Parameters.AddWithValue("@schema", target.Schema);
+            command.Parameters.AddWithValue("@table", target.TableName);
+            command.Parameters.AddWithValue("@column", columnName);
+
+            var result = await command.ExecuteScalarAsync(cancellationToken);
+            if (result == null || result == DBNull.Value)
+            {
+                return null;
+            }
+
+            return MapSqlType(result.ToString() ?? string.Empty);
         }
 
         protected static string BuildOrderByClause(IReadOnlyList<PrimaryKeyColumn> columns)
@@ -705,6 +736,280 @@ ORDER BY ic.key_ordinal";
             return new EmptyResult();
         }
 
+        protected async Task<IActionResult> StreamParquetAsync(
+            TableImportTarget target,
+            string? whereClause,
+            string? orderByClause,
+            int limit,
+            IReadOnlyList<SqlParameter> parameters,
+            NotebookApiAccessContext? accessContext,
+            NotebookApiRateLimitContext? rateLimitContext,
+            CancellationToken cancellationToken)
+        {
+            var qualifiedTable = target.QualifiedNameWithDatabase;
+            var normalizedWhere = string.IsNullOrWhiteSpace(whereClause) ? string.Empty : $"WHERE {whereClause}";
+            var normalizedOrder = string.IsNullOrWhiteSpace(orderByClause) ? string.Empty : $"ORDER BY {orderByClause}";
+
+            var limitPlusOne = limit + 1;
+            var rowCountQuery = $"SELECT TOP (@limitPlusOne) 1 FROM {qualifiedTable} {normalizedWhere} {normalizedOrder}";
+            var rowCount = 0;
+
+            await using (var connection = new SqlConnection(Context.Database.GetConnectionString()))
+            {
+                await connection.OpenAsync(cancellationToken);
+                await using var command = new SqlCommand(rowCountQuery, connection);
+                command.CommandTimeout = Options.CommandTimeoutSeconds;
+                command.Parameters.AddWithValue("@limitPlusOne", limitPlusOne);
+                AddQueryParameters(command, parameters);
+
+                await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+                while (await reader.ReadAsync(cancellationToken))
+                {
+                    rowCount++;
+                }
+            }
+
+            if (rowCount == 0)
+            {
+                await RecordAccessLogAsync(accessContext, 0, cancellationToken);
+                await UpdateRateLimitAsync(rateLimitContext, 0, cancellationToken);
+                return NoContent();
+            }
+
+            var limitedRowCount = Math.Min(limit, rowCount);
+            var hasMore = rowCount > limit;
+
+            Response.Headers["X-Row-Count"] = limitedRowCount.ToString();
+            Response.Headers["X-Has-More"] = hasMore ? "true" : "false";
+            Response.ContentType = "application/x-parquet";
+
+            var syncIoFeature = HttpContext.Features.Get<IHttpBodyControlFeature>();
+            if (syncIoFeature != null)
+            {
+                syncIoFeature.AllowSynchronousIO = true;
+            }
+
+            var bytesWritten = 0L;
+
+            try
+            {
+                await using var connection = new SqlConnection(Context.Database.GetConnectionString());
+                await connection.OpenAsync(cancellationToken);
+                await using var command = new SqlCommand(
+                    $"SELECT TOP (@limit) * FROM {qualifiedTable} {normalizedWhere} {normalizedOrder}",
+                    connection);
+                command.CommandTimeout = Options.CommandTimeoutSeconds;
+                command.Parameters.AddWithValue("@limit", limit);
+                AddQueryParameters(command, parameters);
+
+                await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+                if (!await reader.ReadAsync(cancellationToken))
+                {
+                    await RecordAccessLogAsync(accessContext, 0, cancellationToken);
+                    await UpdateRateLimitAsync(rateLimitContext, 0, cancellationToken);
+                    return NoContent();
+                }
+
+                var schema = BuildParquetSchema(reader);
+                await using var limitedStream = new NotebookApiLimitedStream(Response.Body, Options.MaxBytesPerResponse);
+                await using var parquetWriter = await ParquetWriter.CreateAsync(schema, limitedStream, cancellationToken: cancellationToken);
+
+                var rowGroupSize = Math.Max(1, Options.RowGroupSize);
+                var columns = BuildColumnBuffers(reader.FieldCount);
+                var rowsWritten = 0;
+
+                do
+                {
+                    if (rowsWritten >= limitedRowCount)
+                    {
+                        break;
+                    }
+
+                    AppendRow(reader, columns);
+                    rowsWritten++;
+
+                    if (rowsWritten % rowGroupSize == 0)
+                    {
+                        await WriteRowGroupAsync(parquetWriter, schema, columns, cancellationToken);
+                    }
+                } while (await reader.ReadAsync(cancellationToken));
+
+                if (columns.Any(column => column.Count > 0))
+                {
+                    await WriteRowGroupAsync(parquetWriter, schema, columns, cancellationToken);
+                }
+
+                bytesWritten = limitedStream.BytesWritten;
+            }
+            catch (NotebookApiResponseTooLargeException)
+            {
+                if (!Response.HasStarted)
+                {
+                    return StatusCode(StatusCodes.Status413PayloadTooLarge, new ProblemDetails
+                    {
+                        Title = "Response too large",
+                        Detail = "Notebook API response exceeded the configured size limit.",
+                        Status = StatusCodes.Status413PayloadTooLarge,
+                        Type = "https://httpstatuses.com/413"
+                    });
+                }
+
+                HttpContext.Abort();
+                return new EmptyResult();
+            }
+
+            await RecordAccessLogAsync(accessContext, bytesWritten, cancellationToken);
+            await UpdateRateLimitAsync(rateLimitContext, bytesWritten, cancellationToken);
+
+            return new EmptyResult();
+        }
+
+        protected async Task<IActionResult> StreamParquetAsync(
+            TableImportTarget target,
+            IReadOnlyList<PrimaryKeyColumn> primaryKeyColumns,
+            string? whereClause,
+            string? orderByClause,
+            int limit,
+            IReadOnlyList<SqlParameter> parameters,
+            object?[]? cursorValues,
+            NotebookApiAccessContext? accessContext,
+            NotebookApiRateLimitContext? rateLimitContext,
+            CancellationToken cancellationToken)
+        {
+            var qualifiedTable = target.QualifiedNameWithDatabase;
+            var cursorPredicate = cursorValues != null ? BuildCursorPredicate(primaryKeyColumns) : null;
+            var combinedWhere = CombineWhereClauses(whereClause, cursorPredicate);
+            var normalizedWhere = string.IsNullOrWhiteSpace(combinedWhere) ? string.Empty : $"WHERE {combinedWhere}";
+            var normalizedOrder = string.IsNullOrWhiteSpace(orderByClause) ? string.Empty : $"ORDER BY {orderByClause}";
+
+            var limitPlusOne = limit + 1;
+            var pkSelectList = string.Join(", ", primaryKeyColumns.Select(column => EscapeColumn(column.Name)));
+            var pkQuery = $"SELECT TOP (@limitPlusOne) {pkSelectList} FROM {qualifiedTable} {normalizedWhere} {normalizedOrder}";
+
+            var pkRows = new List<object?[]>();
+
+            await using (var connection = new SqlConnection(Context.Database.GetConnectionString()))
+            {
+                await connection.OpenAsync(cancellationToken);
+                await using var command = new SqlCommand(pkQuery, connection);
+                command.CommandTimeout = Options.CommandTimeoutSeconds;
+                command.Parameters.AddWithValue("@limitPlusOne", limitPlusOne);
+                AddQueryParameters(command, parameters);
+                AddCursorParameters(command, primaryKeyColumns, cursorValues);
+
+                await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+                while (await reader.ReadAsync(cancellationToken))
+                {
+                    var values = new object?[primaryKeyColumns.Count];
+                    for (var i = 0; i < primaryKeyColumns.Count; i++)
+                    {
+                        values[i] = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                    }
+
+                    pkRows.Add(values);
+                }
+            }
+
+            if (pkRows.Count == 0)
+            {
+                await RecordAccessLogAsync(accessContext, 0, cancellationToken);
+                await UpdateRateLimitAsync(rateLimitContext, 0, cancellationToken);
+                return NoContent();
+            }
+
+            var rowCount = Math.Min(limit, pkRows.Count);
+            var hasMore = pkRows.Count > limit;
+            var nextCursor = EncodeCursor(pkRows[rowCount - 1]);
+
+            Response.Headers["X-Row-Count"] = rowCount.ToString();
+            Response.Headers["X-Has-More"] = hasMore ? "true" : "false";
+            Response.Headers["X-Next-Cursor"] = hasMore ? nextCursor : string.Empty;
+            Response.ContentType = "application/x-parquet";
+
+            var syncIoFeature = HttpContext.Features.Get<IHttpBodyControlFeature>();
+            if (syncIoFeature != null)
+            {
+                syncIoFeature.AllowSynchronousIO = true;
+            }
+
+            var bytesWritten = 0L;
+
+            try
+            {
+                await using var connection = new SqlConnection(Context.Database.GetConnectionString());
+                await connection.OpenAsync(cancellationToken);
+                await using var command = new SqlCommand(
+                    $"SELECT TOP (@limit) * FROM {qualifiedTable} {normalizedWhere} {normalizedOrder}",
+                    connection);
+                command.CommandTimeout = Options.CommandTimeoutSeconds;
+                command.Parameters.AddWithValue("@limit", limit);
+                AddQueryParameters(command, parameters);
+                AddCursorParameters(command, primaryKeyColumns, cursorValues);
+
+                await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+                if (!await reader.ReadAsync(cancellationToken))
+                {
+                    await RecordAccessLogAsync(accessContext, 0, cancellationToken);
+                    await UpdateRateLimitAsync(rateLimitContext, 0, cancellationToken);
+                    return NoContent();
+                }
+
+                var schema = BuildParquetSchema(reader);
+                await using var limitedStream = new NotebookApiLimitedStream(Response.Body, Options.MaxBytesPerResponse);
+                await using var parquetWriter = await ParquetWriter.CreateAsync(schema, limitedStream, cancellationToken: cancellationToken);
+
+                var rowGroupSize = Math.Max(1, Options.RowGroupSize);
+                var columns = BuildColumnBuffers(reader.FieldCount);
+                var rowsWritten = 0;
+
+                do
+                {
+                    if (rowsWritten >= rowCount)
+                    {
+                        break;
+                    }
+
+                    AppendRow(reader, columns);
+                    rowsWritten++;
+
+                    if (rowsWritten % rowGroupSize == 0)
+                    {
+                        await WriteRowGroupAsync(parquetWriter, schema, columns, cancellationToken);
+                    }
+                } while (await reader.ReadAsync(cancellationToken));
+
+                if (columns.Any(column => column.Count > 0))
+                {
+                    await WriteRowGroupAsync(parquetWriter, schema, columns, cancellationToken);
+                }
+
+                bytesWritten = limitedStream.BytesWritten;
+            }
+            catch (NotebookApiResponseTooLargeException)
+            {
+                if (!Response.HasStarted)
+                {
+                    return StatusCode(StatusCodes.Status413PayloadTooLarge, new ProblemDetails
+                    {
+                        Title = "Response too large",
+                        Detail = "Notebook API response exceeded the configured size limit.",
+                        Status = StatusCodes.Status413PayloadTooLarge,
+                        Type = "https://httpstatuses.com/413"
+                    });
+                }
+
+                HttpContext.Abort();
+                return new EmptyResult();
+            }
+
+            await RecordAccessLogAsync(accessContext, bytesWritten, cancellationToken);
+            await UpdateRateLimitAsync(rateLimitContext, bytesWritten, cancellationToken);
+
+            return new EmptyResult();
+        }
+
         protected Task<IActionResult> StreamParquetAsync(
             TableImportTarget target,
             IReadOnlyList<PrimaryKeyColumn> primaryKeyColumns,
@@ -857,6 +1162,46 @@ ORDER BY ic.key_ordinal";
                 };
                 command.Parameters.Add(parameter);
             }
+        }
+
+        private static string CombineWhereClauses(string? leftClause, string? rightClause)
+        {
+            var left = string.IsNullOrWhiteSpace(leftClause) ? null : leftClause.Trim();
+            var right = string.IsNullOrWhiteSpace(rightClause) ? null : rightClause.Trim();
+
+            if (left == null)
+            {
+                return right ?? string.Empty;
+            }
+
+            if (right == null)
+            {
+                return left;
+            }
+
+            return $"({left}) AND ({right})";
+        }
+
+        private static void AddQueryParameters(SqlCommand command, IReadOnlyList<SqlParameter> parameters)
+        {
+            foreach (var parameter in parameters)
+            {
+                command.Parameters.Add(CloneParameter(parameter));
+            }
+        }
+
+        private static SqlParameter CloneParameter(SqlParameter parameter)
+        {
+            var clone = new SqlParameter(parameter.ParameterName, parameter.SqlDbType)
+            {
+                Value = parameter.Value,
+                Size = parameter.Size,
+                Precision = parameter.Precision,
+                Scale = parameter.Scale,
+                Direction = parameter.Direction
+            };
+
+            return clone;
         }
     }
 }

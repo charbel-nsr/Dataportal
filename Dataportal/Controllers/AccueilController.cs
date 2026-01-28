@@ -103,6 +103,11 @@ public class AccueilController : Controller
         return View();
     }
 
+    public IActionResult JupyterHub()
+    {
+        return View();
+    }
+
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public IActionResult Error()
     {
