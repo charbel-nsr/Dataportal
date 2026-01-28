@@ -295,6 +295,20 @@
                                         <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("Details", "Donnees", new { id = m.Id, returnUrl = searchReturnUrl })" title="View details">
                                             <i class="bi bi-exclamation-circle"></i>
                                         </a>
+                                        @{
+                                            var isOwner = User.Identity.IsAuthenticated && User.FindFirst("UserId")?.Value == m.IdUtilisateur.ToString();
+                                            var canManageIndex = User.IsInRole("administrator") || (User.IsInRole("editor") && isOwner);
+                                            var hasUnindexedTable = m.SeriesTemporelles &&
+                                            ((m.Donnees != null && !m.Donnees.IndexEnabled) ||
+                                            (m.DonneesEventLogs != null && !m.DonneesEventLogs.IndexEnabled) ||
+                                            (m.DonneesContexteEnvironnemental != null && !m.DonneesContexteEnvironnemental.IndexEnabled));
+                                        }
+                                        @if (canManageIndex && hasUnindexedTable)
+                                        {
+                                            <a class="btn btn-sm btn-outline-success ms-1" href="@Url.Action("CreateIndexation", "Donnees", new { id = m.Id, returnUrl = searchReturnUrl })" title="Request index">
+                                                <i class="bi bi-graph-up"></i>
+                                            </a>
+                                        }
                                         @if (User.IsInRole("administrator") || (User.Identity.IsAuthenticated && User.FindFirst("UserId")?.Value == m.IdUtilisateur.ToString()))
                                         {
                                             <a class="btn btn-sm btn-outline-primary ms-1" href="@Url.Action("EditStep1", "ModifDonnees", new { id = m.Id })" title="Edit data">

@@ -1599,6 +1599,131 @@ namespace Dataportal.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = "administrator,editor")]
+        public async Task<IActionResult> CreateIndexation(int id, string? returnUrl)
+        {
+            var metadonnee = await GetMetadonneeWithTablesAsync(id);
+
+            if (metadonnee == null)
+            {
+                return NotFound();
+            }
+
+            var isAdmin = User.IsInRole("administrator");
+            var userId = TryGetCurrentUserId();
+            if (!isAdmin && userId.HasValue && metadonnee.IdUtilisateur != userId.Value)
+            {
+                return Forbid();
+            }
+
+            var viewModel = await BuildIndexationPageViewModelAsync(metadonnee, returnUrl);
+            return View(viewModel);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "administrator,editor")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateIndexation(IndexationRequestViewModel model)
+        {
+            if (!TryGetIndexationSchema(model.RecordType, out var schema))
+            {
+                return NotFound();
+            }
+
+            var isAdmin = User.IsInRole("administrator");
+            var userId = TryGetCurrentUserId();
+
+            var (metadonnee, record) = await GetIndexationRecordAsync(model.RecordType, model.RecordId);
+            if (record == null)
+            {
+                return NotFound();
+            }
+
+            if (!isAdmin && userId.HasValue && metadonnee?.IdUtilisateur != userId.Value)
+            {
+                return Forbid();
+            }
+
+            if (!TryBuildTableImportTarget(record.TableName, schema, out var target) || target == null)
+            {
+                ModelState.AddModelError(string.Empty, "Unable to locate the source table for indexing.");
+            }
+
+            if (metadonnee?.SeriesTemporelles != true)
+            {
+                ModelState.AddModelError(string.Empty, "Indexation is only available for time-series datasets.");
+            }
+
+            if (!model.IndexEnabled)
+            {
+                ModelState.AddModelError(nameof(model.IndexEnabled), "Enable indexing to submit this request.");
+            }
+
+            var columnTypes = target != null
+                ? await GetColumnTypeSelectionsAsync(target)
+                : new List<ColumnTypeSelectionViewModel>();
+            var (timeColumns, idColumns, includeColumns) = BuildIndexColumnOptions(columnTypes);
+
+            model.IndexTimeColumnOptions = timeColumns;
+            model.IndexIdColumnOptions = idColumns;
+            model.IndexIncludeColumnOptions = includeColumns;
+            model.IsTimeSeries = metadonnee?.SeriesTemporelles == true;
+            model.TableName = record.TableName;
+            model.DatasetName = metadonnee?.Nom ?? record.DisplayName;
+            model.MetadonneeId = metadonnee?.Id ?? 0;
+
+            if (!ModelState.IsValid)
+            {
+                if (metadonnee == null)
+                {
+                    return NotFound();
+                }
+
+                var pageMetadonnee = await GetMetadonneeWithTablesAsync(metadonnee.Id);
+                if (pageMetadonnee == null)
+                {
+                    return NotFound();
+                }
+
+                var pageModel = await BuildIndexationPageViewModelAsync(pageMetadonnee, model.ReturnUrl, model);
+                return View(pageModel);
+            }
+
+            if (record.IndexEnabled)
+            {
+                TempData["Error"] = "Indexation is already enabled for this dataset.";
+                return RedirectToAction("Details", new { id = metadonnee?.Id ?? 0 });
+            }
+
+            var trimmedTimeColumn = model.IndexTimeColumn?.Trim();
+            var trimmedIdColumn = model.IndexIdColumn?.Trim();
+            var trimmedIncludeColumn = model.IndexIncludeColumn?.Trim();
+
+            var baseTableName = GetBaseTableName(record.TableName);
+            var indexType = string.IsNullOrWhiteSpace(trimmedIdColumn) ? "time only" : "time and ids";
+            var indexName = $"IX_{baseTableName}_{(string.IsNullOrWhiteSpace(trimmedIdColumn) ? "time" : "time_id")}";
+
+            record.ApplyIndexation(
+                model.IndexEnabled,
+                trimmedTimeColumn,
+                trimmedIdColumn,
+                trimmedIncludeColumn,
+                indexType,
+                indexName);
+
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "Indexation has been scheduled. The index will be built overnight or from the Indexation settings.";
+
+            if (!string.IsNullOrWhiteSpace(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
+            {
+                return Redirect(model.ReturnUrl);
+            }
+
+            return RedirectToAction("CreateIndexation", new { id = metadonnee?.Id ?? 0 });
+        }
+
+        [HttpGet]
         [AllowAnonymous]
         public async Task<IActionResult> Details(int id, bool? creation, bool? modification, string? returnUrl)
         {
@@ -1759,6 +1884,316 @@ namespace Dataportal.Controllers
 
             return KnownSchemas.Any(s => s.Equals(schema, StringComparison.OrdinalIgnoreCase));
         }
+
+        private static bool TryGetIndexationSchema(string? type, out string schema)
+        {
+            schema = type switch
+            {
+                "donnees" => TableImportSchemas.Donnees,
+                "eventlogs" => TableImportSchemas.DonneesEventLogs,
+                "contexte" => TableImportSchemas.DonneesContexteEnvironnemental,
+                _ => string.Empty
+            };
+
+            return !string.IsNullOrWhiteSpace(schema);
+        }
+
+        private async Task<List<ColumnTypeSelectionViewModel>> GetColumnTypeSelectionsAsync(TableImportTarget target)
+        {
+            var columns = new List<ColumnTypeSelectionViewModel>();
+            const string query = @"
+                SELECT COLUMN_NAME, DATA_TYPE
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = @schema AND TABLE_NAME = @table
+                ORDER BY ORDINAL_POSITION";
+
+            await using var connection = new SqlConnection(_context.Database.GetConnectionString());
+            await connection.OpenAsync();
+            await using var command = new SqlCommand(query, connection);
+            command.Parameters.AddWithValue("@schema", target.Schema);
+            command.Parameters.AddWithValue("@table", target.TableName);
+
+            await using var reader = await command.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                var name = reader.GetString(0);
+                var dataType = reader.GetString(1);
+                var tabularType = MapSqlTypeToTabular(dataType);
+
+                columns.Add(new ColumnTypeSelectionViewModel
+                {
+                    ColumnName = name,
+                    SelectedType = tabularType.ToString(),
+                    InferredType = dataType
+                });
+            }
+
+            return columns;
+        }
+
+        private static TabularColumnType MapSqlTypeToTabular(string? dataType)
+        {
+            if (string.IsNullOrWhiteSpace(dataType))
+            {
+                return TabularColumnType.NVarChar;
+            }
+
+            return dataType.Trim().ToLowerInvariant() switch
+            {
+                "bit" => TabularColumnType.Bit,
+                "int" => TabularColumnType.Int,
+                "bigint" => TabularColumnType.BigInt,
+                "decimal" => TabularColumnType.Decimal,
+                "numeric" => TabularColumnType.Decimal,
+                "money" => TabularColumnType.Decimal,
+                "smallmoney" => TabularColumnType.Decimal,
+                "float" => TabularColumnType.Float,
+                "real" => TabularColumnType.Float,
+                "date" => TabularColumnType.DateTime2,
+                "datetime" => TabularColumnType.DateTime2,
+                "datetime2" => TabularColumnType.DateTime2,
+                "smalldatetime" => TabularColumnType.DateTime2,
+                "datetimeoffset" => TabularColumnType.DateTime2,
+                _ => TabularColumnType.NVarChar
+            };
+        }
+
+        private static string GetBaseTableName(string tableName)
+        {
+            if (string.IsNullOrWhiteSpace(tableName))
+            {
+                return "dataset";
+            }
+
+            var segments = tableName.Split('.', 2, StringSplitOptions.RemoveEmptyEntries);
+            return segments.Length == 2 ? segments[1] : tableName.Trim();
+        }
+
+        private static (string TabId, string TabTitle) GetIndexationTabInfo(string recordType)
+        {
+            return recordType switch
+            {
+                "donnees" => ("data", "Data"),
+                "eventlogs" => ("eventLogs", "Event logs"),
+                "contexte" => ("environmental", "Environmental context"),
+                _ => ("data", "Data")
+            };
+        }
+
+        private async Task<Metadonnee?> GetMetadonneeWithTablesAsync(int id)
+        {
+            return await _context.Metadonnee
+                .Include(m => m.Donnees)
+                .Include(m => m.DonneesEventLogs)
+                .Include(m => m.DonneesContexteEnvironnemental)
+                .FirstOrDefaultAsync(m => m.Id == id);
+        }
+
+        private async Task<IndexationPageViewModel> BuildIndexationPageViewModelAsync(
+            Metadonnee metadonnee,
+            string? returnUrl,
+            IndexationRequestViewModel? activeRequest = null)
+        {
+            var requests = new List<IndexationRequestViewModel>();
+            if (metadonnee.Donnees != null)
+            {
+                requests.Add(await BuildIndexationRequestAsync(
+                    metadonnee,
+                    "donnees",
+                    metadonnee.Donnees.Id,
+                    metadonnee.Donnees.NomDeLaTable,
+                    metadonnee.Donnees.IndexEnabled,
+                    "data",
+                    "Data",
+                    returnUrl));
+            }
+
+            if (metadonnee.DonneesEventLogs != null)
+            {
+                requests.Add(await BuildIndexationRequestAsync(
+                    metadonnee,
+                    "eventlogs",
+                    metadonnee.DonneesEventLogs.Id,
+                    metadonnee.DonneesEventLogs.NomDeLaTable,
+                    metadonnee.DonneesEventLogs.IndexEnabled,
+                    "eventLogs",
+                    "Event logs",
+                    returnUrl));
+            }
+
+            if (metadonnee.DonneesContexteEnvironnemental != null)
+            {
+                requests.Add(await BuildIndexationRequestAsync(
+                    metadonnee,
+                    "contexte",
+                    metadonnee.DonneesContexteEnvironnemental.Id,
+                    metadonnee.DonneesContexteEnvironnemental.NomDeLaTable,
+                    metadonnee.DonneesContexteEnvironnemental.IndexEnabled,
+                    "environmental",
+                    "Environmental context",
+                    returnUrl));
+            }
+
+            if (activeRequest != null)
+            {
+                var matching = requests.FirstOrDefault(r =>
+                    r.RecordType == activeRequest.RecordType &&
+                    r.RecordId == activeRequest.RecordId);
+                if (matching != null)
+                {
+                    matching.IndexEnabled = activeRequest.IndexEnabled;
+                    matching.IndexTimeColumn = activeRequest.IndexTimeColumn;
+                    matching.IndexIdColumn = activeRequest.IndexIdColumn;
+                    matching.IndexIncludeColumn = activeRequest.IndexIncludeColumn;
+                }
+            }
+
+            var activeTabId = requests.FirstOrDefault()?.TabId ?? string.Empty;
+            if (activeRequest != null)
+            {
+                activeTabId = GetIndexationTabInfo(activeRequest.RecordType).TabId;
+            }
+
+            return new IndexationPageViewModel
+            {
+                MetadonneeId = metadonnee.Id,
+                DatasetName = metadonnee.Nom,
+                ReturnUrl = returnUrl,
+                Requests = requests,
+                ActiveTabId = activeTabId
+            };
+        }
+
+        private async Task<IndexationRequestViewModel> BuildIndexationRequestAsync(
+            Metadonnee metadonnee,
+            string recordType,
+            int recordId,
+            string tableName,
+            bool isIndexed,
+            string tabId,
+            string tabTitle,
+            string? returnUrl)
+        {
+            var request = new IndexationRequestViewModel
+            {
+                TabId = tabId,
+                TabTitle = tabTitle,
+                RecordId = recordId,
+                RecordType = recordType,
+                MetadonneeId = metadonnee.Id,
+                DatasetName = metadonnee.Nom,
+                TableName = tableName,
+                IsTimeSeries = metadonnee.SeriesTemporelles,
+                IsIndexed = isIndexed,
+                IndexEnabled = true,
+                ReturnUrl = returnUrl
+            };
+
+            if (request.IsTimeSeries && !request.IsIndexed && TryGetIndexationSchema(recordType, out var schema))
+            {
+                if (TryBuildTableImportTarget(tableName, schema, out var target) && target != null)
+                {
+                    var columnTypes = await GetColumnTypeSelectionsAsync(target);
+                    var (timeColumns, idColumns, includeColumns) = BuildIndexColumnOptions(columnTypes);
+                    request.IndexTimeColumnOptions = timeColumns;
+                    request.IndexIdColumnOptions = idColumns;
+                    request.IndexIncludeColumnOptions = includeColumns;
+                }
+            }
+
+            return request;
+        }
+
+        private async Task<(Metadonnee? Metadonnee, IndexationRecord? Record)> GetIndexationRecordAsync(string type, int id)
+        {
+            switch (type)
+            {
+                case "donnees":
+                    var donnees = await _context.Donnees
+                        .Include(d => d.Metadonnee)
+                        .FirstOrDefaultAsync(d => d.Id == id);
+                    if (donnees == null)
+                    {
+                        return (null, null);
+                    }
+
+                    return (donnees.Metadonnee, new IndexationRecord(
+                        donnees.Id,
+                        donnees.NomDeLaTable,
+                        donnees.Libelle,
+                        donnees.IndexEnabled,
+                        (enabled, time, idColumn, includeColumn, indexType, indexName) =>
+                        {
+                            donnees.IndexEnabled = enabled;
+                            donnees.IndexTimeColumn = time;
+                            donnees.IndexIdColumn = idColumn;
+                            donnees.IndexIncludeColumn = includeColumn;
+                            donnees.IndexType = indexType;
+                            donnees.IndexName = indexName;
+                            donnees.IndexStatus = enabled ? "pending" : null;
+                            donnees.IndexError = null;
+                        }));
+                case "eventlogs":
+                    var eventLogs = await _context.DonneesEventLogs
+                        .Include(d => d.Metadonnee)
+                        .FirstOrDefaultAsync(d => d.Id == id);
+                    if (eventLogs == null)
+                    {
+                        return (null, null);
+                    }
+
+                    return (eventLogs.Metadonnee, new IndexationRecord(
+                        eventLogs.Id,
+                        eventLogs.NomDeLaTable,
+                        eventLogs.Libelle,
+                        eventLogs.IndexEnabled,
+                        (enabled, time, idColumn, includeColumn, indexType, indexName) =>
+                        {
+                            eventLogs.IndexEnabled = enabled;
+                            eventLogs.IndexTimeColumn = time;
+                            eventLogs.IndexIdColumn = idColumn;
+                            eventLogs.IndexIncludeColumn = includeColumn;
+                            eventLogs.IndexType = indexType;
+                            eventLogs.IndexName = indexName;
+                            eventLogs.IndexStatus = enabled ? "pending" : null;
+                            eventLogs.IndexError = null;
+                        }));
+                case "contexte":
+                    var contexte = await _context.DonneesContexteEnvironnemental
+                        .Include(d => d.Metadonnee)
+                        .FirstOrDefaultAsync(d => d.Id == id);
+                    if (contexte == null)
+                    {
+                        return (null, null);
+                    }
+
+                    return (contexte.Metadonnee, new IndexationRecord(
+                        contexte.Id,
+                        contexte.NomDeLaTable,
+                        contexte.Libelle,
+                        contexte.IndexEnabled,
+                        (enabled, time, idColumn, includeColumn, indexType, indexName) =>
+                        {
+                            contexte.IndexEnabled = enabled;
+                            contexte.IndexTimeColumn = time;
+                            contexte.IndexIdColumn = idColumn;
+                            contexte.IndexIncludeColumn = includeColumn;
+                            contexte.IndexType = indexType;
+                            contexte.IndexName = indexName;
+                            contexte.IndexStatus = enabled ? "pending" : null;
+                            contexte.IndexError = null;
+                        }));
+                default:
+                    return (null, null);
+            }
+        }
+
+        private sealed record IndexationRecord(
+            int RecordId,
+            string TableName,
+            string DisplayName,
+            bool IndexEnabled,
+            Action<bool, string?, string?, string?, string?, string?> ApplyIndexation);
 
         private string? ResolveReturnUrl(string? requestedReturnUrl, string? fallback)
         {

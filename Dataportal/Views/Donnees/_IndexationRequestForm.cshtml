@@ -1,0 +1,96 @@
+﻿@model Dataportal.ViewModels.IndexationRequestViewModel
+
+<div class="mb-3">
+    <div class="small text-muted">
+        Table: <code>@Model.TableName</code>
+    </div>
+</div>
+
+<form method="post" asp-action="CreateIndexation" data-index-form class="row g-3">
+    @Html.AntiForgeryToken()
+    <input asp-for="RecordId" type="hidden" />
+    <input asp-for="RecordType" type="hidden" />
+    <input asp-for="ReturnUrl" type="hidden" />
+
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <div class="col-12">
+        <div class="border rounded bg-white p-3">
+            <div class="d-flex flex-column gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <h5 class="h6 mb-0">Indexing (optional)</h5>
+                    <span class="info-tooltip-icon" role="img" aria-label="Indexing help" data-info-tooltip="Indexes are built on the database server to speed up time-based queries and ordering. If you will not use the table in the server JupyterHub, indexing is usually unnecessary because the benefits only apply to server-side functions." tabindex="0">
+                        <span class="material-symbols-outlined" aria-hidden="true">help</span>
+                    </span>
+                </div>
+                <p class="mb-2 text-muted">
+                    The index is built on the time column for fast time-range queries and ordering. When you add a sensor/group ID column, it becomes the first column in the index. Add a sensor/group ID column only when the values are repeated (not unique). Use the include column only if it is commonly looked up.
+                </p>
+                <div class="form-check">
+                    <input asp-for="IndexEnabled" class="form-check-input" data-index-toggle />
+                    <label asp-for="IndexEnabled" class="form-check-label d-inline-flex gap-2 align-items-center">
+                        <span>Create index for this table</span>
+                        <span class="info-tooltip-icon" role="img" aria-label="Indexing toggle help" data-info-tooltip="Creates a database index after import to speed up server-side time series queries in JupyterHub." tabindex="0">
+                            <span class="material-symbols-outlined" aria-hidden="true">help</span>
+                        </span>
+                    </label>
+                </div>
+                <span asp-validation-for="IndexEnabled" class="text-danger"></span>
+                <div class="row g-3 mt-1 d-none" data-index-options>
+                    <div class="col-md-4">
+                        <label asp-for="IndexTimeColumn" class="form-label d-inline-flex gap-2 align-items-center">
+                            <span>@Html.DisplayNameFor(m => m.IndexTimeColumn)</span>
+                            <span class="info-tooltip-icon" role="img" aria-label="Time column help" data-info-tooltip="Required. The primary time column used for sorting and time-range queries. Only datetime columns are available." tabindex="0">
+                                <span class="material-symbols-outlined" aria-hidden="true">help</span>
+                            </span>
+                        </label>
+                        <select asp-for="IndexTimeColumn" class="form-select" asp-items="Model.IndexTimeColumnOptions">
+                            <option value="">Select a time column</option>
+                        </select>
+                        @if (!Model.IndexTimeColumnOptions.Any())
+                        {
+                            <div class="form-text text-muted">No eligible datetime columns were detected.</div>
+                        }
+                        <span asp-validation-for="IndexTimeColumn" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-4">
+                        <label asp-for="IndexIdColumn" class="form-label d-inline-flex gap-2 align-items-center">
+                            <span>@Html.DisplayNameFor(m => m.IndexIdColumn)</span>
+                            <span class="info-tooltip-icon" role="img" aria-label="ID column help" data-info-tooltip="Optional. Use a sensor/group ID when the values repeat so the index can narrow down time ranges." tabindex="0">
+                                <span class="material-symbols-outlined" aria-hidden="true">help</span>
+                            </span>
+                        </label>
+                        <select asp-for="IndexIdColumn" class="form-select" asp-items="Model.IndexIdColumnOptions">
+                            <option value="">No ID column</option>
+                        </select>
+                        <div class="form-text text-muted">Large text columns are excluded from indexing.</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label asp-for="IndexIncludeColumn" class="form-label d-inline-flex gap-2 align-items-center">
+                            <span>@Html.DisplayNameFor(m => m.IndexIncludeColumn)</span>
+                            <span class="info-tooltip-icon" role="img" aria-label="Include column help" data-info-tooltip="Optional. Add a frequently looked up column to keep queries on the server faster." tabindex="0">
+                                <span class="material-symbols-outlined" aria-hidden="true">help</span>
+                            </span>
+                        </label>
+                        <select asp-for="IndexIncludeColumn" class="form-select" asp-items="Model.IndexIncludeColumnOptions">
+                            <option value="">No include column</option>
+                        </select>
+                        <div class="form-text text-muted">Only non-large types are shown.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 d-flex flex-wrap gap-2">
+        <button type="submit" class="btn btn-primary">Save index request</button>
+        @if (!string.IsNullOrWhiteSpace(Model.ReturnUrl))
+        {
+            <a class="btn btn-outline-secondary" href="@Model.ReturnUrl">Cancel</a>
+        }
+        else
+        {
+            <a class="btn btn-outline-secondary" href="@Url.Action("RechercheDonnees", "AccesDonnees")">Back to search</a>
+        }
+    </div>
+</form>

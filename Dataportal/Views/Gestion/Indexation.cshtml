@@ -102,9 +102,26 @@
                                 <td>@(job.IndexTimeColumn ?? "-")</td>
                                 <td>@(job.IndexIdColumn ?? "-")</td>
                                 <td>@(job.IndexIncludeColumn ?? "-")</td>
-                                <td class="text-break">@(!string.IsNullOrWhiteSpace(job.IndexError) ? job.IndexError : "-")</td>
                                 <td>
-                                    <form method="post" action="@Url.Action("RunIndexationNow", "Gestion")">
+                                    @{
+                                        var hasError = !string.IsNullOrWhiteSpace(job.IndexError);
+                                        var errorTitle = hasError ? "Indexation error" : "No error";
+                                        var errorMessage = hasError ? job.IndexError : "No error details available.";
+                                    }
+                                    <span class="material-symbols-outlined @(hasError ? "text-danger" : "text-muted")"
+                                        role="button"
+                                        aria-label="Indexation error details"
+                                        aria-disabled="@(!hasError)"
+                                        tabindex="@(hasError ? "0" : "-1")"
+                                        @(hasError ? "data-bs-toggle=\"modal\"" : string.Empty)
+                                        @(hasError ? "data-bs-target=\"#indexErrorModal\"" : string.Empty)
+                                        data-error-title="@errorTitle"
+                                        data-error-message="@errorMessage">
+                                        error
+                                    </span>
+                                </td>
+                                <td>
+                                    <form method="post" action="@Url.Action("RunIndexationNow", "Gestion")" class="upload-overlay-form" data-indexation-run>
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="type" value="@job.RecordType" />
                                         <input type="hidden" name="id" value="@job.RecordId" />
@@ -144,3 +161,72 @@
         </div>
     }
 </div>
+
+<div class="modal fade" id="indexErrorModal" tabindex="-1" aria-labelledby="indexErrorModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="indexErrorModalLabel">Indexation error</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="indexErrorModalMessage" class="mb-0 text-break"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@await Html.PartialAsync("_UploadOverlay")
+
+@section Scripts {
+    <script src="~/js/upload-overlay.js" asp-append-version="true"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const overlay = document.getElementById('upload-overlay');
+            if (overlay) {
+                const title = overlay.querySelector('.upload-overlay__title');
+                const message = overlay.querySelector('.upload-overlay__message');
+                const status = overlay.querySelector('[data-upload-overlay-status]');
+
+                if (title) {
+                    title.textContent = 'Indexation in progress';
+                }
+                if (message) {
+                    message.textContent = 'Please keep this page open. Do not close or refresh while indexation is running.';
+                }
+                if (status) {
+                    status.textContent = 'Running indexation…';
+                }
+            }
+
+            document.querySelectorAll('form[data-indexation-run]').forEach(form => {
+                initUploadOverlay(form, {
+                    confirmMessage: 'Run this indexation now? Keep this page open until it finishes.'
+                });
+            });
+
+            const errorModal = document.getElementById('indexErrorModal');
+            if (errorModal) {
+                errorModal.addEventListener('show.bs.modal', event => {
+                    const button = event.relatedTarget;
+                    if (!button) {
+                        return;
+                    }
+                    const title = button.getAttribute('data-error-title') || 'Indexation error';
+                    const message = button.getAttribute('data-error-message') || 'No error details available.';
+                    const titleElement = document.getElementById('indexErrorModalLabel');
+                    const messageElement = document.getElementById('indexErrorModalMessage');
+                    if (titleElement) {
+                        titleElement.textContent = title;
+                    }
+                    if (messageElement) {
+                        messageElement.textContent = message;
+                    }
+                });
+            }
+        });
+    </script>
+}

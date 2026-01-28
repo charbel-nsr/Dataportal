@@ -42,6 +42,9 @@ namespace Dataportal.Controllers
                 .Include(m => m.TypeEnergieRenouvelable)
                 .Include(m => m.Utilisateur)
                     .ThenInclude(u => u.Entreprise)
+                .Include(m => m.Donnees)
+                .Include(m => m.DonneesEventLogs)
+                .Include(m => m.DonneesContexteEnvironnemental)
                 .AsQueryable();
 
             // Visibilite filtering
