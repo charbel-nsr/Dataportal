@@ -116,6 +116,17 @@ namespace Dataportal.Controllers.NotebookApi
                     : Forbid();
             }
 
+            if (metadonnee.TraitementEnCours == true)
+            {
+                return Conflict(new ProblemDetails
+                {
+                    Title = "Table locked",
+                    Detail = "Dataset operations are unavailable while a replacement is in progress.",
+                    Status = StatusCodes.Status409Conflict,
+                    Type = "https://httpstatuses.com/409"
+                });
+            }
+
             if (!TryResolveDatasetTarget(metadonnee, parsedTableType, out var target, out var resolutionError))
             {
                 return NotFound(new ProblemDetails

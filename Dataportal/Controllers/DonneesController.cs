@@ -1616,6 +1616,17 @@ namespace Dataportal.Controllers
                 return Forbid();
             }
 
+            if (metadonnee.TraitementEnCours == true)
+            {
+                TempData["Error"] = "Impossible de demander une indexation : traitement en cours.";
+                if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+                {
+                    return Redirect(returnUrl);
+                }
+
+                return RedirectToAction("Details", new { id = metadonnee.Id });
+            }
+
             var viewModel = await BuildIndexationPageViewModelAsync(metadonnee, returnUrl);
             return View(viewModel);
         }
@@ -1639,9 +1650,25 @@ namespace Dataportal.Controllers
                 return NotFound();
             }
 
-            if (!isAdmin && userId.HasValue && metadonnee?.IdUtilisateur != userId.Value)
+            if (metadonnee == null)
+            {
+                return NotFound();
+            }
+
+            if (!isAdmin && userId.HasValue && metadonnee.IdUtilisateur != userId.Value)
             {
                 return Forbid();
+            }
+
+            if (metadonnee.TraitementEnCours == true)
+            {
+                TempData["Error"] = "Impossible de demander une indexation : traitement en cours.";
+                if (!string.IsNullOrWhiteSpace(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
+                {
+                    return Redirect(model.ReturnUrl);
+                }
+
+                return RedirectToAction("Details", new { id = metadonnee.Id });
             }
 
             if (!TryBuildTableImportTarget(record.TableName, schema, out var target) || target == null)

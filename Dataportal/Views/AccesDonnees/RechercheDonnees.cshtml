@@ -302,8 +302,9 @@
                                             ((m.Donnees != null && !m.Donnees.IndexEnabled) ||
                                             (m.DonneesEventLogs != null && !m.DonneesEventLogs.IndexEnabled) ||
                                             (m.DonneesContexteEnvironnemental != null && !m.DonneesContexteEnvironnemental.IndexEnabled));
+                                            var canRequestIndexation = m.TraitementEnCours != true;
                                         }
-                                        @if (canManageIndex && hasUnindexedTable)
+                                        @if (canManageIndex && hasUnindexedTable && canRequestIndexation)
                                         {
                                             <a class="btn btn-sm btn-outline-success ms-1" href="@Url.Action("CreateIndexation", "Donnees", new { id = m.Id, returnUrl = searchReturnUrl })" title="Request index">
                                                 <i class="bi bi-graph-up"></i>

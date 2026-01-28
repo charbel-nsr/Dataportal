@@ -33,6 +33,7 @@ namespace Dataportal.Services
                     _dbContext.Donnees,
                     TableImportSchemas.Donnees,
                     target.RecordId,
+                    entity => entity.IdMetadonnee,
                     entity => entity.IndexEnabled,
                     entity => entity.NomDeLaTable,
                     entity => entity.IndexName,
@@ -47,6 +48,7 @@ namespace Dataportal.Services
                     _dbContext.DonneesEventLogs,
                     TableImportSchemas.DonneesEventLogs,
                     target.RecordId,
+                    entity => entity.IdMetadonnee,
                     entity => entity.IndexEnabled,
                     entity => entity.NomDeLaTable,
                     entity => entity.IndexName,
@@ -61,6 +63,7 @@ namespace Dataportal.Services
                     _dbContext.DonneesContexteEnvironnemental,
                     TableImportSchemas.DonneesContexteEnvironnemental,
                     target.RecordId,
+                    entity => entity.IdMetadonnee,
                     entity => entity.IndexEnabled,
                     entity => entity.NomDeLaTable,
                     entity => entity.IndexName,
@@ -81,6 +84,7 @@ namespace Dataportal.Services
                 dbContext,
                 dbContext.Donnees,
                 TableImportSchemas.Donnees,
+                entity => entity.IdMetadonnee,
                 entity => entity.IndexEnabled,
                 entity => entity.NomDeLaTable,
                 entity => entity.IndexName,
@@ -96,6 +100,7 @@ namespace Dataportal.Services
                 dbContext,
                 dbContext.DonneesEventLogs,
                 TableImportSchemas.DonneesEventLogs,
+                entity => entity.IdMetadonnee,
                 entity => entity.IndexEnabled,
                 entity => entity.NomDeLaTable,
                 entity => entity.IndexName,
@@ -111,6 +116,7 @@ namespace Dataportal.Services
                 dbContext,
                 dbContext.DonneesContexteEnvironnemental,
                 TableImportSchemas.DonneesContexteEnvironnemental,
+                entity => entity.IdMetadonnee,
                 entity => entity.IndexEnabled,
                 entity => entity.NomDeLaTable,
                 entity => entity.IndexName,
@@ -127,6 +133,7 @@ namespace Dataportal.Services
             ApplicationDbContext dbContext,
             DbSet<TEntity> dbSet,
             string fallbackSchema,
+            Func<TEntity, int> metadonneeIdSelector,
             Func<TEntity, bool> enabledSelector,
             Func<TEntity, string?> tableSelector,
             Func<TEntity, string?> indexNameSelector,
@@ -148,6 +155,13 @@ namespace Dataportal.Services
                 if (stoppingToken.IsCancellationRequested)
                 {
                     break;
+                }
+
+                var metadonneeId = metadonneeIdSelector(entity);
+                if (await IsTraitementEnCoursAsync(metadonneeId, stoppingToken))
+                {
+                    _logger.LogInformation("Skipping indexation for dataset {MetadonneeId} because a replacement is in progress.", metadonneeId);
+                    continue;
                 }
 
                 statusSetter(entity, "running");
@@ -174,6 +188,7 @@ namespace Dataportal.Services
             DbSet<TEntity> dbSet,
             string fallbackSchema,
             int recordId,
+            Func<TEntity, int> metadonneeIdSelector,
             Func<TEntity, bool> enabledSelector,
             Func<TEntity, string?> tableSelector,
             Func<TEntity, string?> indexNameSelector,
@@ -195,6 +210,12 @@ namespace Dataportal.Services
             if (!enabledSelector(entity))
             {
                 return IndexRunResult.Failed("Indexing is not enabled for this dataset.");
+            }
+
+            var metadonneeId = metadonneeIdSelector(entity);
+            if (await IsTraitementEnCoursAsync(metadonneeId, stoppingToken))
+            {
+                return IndexRunResult.Failed("Indexing cannot run while a replacement is in progress.");
             }
 
             var currentStatus = statusSelector(entity);
@@ -224,6 +245,13 @@ namespace Dataportal.Services
             return result.Status == "completed"
                 ? IndexRunResult.Completed()
                 : IndexRunResult.Failed(result.Error ?? "Indexing failed.");
+        }
+
+        private Task<bool> IsTraitementEnCoursAsync(int metadonneeId, CancellationToken stoppingToken)
+        {
+            return _dbContext.Metadonnee
+                .AsNoTracking()
+                .AnyAsync(m => m.Id == metadonneeId && m.TraitementEnCours == true, stoppingToken);
         }
 
         private async Task<IndexCreationResult> TryCreateIndexAsync(

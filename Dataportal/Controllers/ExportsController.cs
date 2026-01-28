@@ -82,6 +82,17 @@ namespace Dataportal.Controllers
                 return requiresAuthentication ? Challenge() : Forbid();
             }
 
+            if (metadonnee.TraitementEnCours == true)
+            {
+                return Conflict(new ProblemDetails
+                {
+                    Title = "Table locked",
+                    Detail = "Dataset operations are unavailable while a replacement is in progress.",
+                    Status = StatusCodes.Status409Conflict,
+                    Type = "https://httpstatuses.com/409"
+                });
+            }
+
             if (!metadonnee.AutoriserLeTelechargement)
             {
                 return Forbid();
@@ -198,6 +209,17 @@ namespace Dataportal.Controllers
             if (!HttpContextUserHelper.CanCurrentUserAccessMetadonnee(HttpContext, _context, metadonnee, out var requiresAuthentication))
             {
                 return requiresAuthentication ? Challenge() : Forbid();
+            }
+
+            if (metadonnee.TraitementEnCours == true)
+            {
+                return Conflict(new ProblemDetails
+                {
+                    Title = "Table locked",
+                    Detail = "Dataset operations are unavailable while a replacement is in progress.",
+                    Status = StatusCodes.Status409Conflict,
+                    Type = "https://httpstatuses.com/409"
+                });
             }
 
             if (!metadonnee.AutoriserLeTelechargement)

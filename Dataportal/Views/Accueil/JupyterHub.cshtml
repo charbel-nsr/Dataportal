@@ -439,8 +439,10 @@ print(df.head())</code></pre>
                         <h2 class="h4 mb-3">Replace a full table (update workflow)</h2>
                         <p class="text-muted small mb-3">
                             Use the replace session endpoints to upload a full table replacement from JupyterHub. The dataset
-                            is locked while the session is active so no one else can modify it. Editors can only replace their
-                            own datasets; administrators can replace any dataset.
+                            is locked while the session is active so no one else can modify it. 
+                            No one can download the data or access it via APIs, and even indexing is blocked. 
+                            So close the session via push or abort as soon as possible. 
+                            Editors can only replace their own datasets; administrators can replace any dataset.
                         </p>
                         <div class="row g-3 mb-3">
                             <div class="col-lg-6">
@@ -458,7 +460,8 @@ print(df.head())</code></pre>
                                 <ol class="small">
                                     <li>Start a replace session and receive a staging table name + job id.</li>
                                     <li>Upload Parquet chunks into the staging table.</li>
-                                    <li>Commit swaps the staging table into place and keeps the old table for review.</li>
+                                    <li>Commit swaps the staging table into place and keeps the old table.</li>
+                                    <li>Before running the Push, open the website interface and go to the details of the data you just modified to verify that the data summary is correct.</li>
                                     <li>Push deletes the old table and unlocks the dataset (or abort to roll back).</li>
                                 </ol>
                             </div>
