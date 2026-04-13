@@ -28,6 +28,13 @@ namespace Dataportal.Controllers
         private readonly ITabularFileImporter _fileImporter;
         private const string UploadCacheFolderName = "dataportal-upload-cache";
         private const string UploadMetadataFileName = "metadata.json";
+        private static readonly HashSet<string> AllowedUploadExtensions = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ".csv",
+            ".xlsx",
+            ".parquet",
+            ".csv.zip"
+        };
 
         private enum ExistingLabelSource
         {
@@ -929,6 +936,12 @@ namespace Dataportal.Controllers
                 }
 
                 var safeName = Path.GetFileName(file.FileName);
+                var extension = NormalizeUploadExtension(safeName);
+                if (extension == null || !AllowedUploadExtensions.Contains(extension))
+                {
+                    throw new InvalidOperationException("Only CSV, XLSX, Parquet, or CSV.zip files are allowed.");
+                }
+
                 var storedName = $"{Guid.NewGuid():N}_{safeName}";
                 var destination = Path.Combine(sessionPath, storedName);
 
@@ -949,6 +962,24 @@ namespace Dataportal.Controllers
             await System.IO.File.WriteAllTextAsync(metadataPath, SystemTextJson.Serialize(metadata));
 
             return sessionId;
+        }
+
+        private static string? NormalizeUploadExtension(string fileName)
+        {
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                return null;
+            }
+
+            if (fileName.EndsWith(".csv.zip", StringComparison.OrdinalIgnoreCase))
+            {
+                return ".csv.zip";
+            }
+
+            var extension = Path.GetExtension(fileName);
+            return string.IsNullOrWhiteSpace(extension)
+                ? null
+                : extension.ToLowerInvariant();
         }
 
         private List<IFormFile> LoadPersistedUploads(string sessionId)

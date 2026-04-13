@@ -679,10 +679,12 @@ namespace Dataportal.Controllers.JupyterHubApi
                 });
             }
 
+            IReadOnlyList<DataField> orderedFields;
             try
             {
                 EnsureUniqueHeaders(headerInfo.Value.Headers);
                 ValidateHeadersAgainstColumns(headerInfo.Value.Headers, columnDefinitions, "Parquet");
+                orderedFields = AlignParquetFieldsToSchema(headerInfo.Value.Headers, headerInfo.Value.Fields, columnDefinitions);
             }
             catch (InvalidOperationException ex)
             {
@@ -704,7 +706,7 @@ namespace Dataportal.Controllers.JupyterHubApi
                 buffer,
                 columnDefinitions,
                 reader,
-                headerInfo.Value.Fields,
+                orderedFields,
                 errors,
                 file.FileName,
                 ReplaceBulkBatchSize,
@@ -775,17 +777,6 @@ namespace Dataportal.Controllers.JupyterHubApi
                     Detail = "The staging table for this replace session could not be found.",
                     Status = StatusCodes.Status404NotFound,
                     Type = "https://httpstatuses.com/404"
-                });
-            }
-
-            if (!await TableHasRowsAsync(stagingTarget, connection, sqlTransaction, cancellationToken))
-            {
-                return BadRequest(new ProblemDetails
-                {
-                    Title = "No data uploaded",
-                    Detail = "The staging table does not contain any rows.",
-                    Status = StatusCodes.Status400BadRequest,
-                    Type = "https://httpstatuses.com/400"
                 });
             }
 
@@ -1859,6 +1850,36 @@ ORDER BY c.column_id;";
             return totalCopied;
         }
 
+        private static IReadOnlyList<DataField> AlignParquetFieldsToSchema(
+            IReadOnlyList<string> parquetHeaders,
+            IReadOnlyList<DataField> parquetFields,
+            IReadOnlyList<TabularColumnDefinition> schemaColumns)
+        {
+            if (parquetHeaders.Count != parquetFields.Count)
+            {
+                throw new InvalidOperationException("Unable to map Parquet columns to the selected schema.");
+            }
+
+            var fieldByHeader = new Dictionary<string, DataField>(StringComparer.OrdinalIgnoreCase);
+            for (var i = 0; i < parquetHeaders.Count; i++)
+            {
+                fieldByHeader[parquetHeaders[i]] = parquetFields[i];
+            }
+
+            var orderedFields = new List<DataField>(schemaColumns.Count);
+            foreach (var schemaColumn in schemaColumns)
+            {
+                if (!fieldByHeader.TryGetValue(schemaColumn.Name, out var field))
+                {
+                    throw new InvalidOperationException("The Parquet files must share the same columns as the selected schema.");
+                }
+
+                orderedFields.Add(field);
+            }
+
+            return orderedFields;
+        }
+
         private static void ValidateHeadersAgainstColumns(IReadOnlyList<string> headers, IReadOnlyList<TabularColumnDefinition> columns, string formatLabel)
         {
             if (headers.Count != columns.Count)
@@ -1866,9 +1887,10 @@ ORDER BY c.column_id;";
                 throw new InvalidOperationException($"The {formatLabel} files must share the same columns as the selected schema.");
             }
 
+            var columnNames = new HashSet<string>(columns.Select(c => c.Name), StringComparer.OrdinalIgnoreCase);
             for (var i = 0; i < headers.Count; i++)
             {
-                if (!string.Equals(headers[i], columns[i].Name, StringComparison.OrdinalIgnoreCase))
+                if (!columnNames.Contains(headers[i]))
                 {
                     throw new InvalidOperationException($"The {formatLabel} files must share the same columns as the selected schema.");
                 }
