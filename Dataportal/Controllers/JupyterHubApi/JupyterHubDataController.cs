@@ -1617,11 +1617,21 @@ ORDER BY c.column_id;";
                     reader.GetByte(4),
                     reader.GetBoolean(5),
                     reader.GetBoolean(6),
-                    reader.IsDBNull(7) ? null : reader.GetDecimal(7),
-                    reader.IsDBNull(8) ? null : reader.GetDecimal(8)));
+                    ReadOptionalDecimal(reader, 7),
+                    ReadOptionalDecimal(reader, 8)));
             }
 
             return columns;
+        }
+
+        private static decimal? ReadOptionalDecimal(SqlDataReader reader, int ordinal)
+        {
+            if (reader.IsDBNull(ordinal))
+            {
+                return null;
+            }
+
+            return Convert.ToDecimal(reader.GetValue(ordinal), CultureInfo.InvariantCulture);
         }
 
         private static string BuildColumnDefinition(ColumnMetadata column)
